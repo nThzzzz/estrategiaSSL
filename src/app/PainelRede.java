@@ -125,6 +125,7 @@ public final class PainelRede extends JPanel {
         add(caixa("area do sensor de bola", true, campo::setMostrarSensor));
         add(caixa("incerteza do Kalman", true, campo::setMostrarIncerteza));
         add(caixa("prever ate o desenho", true, campo::setPreverAteODesenho));
+        add(caixa("fantasma de 1 s", true, campo::setMostrarFantasma));
         add(Box.createVerticalStrut(8));
 
         JButton enquadrar = new JButton("Reenquadrar campo");

@@ -6,7 +6,6 @@ import estrategia.Role;
 import estrategia.tactics.BuscarBola;
 import estrategia.tactics.ChutarAoGol;
 import estrategia.tactics.ConduzirAoGol;
-import mundo.Projecao;
 
 /**
  * O robo que vai atras da bola e tenta o gol.
@@ -17,9 +16,10 @@ import mundo.Projecao;
  * ficaria presa em "conduzindo" no instante em que a bola escapasse, e o robo
  * continuaria empurrando o ar ate alguem perceber.
  *
- * <p>O custo de atribuicao e o TEMPO ate o ponto de encontro, e nao a distancia
- * ate a bola. Sao coisas diferentes quando alguem esta em movimento: o robo mais
- * proximo pode estar indo para o outro lado a 3 m/s, e o de tras chega antes.
+ * <p>O custo de atribuicao e a distancia ate a bola, sem previsao nenhuma. E
+ * grosseiro de proposito: quando alguem esta em movimento, o robo mais proximo
+ * pode estar indo para o outro lado, e o custo certo seria tempo ate um ponto de
+ * encontro. Fica para quando a previsao de bola existir.
  */
 public final class Atacante extends Role {
 
@@ -63,9 +63,7 @@ public final class Atacante extends Role {
         // distancia: tirar o papel de quem tem a posse largaria a bola.
         if (_candidato.bComABola()) return 0;
 
-        java.util.Objects.requireNonNull(_ambiente);
-        core.Vec2 encontro = Projecao.pontoDeEncontro(_candidato.estado(), _ambiente.bola());
-        return Projecao.tempoParaChegar(_candidato.estado(), encontro);
+        return _candidato.estado().posicao().distancia(_ambiente.bola().posicao());
     }
 
     /** O papel se cumpre quando o chute sai. */

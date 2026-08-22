@@ -58,6 +58,17 @@ public final class Campo extends JPanel {
      */
     private static final double MAX_PREVISAO = 0.08; // s
 
+    /** Quanto a frente o fantasma mostra o robo, em segundos. */
+    public static final double HORIZONTE_FANTASMA = 1.0;
+
+    /**
+     * Abaixo desta velocidade o robo nao ganha fantasma, em mm/s.
+     *
+     * <p>Sem o corte, robo parado ganharia um fantasma em cima de si mesmo e o
+     * campo viraria doze circulos tracejados sobrepostos aos robos, dizendo nada.
+     */
+    private static final double VEL_MINIMA_FANTASMA = 150;
+
     private final Supplier<Quadro> fonte;
 
     private double zoom = 1.0;
@@ -71,6 +82,7 @@ public final class Campo extends JPanel {
     private boolean mostrarSensor = true;
     private boolean mostrarIncerteza = true;
     private boolean preverAteODesenho = true;
+    private boolean mostrarFantasma = true;
 
     public Campo(Supplier<Quadro> fonte) {
         this.fonte = fonte;
@@ -91,6 +103,7 @@ public final class Campo extends JPanel {
     public void setMostrarSensor(boolean b)  { mostrarSensor = b; }
     public void setMostrarIncerteza(boolean b) { mostrarIncerteza = b; }
     public void setPreverAteODesenho(boolean b) { preverAteODesenho = b; }
+    public void setMostrarFantasma(boolean b) { mostrarFantasma = b; }
 
     /**
      * Selecao guardada por identidade (cor + id), nao por referencia ao record.
@@ -180,6 +193,8 @@ public final class Campo extends JPanel {
         Graphics2D gm = (Graphics2D) g2.create();
         gm.transform(at);
         desenharCampo(gm, q.geometria());
+        // Fantasmas primeiro, para os robos de verdade ficarem por cima.
+        if (mostrarFantasma) for (EstadoRobo r : q.robos()) desenharFantasma(gm, r, avanco);
         for (EstadoRobo r : q.robos()) desenharRobo(gm, r, q.geometria(), avanco);
         desenharBola(gm, q.bola(), q.geometria(), avanco);
         gm.dispose();
@@ -220,6 +235,54 @@ public final class Campo extends JPanel {
         g.fill(new Rectangle2D.Double(-meioX - gp, -gl / 2, gp, gl));
         g.setColor(Paleta.AMARELO);
         g.fill(new Rectangle2D.Double(meioX, -gl / 2, gp, gl));
+    }
+
+    /**
+     * Onde o robo estaria daqui a um segundo, mantido o rumo, e a reta ate la.
+     *
+     * <p>E o vetor de rumo de um radar de navio, com a mesma simplificacao: linha
+     * reta na velocidade atual, ignorando que ele pode estar virando ou freando.
+     * A utilidade vem justamente disso. Quando o fantasma nao bate com o que o
+     * robo faz, o que se esta vendo e ele mudando de ideia -- e isso e
+     * informacao, nao erro de desenho.
+     *
+     * <p>O avanco do repaint entra nos dois, robo e fantasma, senao a distancia
+     * entre os dois piscaria a cada quadro de visao.
+     */
+    private void desenharFantasma(Graphics2D g, EstadoRobo r, double avanco) {
+        if (r.rapidez() < VEL_MINIMA_FANTASMA) return;
+
+        Vec2 agora = prever(r.posicao(), r.velocidade(), avanco);
+        Vec2 futuro = prever(r.posicao(), r.velocidade(), avanco + HORIZONTE_FANTASMA);
+        double theta = r.theta() + r.omega() * (avanco + HORIZONTE_FANTASMA);
+
+        Color cor = Paleta.de(r.cor());
+        // Opaco o bastante para ser lido de relance no zoom do campo inteiro, onde
+        // um robo tem uns dez pixels. Mais fraco que isso vira sujeira na tela.
+        Color fraca = new Color(cor.getRed(), cor.getGreen(), cor.getBlue(), 175);
+
+        g.setColor(fraca);
+        g.setStroke(new BasicStroke(9f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND,
+                10f, new float[]{45f, 30f}, 0f));
+        g.draw(new Line2D.Double(agora.x(), agora.y(), futuro.x(), futuro.y()));
+
+        AffineTransform anterior = g.getTransform();
+        g.translate(futuro.x(), futuro.y());
+        g.rotate(theta);
+
+        g.setStroke(new BasicStroke(11f));
+        g.draw(new Ellipse2D.Double(-Robo.RAIO, -Robo.RAIO, Robo.RAIO * 2, Robo.RAIO * 2));
+
+        // A mesma cunha do robo, para o fantasma dizer tambem PARA ONDE ele estara
+        // olhando -- posicao sem orientacao nao chega para julgar uma jogada.
+        Path2D cunha = new Path2D.Double();
+        cunha.moveTo(Robo.RAIO * 0.40, -Robo.MEIA_BOCA * 0.55);
+        cunha.lineTo(Robo.RAIO * 0.40, Robo.MEIA_BOCA * 0.55);
+        cunha.lineTo(Robo.DIST_FACE_FRONTAL - 3, 0);
+        cunha.closePath();
+        g.fill(cunha);
+
+        g.setTransform(anterior);
     }
 
     /**

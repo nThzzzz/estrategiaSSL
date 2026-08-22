@@ -235,34 +235,31 @@ A atribuição tem **histerese**: quem já está no papel leva 30% de vantagem. 
 a distâncias parecidas ficam trocando de função a cada quadro e nenhum dos dois chega a lugar
 nenhum.
 
-### Projeção
+### Projeção e o fantasma
 
-Onde as coisas **vão** estar, a partir de onde estão e para onde vão. É navegação estimada, a
-mesma conta que um navio faz na carta: posição atual mais rumo e velocidade, integrados no
-tempo. O Kalman já entrega os dois, então projetar é barato — e sem projetar, toda decisão é
-tomada sobre um mundo que já passou.
+Onde o robô **vai** estar, a partir de onde está e para onde vai. É navegação estimada, a mesma
+conta que um navio faz na carta: posição atual mais rumo e velocidade, integrados no tempo. O
+Kalman já entrega os dois, então projetar sai de graça.
 
-Três usos, em ordem de impacto:
+O campo desenha, para todo robô em movimento, um **fantasma** de onde ele estaria daqui a
+1 segundo, mais a reta até lá. É o vetor de rumo de um radar, com a mesma simplificação: linha
+reta na velocidade atual, ignorando que ele pode estar virando ou freando.
 
-| | |
-|---|---|
-| **atraso** | entre a câmera ver e o robô obedecer passam dezenas de milissegundos; mirar onde a bola estava é o motivo clássico de o robô passar sempre atrás dela |
-| **interceptação** | para pegar bola em movimento é preciso ir aonde ela vai estar; perseguir a posição atual desenha uma curva de perseguição, que chega depois e por trás |
-| **quem vai buscar** | decidir por distância atual manda o robô errado: o mais próximo pode estar indo para o outro lado a 3 m/s |
+Essa simplificação não é descuido, é o que dá utilidade ao desenho. Quando o fantasma não bate
+com o que o robô faz, o que se está vendo é ele mudando de ideia. E quando o fantasma aparece
+atravessando a parede, o recado é que naquele rumo e naquela velocidade ele não tem mais um
+segundo de campo pela frente.
 
-O robô mantém velocidade enquanto o comando mandar, então para ele a projeção é reta. **A bola
-não.** Ela desacelera contra o carpete, e ignorar isso é o erro mais caro aqui: uma bola a
-6 m/s projetada sem atrito para 1 segundo à frente aparece quase um metro além de onde ela
-realmente para.
-
-A desaceleração usada é a de **rolamento**. Uma bola recém chutada ainda desliza, e desliza
-freando bem mais forte, mas de fora não dá para observar o giro dela e portanto não dá para
-saber em que fase está. Assumir rolamento erra para o lado seguro: a bola chega um pouco antes
-do previsto, e um robô que se antecipa demais espera, enquanto um que se atrasa perde a bola.
+O fantasma some abaixo de 150 mm/s. Sem esse corte, robô parado ganharia um fantasma em cima de
+si mesmo e o campo viraria doze círculos tracejados sobrepostos, dizendo nada.
 
 `Projecao` também traz o **CPA** da navegação: a menor distância entre dois corpos se ambos
-mantiverem o rumo, e quando isso acontece. Não está em uso ainda, e é a base do desvio de
-obstáculo quando ele entrar.
+mantiverem o rumo, e quando isso acontece. Não está em uso, e é a base do desvio de obstáculo
+quando ele entrar.
+
+**Não há projeção de bola, de propósito.** O robô mantém velocidade enquanto o comando mandar,
+então a reta é uma aproximação honesta por um segundo. A bola desacelera contra o carpete,
+quica e muda de dono, e prever isso direito é um problema por si.
 
 ### Os limites do árbitro ficam fora das plays
 
@@ -274,7 +271,8 @@ checar `HALT` para o time andar com o jogo parado, e o custo disso é falta.
 ### A jogada de bancada
 
 `TesteAtacante` existe para provar que o encanamento inteiro funciona, do `Coach` até o
-`Comando` no fio: um papel só, sem passe, sem marcação e sem desvio de obstáculo. O `Atacante`
+`Comando` no fio: um papel só, sem passe, sem marcação, sem desvio de obstáculo e **sem prever
+a bola** — o atacante vai onde ela está, não onde ela estará. O `Atacante`
 escolhe entre três táticas **pelo estado do mundo**, e não por lembrar em que fase está: sem a
 bola, buscar; com a bola longe do gol, conduzir; com a bola perto, chutar. Uma máquina de
 estados com memória ficaria presa em "conduzindo" no instante em que a bola escapasse, e o robô

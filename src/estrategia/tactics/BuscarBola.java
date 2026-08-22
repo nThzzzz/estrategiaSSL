@@ -5,16 +5,16 @@ import estrategia.Tactic;
 import estrategia.skills.AndarPara;
 import estrategia.skills.OlharPara;
 import model.Robo;
-import mundo.Projecao;
 
 /**
  * Vai ate a bola e a captura no dribbler.
  *
- * <h2>Aonde ir</h2>
+ * <h2>Vai na bola onde ela esta</h2>
  *
- * <p>Nao para cima da bola: para o PONTO DE ENCONTRO, onde ela vai estar quando o
- * robo chegar. Perseguir a posicao atual de uma bola em movimento desenha uma
- * curva de perseguicao, que chega sempre atras e por tras.
+ * <p>Sem prever para onde ela vai. Com a bola em movimento isso desenha uma curva
+ * de perseguicao e chega atrasado -- e e assim de proposito, porque previsao de
+ * bola e assunto a parte, para ser escrito com cuidado depois. O que esta aqui e
+ * o comportamento mais simples que funciona.
  *
  * <h2>De que lado chegar</h2>
  *
@@ -44,18 +44,18 @@ public final class BuscarBola extends Tactic {
 
     @Override
     protected void vRun() {
-        Vec2 encontro = Projecao.pontoDeEncontro(jogador.estado(), ambiente.bola());
+        Vec2 bola = ambiente.bola().posicao();
 
         // Recuo suficiente para a face do dribbler tocar a bola quando o centro
         // do robo estiver no destino.
         double recuo = Robo.DIST_FACE_FRONTAL + ambiente.geometria().raioBola();
-        Vec2 doGolParaABola = encontro.menos(ambiente.golDeles());
+        Vec2 doGolParaABola = bola.menos(ambiente.golDeles());
         Vec2 destino = doGolParaABola.norma() < 1e-6
-                ? encontro
-                : encontro.mais(doGolParaABola.comNorma(recuo));
+                ? bola
+                : bola.mais(doGolParaABola.comNorma(recuo));
 
         andar.vSetDestino(destino);
-        olhar.vSetAlvo(encontro);
+        olhar.vSetAlvo(bola);
         jogador.vDribbler(true);
 
         vExecutar(olhar);

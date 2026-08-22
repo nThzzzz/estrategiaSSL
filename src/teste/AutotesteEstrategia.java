@@ -61,9 +61,8 @@ public final class AutotesteEstrategia {
         arbitroPodaOComando();
 
         // --- projecao ---
-        bolaProjetadaRespeitaOAtrito();
-        bolaNaoAndaParaTrasDepoisDeParar();
-        pontoDeEncontroFicaAFrenteDaBola();
+        roboProjetadoSegueEmLinhaReta();
+        roboParadoNaoSeProjeta();
         menorDistanciaEncontraAAproximacao();
 
         // --- skills ---
@@ -296,40 +295,30 @@ public final class AutotesteEstrategia {
 
     // ------------------------------------------------------------------ projecao
 
-    /** Sem atrito, uma bola a 2 m/s iria longe demais; com atrito ela para. */
-    private static void bolaProjetadaRespeitaOAtrito() {
-        EstadoBola b = new EstadoBola(Vec2.ZERO, 21.5, new Vec2(2000, 0), 0, 5);
+    /**
+     * Um segundo de rumo constante: o robo aparece exatamente onde a velocidade
+     * atual o levaria. E o fantasma que a tela desenha.
+     */
+    private static void roboProjetadoSegueEmLinhaReta() {
+        EstadoRobo r = new EstadoRobo(0, Cor.AZUL, new Vec2(1000, -500), 0,
+                new Vec2(2000, 500), 1.5, false, 0, 5);
 
-        double tParada = 2000.0 / Projecao.DESACELERACAO_BOLA;
-        double esperado = 2000 * 2000 / (2 * Projecao.DESACELERACAO_BOLA);
+        Vec2 futuro = Projecao.robo(r, 1.0);
+        aproximado("projecao: robo avanca a velocidade vezes o tempo (x)", futuro.x(), 3000, 1e-6);
+        aproximado("projecao: idem em y", futuro.y(), 0, 1e-6);
+        aproximado("projecao: e a orientacao acompanha omega",
+                Projecao.theta(r, 1.0), 1.5, 1e-6);
 
-        aproximado("projecao: tempo ate a bola parar",
-                Projecao.tempoAteABolaParar(b), tParada, 1e-6);
-        aproximado("projecao: distancia ate a bola parar",
-                Projecao.ondeABolaPara(b).x(), esperado, 1.0);
-        verdadeiro("projecao: sem atrito ela iria bem mais longe",
-                2000 * tParada > esperado * 1.9);
+        Vec2 meio = Projecao.robo(r, 0.5);
+        aproximado("projecao: meio segundo da metade do caminho", meio.x(), 2000, 1e-6);
     }
 
-    private static void bolaNaoAndaParaTrasDepoisDeParar() {
-        EstadoBola b = new EstadoBola(Vec2.ZERO, 21.5, new Vec2(1000, 0), 0, 5);
-        Vec2 parada = Projecao.ondeABolaPara(b);
-        Vec2 muitoDepois = Projecao.bola(b, 60);
-        aproximado("projecao: depois de parar a bola fica onde parou",
-                muitoDepois.x(), parada.x(), 1e-6);
-    }
-
-    /** Perseguir a posicao atual chega por tras; o encontro fica a frente. */
-    private static void pontoDeEncontroFicaAFrenteDaBola() {
-        EstadoRobo r = new EstadoRobo(0, Cor.AZUL, new Vec2(-2000, 0), 0,
+    private static void roboParadoNaoSeProjeta() {
+        EstadoRobo r = new EstadoRobo(3, Cor.AZUL, new Vec2(500, 500), 0.4,
                 Vec2.ZERO, 0, false, 0, 5);
-        EstadoBola b = new EstadoBola(Vec2.ZERO, 21.5, new Vec2(1500, 0), 0, 5);
-
-        Vec2 encontro = Projecao.pontoDeEncontro(r, b);
-        verdadeiro(String.format("projecao: encontro a frente da bola (x=%.0f)", encontro.x()),
-                encontro.x() > 100);
-        verdadeiro("projecao: e nao alem de onde ela para",
-                encontro.x() <= Projecao.ondeABolaPara(b).x() + 1);
+        Vec2 futuro = Projecao.robo(r, 1.0);
+        aproximado("projecao: robo parado fica onde esta",
+                futuro.distancia(r.posicao()), 0, 1e-9);
     }
 
     /** O CPA da navegacao: dois rumos convergentes se aproximam mais do que estao. */
