@@ -49,7 +49,26 @@ public final class Jogador {
         this.comando = Comando.PARADO;
     }
 
-    /** Velocidades no referencial local do robo: frente, esquerda, giro. */
+    /**
+     * Velocidade linear no referencial local do robo: frente e esquerda.
+     *
+     * <p>Nao mexe no giro. E o que permite {@code AndarPara} e {@code OlharPara}
+     * rodarem no mesmo tique sem uma apagar a outra: uma escreve o deslocamento,
+     * a outra a orientacao, e o robo faz as duas coisas ao mesmo tempo, que e
+     * como um omnidirecional se move de verdade.
+     */
+    public void vMover(double velTangencial, double velNormal) {
+        comando = new Comando(velTangencial, velNormal, comando.velAngular(),
+                comando.velChute(), comando.anguloChute(), comando.dribbler());
+    }
+
+    /** Velocidade angular, em rad/s, positiva no anti-horario. Nao mexe no resto. */
+    public void vGirar(double velAngular) {
+        comando = new Comando(comando.velTangencial(), comando.velNormal(), velAngular,
+                comando.velChute(), comando.anguloChute(), comando.dribbler());
+    }
+
+    /** Move e gira de uma vez. */
     public void vMover(double velTangencial, double velNormal, double velAngular) {
         comando = new Comando(velTangencial, velNormal, velAngular,
                 comando.velChute(), comando.anguloChute(), comando.dribbler());

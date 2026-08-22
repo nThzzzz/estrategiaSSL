@@ -110,6 +110,22 @@ public abstract class Tactic {
 
     public Skill currentSkill() { return currentSkill; }
 
+    /**
+     * Roda uma skill agora, alem da corrente.
+     *
+     * <p>Serve para as skills que escrevem partes DIFERENTES do comando --
+     * {@code AndarPara} mexe no deslocamento, {@code OlharPara} no giro -- e por
+     * isso podem valer ao mesmo tempo. Um robo omnidirecional anda para um lado
+     * enquanto olha para outro, e forcar essas duas a se revezarem produziria um
+     * movimento aos trancos, sem necessidade nenhuma.
+     *
+     * <p>Nao use para duas skills que escrevem a mesma coisa: a ultima a rodar
+     * apagaria a primeira, e o resultado dependeria da ordem das chamadas.
+     */
+    protected final void vExecutar(Skill _skill) {
+        if (_skill != null) _skill.vRunSkill(ambiente, jogador);
+    }
+
     public int id() { return iID; }
     public boolean bIsInitialized() { return bInitialized; }
     public boolean bIsFinished()    { return bFinished; }

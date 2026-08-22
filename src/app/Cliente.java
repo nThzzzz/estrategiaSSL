@@ -1,5 +1,8 @@
 package app;
 
+import estrategia.Ambiente;
+import estrategia.Executor;
+import estrategia.coaches.Bancada;
 import jogo.Arbitro;
 import jogo.ArbitroLocal;
 import jogo.EstadoDeJogo;
@@ -39,6 +42,10 @@ public final class Cliente implements AutoCloseable {
     private final Rastreador rastreador = new Rastreador();
     private final Arbitro arbitro = new Arbitro();
     private final ArbitroLocal arbitroLocal = new ArbitroLocal();
+    private final Executor executor = new Executor(new Bancada());
+
+    private boolean bEstrategiaLigada;
+    private long frameDaUltimaDecisao = -1;
 
     private ConfigRede config;
     private Cor equipe;
@@ -171,13 +178,48 @@ public final class Cliente implements AutoCloseable {
         }
     }
 
+    // ---------------------------------------------------------- estrategia
+
+    public Executor getExecutor()       { return executor; }
+    public boolean isEstrategiaLigada() { return bEstrategiaLigada; }
+
     /**
-     * Manda um ciclo de comandos para a nossa equipe.
+     * Liga e desliga a estrategia.
      *
-     * <p>Nao existe ainda quem produza esses comandos: sem estrategia escrita, o
-     * mapa chega vazio e nada e enviado -- os robos ficam parados, do mesmo jeito
-     * que ficam no simulador quando ninguem esta conectado.
+     * <p>Ao desligar, manda um ciclo de comando parado antes de calar. Sem isso o
+     * ultimo comando enviado continuaria valendo e os robos seguiriam andando
+     * sozinhos, porque o simulador guarda o ultimo comando de cada robo ate
+     * receber outro.
      */
+    public void setEstrategiaLigada(boolean ligada) {
+        if (bEstrategiaLigada && !ligada) vPararTodos();
+        this.bEstrategiaLigada = ligada;
+    }
+
+    private void vPararTodos() {
+        Map<Integer, Comando> parado = new java.util.LinkedHashMap<>();
+        for (var j : executor.jogadores()) parado.put(j.id(), Comando.PARADO);
+        enviar(parado);
+    }
+
+    /**
+     * Roda um ciclo de decisao e manda o resultado.
+     *
+     * <p>Amarrado ao QUADRO da visao, e nao ao relogio da tela: decidir duas vezes
+     * sobre o mesmo quadro gasta processamento para chegar na mesma conclusao, e
+     * decidir sem quadro novo nenhum e decidir sobre um mundo que parou de chegar.
+     */
+    public void vDecidir() {
+        if (!bEstrategiaLigada || !recebendo()) return;
+
+        Quadro q = quadro();
+        if (q.frame() == frameDaUltimaDecisao) return;
+        frameDaUltimaDecisao = q.frame();
+
+        enviar(executor.vTick(new Ambiente(q, estadoDeJogo(), equipe)));
+    }
+
+    /** Manda um ciclo de comandos para a nossa equipe. */
     public void enviar(Map<Integer, Comando> comandos) {
         if (emissor == null) return;
         try {

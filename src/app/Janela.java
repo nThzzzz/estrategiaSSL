@@ -38,6 +38,10 @@ import java.awt.event.MouseWheelEvent;
  * Hz mesmo que a visao chegue a 30, ou nao chegue: uma janela que congela
  * quando a rede cai parece travada, quando o que houve foi silencio na rede -- e
  * e justamente a hora em que se precisa ler o estado na tela.
+ *
+ * <p>O mesmo relogio chama {@code vDecidir}, que so age quando chega quadro novo.
+ * A estrategia fica assim atrelada a VISAO e nao a tela: reduzir o FPS da janela
+ * nao pode deixar o time mais burro.
  */
 public final class Janela {
 
@@ -103,6 +107,7 @@ public final class Janela {
         frame.setVisible(true);
 
         new Timer(1000 / HZ_TELA, e -> {
+            cliente.vDecidir();
             frame.repaint();
             painelRede.atualizarEstado();
         }).start();

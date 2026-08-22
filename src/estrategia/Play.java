@@ -158,6 +158,17 @@ public abstract class Play {
         vCheckPlayFinished();
     }
 
+    /**
+     * Entrega o mundo a play sem inicia-la.
+     *
+     * <p>Existe por causa de {@link #bCheckPreConditions()}: o coach pergunta se a
+     * play PODE comecar antes de comecar, e a resposta quase sempre depende do
+     * mundo -- "so com a bola em jogo", "so no nosso campo de ataque". Sem isto,
+     * {@code ambiente} ainda seria nulo na hora da pergunta e toda play que
+     * consultasse o mundo responderia que nao pode, para sempre.
+     */
+    final void vSetAmbiente(Ambiente _ambiente) { this.ambiente = _ambiente; }
+
     /** Coloca a play em execucao. Chamado pelo coach. */
     public final void vStart(Ambiente _ambiente) {
         this.ambiente = _ambiente;

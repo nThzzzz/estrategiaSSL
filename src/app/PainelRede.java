@@ -50,10 +50,19 @@ public final class PainelRede extends JPanel {
     private final JComboBox<String> fonteArbitro =
             new JComboBox<>(new String[]{"Game Controller", "local (teste)"});
     private final JLabel estadoArbitro = rotulo("--", Paleta.APAGADO);
+    private final JLabel estadoEstrategia = rotulo("desligada", Paleta.APAGADO);
+    private final JCheckBox caixaEstrategia = new JCheckBox("comandar os robos");
 
     public PainelRede(Cliente cliente, Campo campo) {
         this.cliente = cliente;
         this.campo = campo;
+
+        caixaEstrategia.setBackground(Paleta.PAINEL);
+        caixaEstrategia.setForeground(Paleta.TEXTO);
+        caixaEstrategia.setFont(caixaEstrategia.getFont().deriveFont(11f));
+        caixaEstrategia.setAlignmentX(Component.LEFT_ALIGNMENT);
+        caixaEstrategia.addActionListener(e ->
+                cliente.setEstrategiaLigada(caixaEstrategia.isSelected()));
 
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setBackground(Paleta.PAINEL);
@@ -106,6 +115,11 @@ public final class PainelRede extends JPanel {
         add(aplicar);
 
         add(Box.createVerticalStrut(20));
+        add(titulo("Estrategia"));
+        add(caixaEstrategia);
+        add(estadoEstrategia);
+
+        add(Box.createVerticalStrut(20));
         add(titulo("Exibicao"));
         add(caixa("vetores de velocidade", true, campo::setMostrarVetores));
         add(caixa("area do sensor de bola", true, campo::setMostrarSensor));
@@ -135,6 +149,7 @@ public final class PainelRede extends JPanel {
         nomeAzul.setText(cliente.getNomeAzul());
         nomeAmarelo.setText(cliente.getNomeAmarelo());
         fonteArbitro.setSelectedIndex(cliente.getArbitro().isModoLocal() ? 1 : 0);
+        caixaEstrategia.setSelected(cliente.isEstrategiaLigada());
     }
 
     /**
@@ -178,6 +193,20 @@ public final class PainelRede extends JPanel {
         envio.setText(cliente.destinoDeComandos() + "  ·  "
                 + cliente.pacotesEnviados() + " pacotes");
 
+        if (caixaEstrategia.isSelected() != cliente.isEstrategiaLigada()) {
+            caixaEstrategia.setSelected(cliente.isEstrategiaLigada());
+        }
+        if (!cliente.isEstrategiaLigada()) {
+            estadoEstrategia.setForeground(Paleta.APAGADO);
+            estadoEstrategia.setText("desligada");
+        } else {
+            var play = cliente.getExecutor().coach().currentPlay();
+            estadoEstrategia.setForeground(play == null ? Paleta.ALERTA : Paleta.OK);
+            estadoEstrategia.setText(play == null
+                    ? "nenhuma play com pre-condicao"
+                    : play.strName() + "  ·  " + String.format("%.0fs", play.dTempoRestante()));
+        }
+
         var jogo = cliente.estadoDeJogo();
         boolean local = cliente.getArbitro().isModoLocal();
         if (fonteArbitro.getSelectedIndex() != (local ? 1 : 0)) {
@@ -206,7 +235,7 @@ public final class PainelRede extends JPanel {
     // -------------------------------------------------------------- estilo
 
     private JComponent rodape() {
-        JLabel l = rotulo("<html><body style='width:200px'>Sem estrategia escrita nenhum "
+        JLabel l = rotulo("<html><body style='width:200px'>Com a estrategia desligada nenhum "
                 + "comando sai, e os robos ficam parados, como no grSim."
                 + "<br><br>scroll aplica zoom, botao direito arrasta</body></html>",
                 new Color(120, 120, 130));

@@ -145,10 +145,17 @@ public abstract class Coach {
         vIniciarPlay(escolhida);
     }
 
-    /** Plays cujas pre-condicoes valem neste instante. */
+    /**
+     * Plays cujas pre-condicoes valem neste instante.
+     *
+     * <p>Cada play recebe o mundo ANTES de ser perguntada. A pergunta "voce pode
+     * comecar agora?" so tem resposta com o mundo em maos, e a play ainda nao
+     * comecou -- logo ninguem mais teria entregado isso a ela.
+     */
     public List<Play> playsDisponiveis() {
         List<Play> saida = new ArrayList<>();
         for (Play p : assignedPlays.values()) {
+            p.vSetAmbiente(ambiente);
             if (p.bCheckPreConditions()) saida.add(p);
         }
         return saida;

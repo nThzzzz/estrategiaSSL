@@ -63,6 +63,11 @@ mundo      →  core, model         Quadro, EstadoRobo, EstadoBola
 jogo       →  core, model, proto  Arbitro, EstadoDeJogo, Acao, ArbitroLocal
 percepcao  →  + proto             Rastreador, Trilha, FiltroKalman1D, SensorDeBola, Ajuste
 estrategia →  mundo, jogo, model  Coach, Play, Role, Tactic, Skill, Ambiente, Jogador, Executor
+  skills   →  as micro habilidades      AndarPara, OlharPara, Chutar
+  tactics  →  conjuntos de skills       BuscarBola, ConduzirAoGol, ChutarAoGol
+  roles    →  papéis de um robô         Atacante
+  plays    →  jogadas do time           TesteAtacante
+  coaches  →  quem escolhe a play       Bancada
 rede       →  + percepcao, jogo   ConfigRede, ReceptorDeVisao, ReceptorDeArbitro, EmissorDeComandos
 view       →  core, model, mundo  Campo, Paleta
 app        →  tudo                Cliente, Janela, BarraSuperior, PainelRede, PainelRobos
@@ -230,12 +235,58 @@ A atribuição tem **histerese**: quem já está no papel leva 30% de vantagem. 
 a distâncias parecidas ficam trocando de função a cada quadro e nenhum dos dois chega a lugar
 nenhum.
 
+### Projeção
+
+Onde as coisas **vão** estar, a partir de onde estão e para onde vão. É navegação estimada, a
+mesma conta que um navio faz na carta: posição atual mais rumo e velocidade, integrados no
+tempo. O Kalman já entrega os dois, então projetar é barato — e sem projetar, toda decisão é
+tomada sobre um mundo que já passou.
+
+Três usos, em ordem de impacto:
+
+| | |
+|---|---|
+| **atraso** | entre a câmera ver e o robô obedecer passam dezenas de milissegundos; mirar onde a bola estava é o motivo clássico de o robô passar sempre atrás dela |
+| **interceptação** | para pegar bola em movimento é preciso ir aonde ela vai estar; perseguir a posição atual desenha uma curva de perseguição, que chega depois e por trás |
+| **quem vai buscar** | decidir por distância atual manda o robô errado: o mais próximo pode estar indo para o outro lado a 3 m/s |
+
+O robô mantém velocidade enquanto o comando mandar, então para ele a projeção é reta. **A bola
+não.** Ela desacelera contra o carpete, e ignorar isso é o erro mais caro aqui: uma bola a
+6 m/s projetada sem atrito para 1 segundo à frente aparece quase um metro além de onde ela
+realmente para.
+
+A desaceleração usada é a de **rolamento**. Uma bola recém chutada ainda desliza, e desliza
+freando bem mais forte, mas de fora não dá para observar o giro dela e portanto não dá para
+saber em que fase está. Assumir rolamento erra para o lado seguro: a bola chega um pouco antes
+do previsto, e um robô que se antecipa demais espera, enquanto um que se atrasa perde a bola.
+
+`Projecao` também traz o **CPA** da navegação: a menor distância entre dois corpos se ambos
+mantiverem o rumo, e quando isso acontece. Não está em uso ainda, e é a base do desvio de
+obstáculo quando ele entrar.
+
 ### Os limites do árbitro ficam fora das plays
 
 `HALT` não deixa sair comando, e fora de jogo corrido a velocidade satura enquanto chute e
 dribbler são cortados. Isso é aplicado no `Executor`, no fim do tique, depois de todo mundo ter
 opinado. Poderia ficar em cada play, e é assim que se costuma errar: basta uma esquecer de
 checar `HALT` para o time andar com o jogo parado, e o custo disso é falta.
+
+### A jogada de bancada
+
+`TesteAtacante` existe para provar que o encanamento inteiro funciona, do `Coach` até o
+`Comando` no fio: um papel só, sem passe, sem marcação e sem desvio de obstáculo. O `Atacante`
+escolhe entre três táticas **pelo estado do mundo**, e não por lembrar em que fase está: sem a
+bola, buscar; com a bola longe do gol, conduzir; com a bola perto, chutar. Uma máquina de
+estados com memória ficaria presa em "conduzindo" no instante em que a bola escapasse, e o robô
+continuaria empurrando o ar.
+
+Medido contra o simulador, com o campo livre e a bola no centro: **gol em 5,2 s**.
+
+Um detalhe que custou uma depuração e virou teste: o destino da condução não pode ser igual ao
+limiar que decide entre conduzir e chutar. Com os dois em 2500 mm, o robô parava exatamente em
+cima da fronteira, a tolerância de chegada fazia ele ficar ora dentro ora fora, e quando ficava
+fora a jogada morria ali com a bola presa. A condução vai até 2000 mm e a mira começa em
+2500 mm, então a troca acontece durante a aproximação.
 
 ## Sensor de bola
 

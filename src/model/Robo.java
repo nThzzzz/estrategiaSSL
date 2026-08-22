@@ -32,4 +32,26 @@ public final class Robo {
      */
     public static final double MEIA_BOCA =
             Math.sqrt(RAIO * RAIO - DIST_FACE_FRONTAL * DIST_FACE_FRONTAL);
+
+    // ------------------------------------------------------------- limites
+    //
+    // Nao sao medidos: sao o que o nosso robo consegue. Servem para saturar
+    // comando e para estimar quanto tempo ele leva para chegar em algum lugar.
+    // Se o robo real for mais lento, o planejamento fica otimista e ele chega
+    // atrasado nos lugares -- por isso e melhor errar para baixo.
+
+    /** mm/s. */
+    public static final double VEL_MAX = 3000.0;
+
+    /** mm/s^2. */
+    public static final double ACEL_MAX = 3000.0;
+
+    /** rad/s. */
+    public static final double OMEGA_MAX = 20.0;
+
+    /** rad/s^2. */
+    public static final double ACEL_ANGULAR_MAX = 50.0;
+
+    /** mm/s do chute mais forte que a regra permite. */
+    public static final double VEL_CHUTE_MAX = 6500.0;
 }

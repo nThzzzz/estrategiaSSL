@@ -9,6 +9,12 @@ import estrategia.Play;
 import estrategia.Role;
 import estrategia.Skill;
 import estrategia.Tactic;
+import estrategia.skills.AndarPara;
+import estrategia.skills.Chutar;
+import estrategia.skills.OlharPara;
+import estrategia.tactics.ConduzirAoGol;
+import model.Robo;
+import mundo.Projecao;
 import jogo.Arbitro;
 import jogo.ArbitroLocal;
 import jogo.EstadoDeJogo;
@@ -48,10 +54,26 @@ public final class AutotesteEstrategia {
         playTerminaQuandoAsRolesTerminam();
         coachFechaOEpisodioUmaVezSo();
         coachSoConsideraPlaysComPreCondicao();
+        preCondicaoEnxergaOMundo();
         roletaPrefereNotaAlta();
         prioridadeDecideQuemEntraPrimeiro();
         histereseEvitaTrocaTrocaDePapel();
         arbitroPodaOComando();
+
+        // --- projecao ---
+        bolaProjetadaRespeitaOAtrito();
+        bolaNaoAndaParaTrasDepoisDeParar();
+        pontoDeEncontroFicaAFrenteDaBola();
+        menorDistanciaEncontraAAproximacao();
+
+        // --- skills ---
+        andarParaAceleraDeLongeEFreiaDePerto();
+        andarParaTerminaNoDestino();
+        olharParaGiraPeloCaminhoCurto();
+        chutarSoChutaComABola();
+
+        // --- coerencia das taticas ---
+        conducaoParaDentroDaZonaDeChute();
 
         System.out.printf("%n%d/%d verificacoes passaram%n", total - falhas, total);
         if (falhas > 0) System.exit(1);
@@ -162,6 +184,20 @@ public final class AutotesteEstrategia {
     }
 
     /**
+     * A pre-condicao e perguntada antes de a play comecar, e quase sempre depende
+     * do mundo. Se o coach nao entregar o ambiente antes de perguntar, toda play
+     * que consulta o mundo responde que nao pode comecar, para sempre.
+     */
+    private static void preCondicaoEnxergaOMundo() {
+        PlayQuePreCisaDoMundo play = new PlayQuePreCisaDoMundo();
+        CoachAutomatico coach = new CoachAutomatico(play);
+        new Executor(coach).vTick(ambiente(0.0, Command.FORCE_START, 3));
+
+        verdadeiro("pre-condicao: a play recebe o mundo antes de ser perguntada",
+                coach.currentPlay() == play);
+    }
+
+    /**
      * Nota alta tem de ganhar na media, sem nunca zerar a chance da outra.
      *
      * <p>Cada rodada usa uma semente diferente, e e por isso que
@@ -258,7 +294,164 @@ public final class AutotesteEstrategia {
                 halt.get(0).equals(Comando.PARADO));
     }
 
+    // ------------------------------------------------------------------ projecao
+
+    /** Sem atrito, uma bola a 2 m/s iria longe demais; com atrito ela para. */
+    private static void bolaProjetadaRespeitaOAtrito() {
+        EstadoBola b = new EstadoBola(Vec2.ZERO, 21.5, new Vec2(2000, 0), 0, 5);
+
+        double tParada = 2000.0 / Projecao.DESACELERACAO_BOLA;
+        double esperado = 2000 * 2000 / (2 * Projecao.DESACELERACAO_BOLA);
+
+        aproximado("projecao: tempo ate a bola parar",
+                Projecao.tempoAteABolaParar(b), tParada, 1e-6);
+        aproximado("projecao: distancia ate a bola parar",
+                Projecao.ondeABolaPara(b).x(), esperado, 1.0);
+        verdadeiro("projecao: sem atrito ela iria bem mais longe",
+                2000 * tParada > esperado * 1.9);
+    }
+
+    private static void bolaNaoAndaParaTrasDepoisDeParar() {
+        EstadoBola b = new EstadoBola(Vec2.ZERO, 21.5, new Vec2(1000, 0), 0, 5);
+        Vec2 parada = Projecao.ondeABolaPara(b);
+        Vec2 muitoDepois = Projecao.bola(b, 60);
+        aproximado("projecao: depois de parar a bola fica onde parou",
+                muitoDepois.x(), parada.x(), 1e-6);
+    }
+
+    /** Perseguir a posicao atual chega por tras; o encontro fica a frente. */
+    private static void pontoDeEncontroFicaAFrenteDaBola() {
+        EstadoRobo r = new EstadoRobo(0, Cor.AZUL, new Vec2(-2000, 0), 0,
+                Vec2.ZERO, 0, false, 0, 5);
+        EstadoBola b = new EstadoBola(Vec2.ZERO, 21.5, new Vec2(1500, 0), 0, 5);
+
+        Vec2 encontro = Projecao.pontoDeEncontro(r, b);
+        verdadeiro(String.format("projecao: encontro a frente da bola (x=%.0f)", encontro.x()),
+                encontro.x() > 100);
+        verdadeiro("projecao: e nao alem de onde ela para",
+                encontro.x() <= Projecao.ondeABolaPara(b).x() + 1);
+    }
+
+    /** O CPA da navegacao: dois rumos convergentes se aproximam mais do que estao. */
+    private static void menorDistanciaEncontraAAproximacao() {
+        Vec2 pA = new Vec2(0, 0), vA = new Vec2(1000, 0);
+        Vec2 pB = new Vec2(3000, 500), vB = new Vec2(-1000, 0);
+
+        double agora = pA.distancia(pB);
+        double minima = Projecao.menorDistancia(pA, vA, pB, vB);
+        aproximado("projecao: rumos convergentes chegam a 500 mm um do outro",
+                minima, 500, 1.0);
+        verdadeiro("projecao: e isso e menos do que a distancia atual", minima < agora);
+
+        double paralelo = Projecao.menorDistancia(pA, vA, new Vec2(0, 800), vA);
+        aproximado("projecao: rumo paralelo mantem a distancia", paralelo, 800, 1e-6);
+    }
+
+    // -------------------------------------------------------------------- skills
+
+    private static void andarParaAceleraDeLongeEFreiaDePerto() {
+        AndarPara skill = new AndarPara(new Vec2(3000, 0));
+        Jogador longe = jogadorEm(new Vec2(0, 0));
+        Jogador perto = jogadorEm(new Vec2(2900, 0));
+
+        skill.vRunSkill(ambiente(0, Command.FORCE_START, 1), longe);
+        double vLonge = Math.hypot(longe.comando().velTangencial(), longe.comando().velNormal());
+
+        skill.vResetSkill();
+        skill.vSetDestino(new Vec2(3000, 0));
+        skill.vRunSkill(ambiente(0, Command.FORCE_START, 1), perto);
+        double vPerto = Math.hypot(perto.comando().velTangencial(), perto.comando().velNormal());
+
+        verdadeiro(String.format("skill: de longe vai no maximo (%.0f mm/s)", vLonge),
+                vLonge > Robo.VEL_MAX * 0.9);
+        verdadeiro(String.format("skill: de perto freia (%.0f mm/s)", vPerto),
+                vPerto < vLonge / 2);
+    }
+
+    private static void andarParaTerminaNoDestino() {
+        AndarPara skill = new AndarPara(new Vec2(1000, 0));
+        Jogador j = jogadorEm(new Vec2(1000, 0));
+        skill.vRunSkill(ambiente(0, Command.FORCE_START, 1), j);
+
+        verdadeiro("skill: chegou, entao a skill termina", skill.bIsFinished());
+        verdadeiro("skill: e o robo para", j.comando().velTangencial() == 0
+                && j.comando().velNormal() == 0);
+    }
+
+    /** Um robo a 170 graus do alvo tem de girar 10, e nao 350. */
+    private static void olharParaGiraPeloCaminhoCurto() {
+        OlharPara skill = new OlharPara(new Vec2(1000, 0));
+        // Olhando para 170 graus; o alvo esta a 0 grau, logo o caminho curto e horario.
+        Jogador j = jogadorOlhando(new Vec2(0, 0), Math.toRadians(170));
+        skill.vRunSkill(ambiente(0, Command.FORCE_START, 1), j);
+
+        verdadeiro(String.format("skill: gira pelo lado curto (omega %.1f)",
+                j.comando().velAngular()), j.comando().velAngular() < 0);
+
+        OlharPara alinhada = new OlharPara(new Vec2(1000, 0));
+        Jogador certo = jogadorOlhando(new Vec2(0, 0), 0);
+        alinhada.vRunSkill(ambiente(0, Command.FORCE_START, 1), certo);
+        verdadeiro("skill: ja alinhado, termina sem girar",
+                alinhada.bIsFinished() && certo.comando().velAngular() == 0);
+    }
+
+    private static void chutarSoChutaComABola() {
+        Chutar skill = new Chutar(4000);
+
+        Jogador semBola = jogadorEm(new Vec2(0, 0));
+        skill.vRunSkill(ambiente(0, Command.FORCE_START, 1), semBola);
+        verdadeiro("skill: sem bola no sensor nao chuta",
+                semBola.comando().velChute() == 0 && !skill.bIsFinished());
+
+        Jogador comBola = jogadorComBola(new Vec2(0, 0));
+        skill.vRunSkill(ambiente(0, Command.FORCE_START, 1), comBola);
+        verdadeiro("skill: com a bola no sensor chuta e termina",
+                comBola.comando().velChute() > 0 && skill.bIsFinished());
+        verdadeiro("skill: e larga o dribbler junto", !comBola.comando().dribbler());
+    }
+
+    /**
+     * Regressao do travamento: com o destino da conducao igual ao limiar de
+     * chute, o robo parava em cima da fronteira e a jogada morria com a bola
+     * presa. Medido no simulador: sem isto, sem gol; com isto, gol em 5,2 s.
+     */
+    private static void conducaoParaDentroDaZonaDeChute() {
+        verdadeiro(String.format("taticas: conducao (%.0f) para dentro da zona de chute (%.0f)",
+                        ConduzirAoGol.DISTANCIA_DE_CONDUCAO, ConduzirAoGol.DISTANCIA_DE_CHUTE),
+                ConduzirAoGol.DISTANCIA_DE_CONDUCAO < ConduzirAoGol.DISTANCIA_DE_CHUTE - 100);
+    }
+
     // -------------------------------------------------------------- apoio
+
+    private static Jogador jogadorEm(Vec2 posicao) { return jogadorOlhando(posicao, 0); }
+
+    private static Jogador jogadorOlhando(Vec2 posicao, double theta) {
+        Jogador j = new Jogador(0);
+        aplicar(j, new EstadoRobo(0, Cor.AZUL, posicao, theta, Vec2.ZERO, 0, false, 0, 5));
+        return j;
+    }
+
+    private static Jogador jogadorComBola(Vec2 posicao) {
+        Jogador j = new Jogador(0);
+        aplicar(j, new EstadoRobo(0, Cor.AZUL, posicao, 0, Vec2.ZERO, 0, true, 0, 5));
+        return j;
+    }
+
+    /**
+     * {@code vAtualizar} e de pacote, porque so o executor deve chamar. O teste
+     * alcanca por reflexao em vez de abrir o metodo: o encapsulamento existe para
+     * o codigo de producao, e afroxa-lo por causa de teste e o comeco de alguem
+     * chamar isso de dentro de uma skill.
+     */
+    private static void aplicar(Jogador j, EstadoRobo estado) {
+        try {
+            var m = Jogador.class.getDeclaredMethod("vAtualizar", EstadoRobo.class);
+            m.setAccessible(true);
+            m.invoke(j, estado);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException(e);
+        }
+    }
 
     private static Ambiente ambiente(double tempo, Command comando, int robos) {
         List<EstadoRobo> lista = new ArrayList<>();
@@ -379,6 +572,23 @@ public final class AutotesteEstrategia {
         @Override public void vCheckPlayFinished() { } // nunca termina sozinha
     }
 
+    /** Pre-condicao que so responde true com o mundo em maos. */
+    private static final class PlayQuePreCisaDoMundo extends Play {
+        PlayQuePreCisaDoMundo() {
+            super(1);
+            bAddRole(new RoleContada(new TacticContada(new SkillContada())));
+        }
+        @Override public String strName() { return "precisa do mundo"; }
+        @Override public void vInitialize() { }
+        @Override public boolean bCheckPreConditions() {
+            return ambiente != null && ambiente.jogo().bolaEmJogo();
+        }
+        @Override public boolean bCheckEndConditions() { return false; }
+        @Override public double dGetScore() { return 1; }
+        @Override public void vUpdateScore() { }
+        @Override public void vSaveScore() { }
+    }
+
     private static final class CoachManual extends Coach {
         CoachManual(Play p) { super(1, Modo.MANUAL); bAddPlay(p); }
         @Override public String strName() { return "coach manual"; }
@@ -395,6 +605,17 @@ public final class AutotesteEstrategia {
     }
 
     // -------------------------------------------------------------- relatorio
+
+    private static void aproximado(String nome, double obtido, double esperado, double tol) {
+        total++;
+        if (Math.abs(obtido - esperado) <= tol) {
+            System.out.printf("  ok    %s%n", nome);
+        } else {
+            falhas++;
+            System.out.printf("  FALHA %s  (obtido %.4f, esperado %.4f +- %.4f)%n",
+                    nome, obtido, esperado, tol);
+        }
+    }
 
     private static void verdadeiro(String nome, boolean condicao) {
         total++;
