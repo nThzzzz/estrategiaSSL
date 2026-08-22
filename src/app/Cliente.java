@@ -1,21 +1,28 @@
 package app;
 
+import jogo.Arbitro;
+import jogo.ArbitroLocal;
+import jogo.EstadoDeJogo;
 import model.Comando;
 import model.Cor;
 import mundo.Quadro;
 import percepcao.Rastreador;
+import proto.gc.SslGcRefereeMessage.Referee;
 import rede.ConfigRede;
 import rede.EmissorDeComandos;
+import rede.ReceptorDeArbitro;
 import rede.ReceptorDeVisao;
 
 import java.io.IOException;
 import java.util.Map;
 
 /**
- * Presenca da estrategia na rede: escuta a visao, manda comando.
+ * Presenca da estrategia na rede: escuta a visao e o arbitro, manda comando.
  *
- * <p>Uma entrada e uma saida, ao contrario do simulador, que tem uma saida e
- * tres entradas. E a mesma conversa vista do outro lado.
+ * <p>Duas entradas e uma saida. As entradas vem de programas diferentes -- a
+ * visao da {@code ssl-vision} ou do simulador, o arbitro do
+ * {@code ssl-game-controller} -- e sao independentes: a janela continua util com
+ * so uma delas no ar, e e comum desenvolver com visao e sem arbitro.
  *
  * <p>Concentra o estado que a janela inteira compartilha -- configuracao, cor da
  * equipe, nomes -- para que os paineis nao precisem se conhecer. O painel da
@@ -30,6 +37,8 @@ import java.util.Map;
 public final class Cliente implements AutoCloseable {
 
     private final Rastreador rastreador = new Rastreador();
+    private final Arbitro arbitro = new Arbitro();
+    private final ArbitroLocal arbitroLocal = new ArbitroLocal();
 
     private ConfigRede config;
     private Cor equipe;
@@ -37,6 +46,7 @@ public final class Cliente implements AutoCloseable {
     private String nomeAmarelo = "Adversario";
 
     private ReceptorDeVisao receptor;
+    private ReceptorDeArbitro receptorArbitro;
     private EmissorDeComandos emissor;
     private String falha;
 
@@ -57,6 +67,35 @@ public final class Cliente implements AutoCloseable {
     public void setNomes(String azul, String amarelo) {
         this.nomeAzul = azul == null || azul.isBlank() ? "Azul" : azul.trim();
         this.nomeAmarelo = amarelo == null || amarelo.isBlank() ? "Amarelo" : amarelo.trim();
+        arbitroLocal.setNomes(this.nomeAzul, this.nomeAmarelo);
+    }
+
+    // ------------------------------------------------------------- arbitro
+
+    public Arbitro getArbitro()           { return arbitro; }
+    public ArbitroLocal getArbitroLocal() { return arbitroLocal; }
+
+    /** Estado de jogo ja traduzido para a cor que estamos jogando. */
+    public EstadoDeJogo estadoDeJogo() { return arbitro.estado(equipe); }
+
+    /** Aplica um comando fabricado pelo painel de teste. */
+    public void simularArbitro(Referee.Command comando) {
+        arbitro.doPainel(arbitroLocal.comando(comando));
+    }
+
+    /**
+     * Nome que o arbitro da para a equipe, com o nome local como reserva.
+     *
+     * <p>O Game Controller e a fonte melhor: e o nome inscrito na competicao. Mas
+     * ele pode nao estar no ar, e nesse caso a janela nao pode ficar sem rotulo.
+     */
+    public String getNomeExibido(Cor cor) {
+        EstadoDeJogo j = estadoDeJogo();
+        if (!j.semArbitro()) {
+            String nome = cor == equipe ? j.nomeNosso() : j.nomeDeles();
+            if (nome != null && !nome.isBlank()) return nome;
+        }
+        return getNome(cor);
     }
 
     /** Ultima falha de rede, ou {@code null} se esta tudo bem. */
@@ -72,6 +111,8 @@ public final class Cliente implements AutoCloseable {
     public long pacotesGeometria()  { return receptor == null ? 0 : receptor.getPacotesGeometria(); }
     public long pacotesEnviados()   { return emissor == null ? 0 : emissor.getPacotesEnviados(); }
     public double taxaHz()          { return receptor == null ? 0 : receptor.taxaHz(); }
+    public long pacotesArbitro()    { return arbitro.getPacotesRecebidos(); }
+    public boolean recebendoArbitro() { return arbitro.silencio() < 5.0; }
 
     public String destinoDeComandos() {
         return emissor == null ? "--"
@@ -118,6 +159,7 @@ public final class Cliente implements AutoCloseable {
     private void abrir(ConfigRede c, Cor cor) throws IOException {
         try {
             receptor = new ReceptorDeVisao(c, rastreador);
+            receptorArbitro = new ReceptorDeArbitro(c, arbitro);
             emissor = new EmissorDeComandos(c, cor);
             this.config = c;
             this.equipe = cor;
@@ -148,6 +190,7 @@ public final class Cliente implements AutoCloseable {
 
     private void fechar() {
         if (receptor != null) { receptor.close(); receptor = null; }
+        if (receptorArbitro != null) { receptorArbitro.close(); receptorArbitro = null; }
         if (emissor != null)  { emissor.close();  emissor = null; }
     }
 

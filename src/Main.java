@@ -21,6 +21,10 @@ import javax.swing.UIManager;
  * saida de comandos esta pronta, mas ninguem produz comando. Os robos ficam
  * parados -- e assim que o simulador se comporta quando nenhum time esta
  * conectado.
+ *
+ * <p>O arbitro e opcional. Sem o {@code ssl-game-controller} no ar a janela
+ * funciona igual, mostrando "sem arbitro", e o painel da esquerda permite
+ * simular comandos localmente para testar.
  */
 public final class Main {
 
@@ -70,6 +74,8 @@ public final class Main {
                     case "--amarelo"        -> equipe = Cor.AMARELO;
                     case "--grupo"          -> rede = rede.comGrupo(args[++i]);
                     case "--porta-visao"    -> rede = rede.comPortaVisao(Integer.parseInt(args[++i]));
+                    case "--grupo-arbitro"  -> rede = rede.comGrupoArbitro(args[++i]);
+                    case "--porta-arbitro"  -> rede = rede.comPortaArbitro(Integer.parseInt(args[++i]));
                     case "--host"           -> rede = rede.comHost(args[++i]);
                     case "--porta-azul"     -> rede = rede.comPortaAzul(Integer.parseInt(args[++i]));
                     case "--porta-amarelo"  -> rede = rede.comPortaAmarelo(Integer.parseInt(args[++i]));
@@ -92,12 +98,15 @@ public final class Main {
                       java Main --amarelo      jogar de amarelo
 
                     Rede
-                      visao    <- 224.5.23.2:10006   SSL_WrapperPacket (multicast)
+                      visao    <- 224.5.23.2:10006   SSL_WrapperPacket   (multicast)
+                      arbitro  <- 224.5.23.1:10003   Referee             (multicast)
                       comandos -> 127.0.0.1:10301    RobotControl azul
                                   127.0.0.1:10302    RobotControl amarelo
 
                       --grupo <ip>          grupo multicast da visao (padrao 224.5.23.2)
                       --porta-visao <n>     porta da visao           (padrao 10006)
+                      --grupo-arbitro <ip>  grupo do Game Controller (padrao 224.5.23.1)
+                      --porta-arbitro <n>   porta do arbitro         (padrao 10003)
                       --host <ip>           onde roda o simulador    (padrao 127.0.0.1)
                       --porta-azul <n>      RobotControl azul        (padrao 10301)
                       --porta-amarelo <n>   RobotControl amarelo     (padrao 10302)

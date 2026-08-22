@@ -41,6 +41,8 @@ public final class DialogoRede extends JDialog {
 
     private final JTextField grupo = new JTextField(14);
     private final JTextField portaVisao = new JTextField(6);
+    private final JTextField grupoArbitro = new JTextField(14);
+    private final JTextField portaArbitro = new JTextField(6);
     private final JTextField host = new JTextField(14);
     private final JTextField portaAzul = new JTextField(6);
     private final JTextField portaAmarelo = new JTextField(6);
@@ -55,6 +57,8 @@ public final class DialogoRede extends JDialog {
         campos.setBorder(BorderFactory.createEmptyBorder(16, 16, 8, 16));
         linha(campos, "Grupo multicast da visao", grupo);
         linha(campos, "Porta da visao", portaVisao);
+        linha(campos, "Grupo do arbitro (GC)", grupoArbitro);
+        linha(campos, "Porta do arbitro", portaArbitro);
         linha(campos, "Host do simulador", host);
         linha(campos, "Porta RobotControl azul", portaAzul);
         linha(campos, "Porta RobotControl amarelo", portaAmarelo);
@@ -108,6 +112,8 @@ public final class DialogoRede extends JDialog {
         try {
             nova = new ConfigRede(grupo.getText().trim(),
                     inteiro(portaVisao, "porta da visao"),
+                    grupoArbitro.getText().trim(),
+                    inteiro(portaArbitro, "porta do arbitro"),
                     host.getText().trim(),
                     inteiro(portaAzul, "porta RobotControl azul"),
                     inteiro(portaAmarelo, "porta RobotControl amarelo"));
@@ -140,6 +146,8 @@ public final class DialogoRede extends JDialog {
     private void preencher(ConfigRede c) {
         grupo.setText(c.grupoVisao());
         portaVisao.setText(String.valueOf(c.portaVisao()));
+        grupoArbitro.setText(c.grupoArbitro());
+        portaArbitro.setText(String.valueOf(c.portaArbitro()));
         host.setText(c.hostComandos());
         portaAzul.setText(String.valueOf(c.portaAzul()));
         portaAmarelo.setText(String.valueOf(c.portaAmarelo()));

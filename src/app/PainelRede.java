@@ -47,6 +47,10 @@ public final class PainelRede extends JPanel {
     private final JLabel taxa = rotulo("--", Paleta.APAGADO);
     private final JLabel envio = rotulo("--", Paleta.APAGADO);
 
+    private final JComboBox<String> fonteArbitro =
+            new JComboBox<>(new String[]{"Game Controller", "local (teste)"});
+    private final JLabel estadoArbitro = rotulo("--", Paleta.APAGADO);
+
     public PainelRede(Cliente cliente, Campo campo) {
         this.cliente = cliente;
         this.campo = campo;
@@ -71,6 +75,23 @@ public final class PainelRede extends JPanel {
         configurar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
         configurar.addActionListener(e -> DialogoRede.abrir(campo, cliente));
         add(configurar);
+
+        add(Box.createVerticalStrut(20));
+        add(titulo("Arbitro"));
+        add(linha("fonte", fonteArbitro));
+        add(estadoArbitro);
+        add(Box.createVerticalStrut(8));
+
+        JButton simular = new JButton("Simular...");
+        simular.setAlignmentX(Component.LEFT_ALIGNMENT);
+        simular.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
+        simular.addActionListener(e -> DialogoArbitro.abrir(campo, cliente));
+        add(simular);
+
+        fonteArbitro.addActionListener(e -> {
+            cliente.getArbitro().setModoLocal(fonteArbitro.getSelectedIndex() == 1);
+            atualizarEstado();
+        });
 
         add(Box.createVerticalStrut(20));
         add(titulo("Equipe"));
@@ -103,10 +124,17 @@ public final class PainelRede extends JPanel {
         atualizarEstado(); // sem isso os rotulos ficam em "--" ate o primeiro tique
     }
 
+    /**
+     * Recarrega os controles a partir do estado real, e nao do que o painel
+     * presume ter configurado. A fonte do arbitro pode ter sido trocada por fora
+     * -- por exemplo por um teste ou pela linha de comando -- e um seletor que
+     * mente sobre o modo em que se esta e pior do que nao ter seletor.
+     */
     private void carregar() {
         nossaCor.setSelectedIndex(cliente.getEquipe() == Cor.AZUL ? 0 : 1);
         nomeAzul.setText(cliente.getNomeAzul());
         nomeAmarelo.setText(cliente.getNomeAmarelo());
+        fonteArbitro.setSelectedIndex(cliente.getArbitro().isModoLocal() ? 1 : 0);
     }
 
     /**
@@ -149,6 +177,24 @@ public final class PainelRede extends JPanel {
 
         envio.setText(cliente.destinoDeComandos() + "  ·  "
                 + cliente.pacotesEnviados() + " pacotes");
+
+        var jogo = cliente.estadoDeJogo();
+        boolean local = cliente.getArbitro().isModoLocal();
+        if (fonteArbitro.getSelectedIndex() != (local ? 1 : 0)) {
+            fonteArbitro.setSelectedIndex(local ? 1 : 0);
+        }
+        if (local) {
+            estadoArbitro.setForeground(jogo.semArbitro() ? Paleta.APAGADO : Paleta.OK);
+            estadoArbitro.setText(jogo.semArbitro() ? "nenhum comando ainda" : jogo.descricao());
+        } else if (cliente.recebendoArbitro()) {
+            estadoArbitro.setForeground(Paleta.OK);
+            estadoArbitro.setText(jogo.descricao() + "  ·  " + cliente.pacotesArbitro() + " pacotes");
+        } else {
+            estadoArbitro.setForeground(Paleta.ALERTA);
+            estadoArbitro.setText(cliente.pacotesArbitro() == 0
+                    ? "GC nao encontrado em " + c.grupoArbitro() + ":" + c.portaArbitro()
+                    : "GC calado ha " + String.format("%.0f s", cliente.getArbitro().silencio()));
+        }
     }
 
     private static String encurtar(String texto) {

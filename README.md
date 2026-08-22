@@ -40,12 +40,13 @@ que enxerga num instante, e o resto é trabalho de quem recebe:
 
 | o que a interface mostra | de onde vem |
 |---|---|
-| posição e orientação | medido, direto da rede |
+| posição e orientação | medido, direto da visão |
 | geometria do campo | `SSL_GeometryData`, reenviado a cada 60 quadros |
 | **velocidade e ω** | **inferido** a partir de quadros consecutivos |
 | **bola no sensor** | **inferido** pela geometria da boca do dribbler |
-| tempo de partida | `t_capture` da visão |
-| nomes dos times | configuração local (viriam do Game Controller) |
+| nomes dos times e placar | `Referee`, do Game Controller |
+| que lado defendemos | `Referee.blue_team_on_positive_half` |
+| comando de jogo e tempo | `Referee`, traduzido para nós e eles |
 
 Qualquer número novo na tela ou vem da rede, ou é inferência. E inferência precisa aparecer
 como tal.
@@ -58,18 +59,24 @@ Dependências em uma direção, sem ciclos, como no simulador:
 core      →  (nada)              Vec2, Angulo
 model     →  core, proto         Geometria, Cor, Robo, Comando
 mundo     →  core, model         Quadro, EstadoRobo, EstadoBola
+jogo      →  core, model, proto  Arbitro, EstadoDeJogo, Acao, ArbitroLocal
 percepcao →  + proto             Rastreador, Trilha, FiltroKalman1D, SensorDeBola, Ajuste
-rede      →  + percepcao         ConfigRede, ReceptorDeVisao, EmissorDeComandos
+rede      →  + percepcao, jogo   ConfigRede, ReceptorDeVisao, ReceptorDeArbitro, EmissorDeComandos
 view      →  core, model, mundo  Campo, Paleta
 app       →  tudo                Cliente, Janela, BarraSuperior, PainelRede, PainelRobos
 ```
 
-Uma entrada e uma saída, ao contrário do simulador, que tem uma saída e três entradas:
+Duas entradas e uma saída:
 
 | | endereço | mensagem |
 |---|---|---|
 | visão (entrada) | multicast `224.5.23.2:10006` | `SSL_WrapperPacket` |
+| árbitro (entrada) | multicast `224.5.23.1:10003` | `Referee` |
 | comandos (saída) | `127.0.0.1:10301` azul, `:10302` amarelo | `RobotControl` |
+
+As duas entradas vêm de programas diferentes, a visão da `ssl-vision` (ou do simulador no
+lugar dela) e o árbitro do `ssl-game-controller`. Nada obriga os dois a estarem no ar juntos, e
+a janela continua útil com só um deles.
 
 O ingresso no grupo multicast é tentado em **todas** as interfaces que suportam multicast, e
 não só na padrão. Numa máquina com Wi-Fi, Ethernet e as interfaces virtuais que Docker e VPN
@@ -79,6 +86,72 @@ de "o simulador publica e o cliente não recebe nada".
 A conversão de unidade acontece só na borda, em `EmissorDeComandos`. Dentro do programa tudo é
 mm e radianos, como a visão entrega; o `ssl_simulation_protocol` fala metros e graus. Errar
 essa conversão dá mil vezes de diferença sem estourar exceção em lugar nenhum.
+
+## Árbitro
+
+O árbitro é um **terceiro programa**, o `ssl-game-controller` oficial. Ele não vive nem no
+simulador nem aqui:
+
+```
+        ssl-game-controller
+               │  Referee, multicast 224.5.23.1:10003
+               ▼
+        estrategiaSSL  ◄── visão ──  simuladorSSL
+               │                          ▲
+               └────── RobotControl ──────┘
+```
+
+O simulador não entra nesse fluxo porque não tem lógica de jogo nenhuma: os doze robôs ficam
+parados até alguém mandar comando. Não existe "o time do simulador" para o árbitro comandar.
+
+### Uma mensagem para todos, lida do nosso ponto de vista
+
+O `Referee` é uma transmissão única, e não uma mensagem endereçada a cada time. O que ela traz
+são comandos que nomeiam uma cor: `PREPARE_KICKOFF_BLUE`, `DIRECT_FREE_YELLOW`,
+`BALL_PLACEMENT_BLUE`. Quem recebe é que traduz.
+
+É isso que o pacote `jogo` faz. A cor desaparece na entrada e o que sai é `Acao` mais um
+booleano `nosso`. Sem essa tradução, cada pedaço da estratégia teria de lembrar de que cor
+jogamos hoje, e trocar de lado viraria uma caçada a comparações espalhadas pelo código.
+
+A tradução acontece na **leitura**, e não na chegada: guardamos a mensagem crua e a
+interpretamos quando alguém pergunta. Trocar de azul para amarelo na janela vira "falta deles"
+na hora, sem esperar o próximo pacote, que em `HALT` pode demorar bastante.
+
+### O que o árbitro decide
+
+| | |
+|---|---|
+| `PARAR` | ninguém se move |
+| `AFASTAR` | 1,5 m/s de teto e 0,5 m de distância da bola |
+| `JOGAR` | bola em jogo |
+| `KICKOFF`, `PENALTI`, `FALTA`, `POSICIONAR_BOLA`, `TEMPO` | têm dono: a favor ou contra |
+
+Na reposição que é nossa, quem tem de dar espaço é o adversário, então o afastamento é zero.
+Esses limites são regra, não preferência da estratégia, e por isso moram em `EstadoDeJogo` e
+não no planejador.
+
+Sem nenhuma mensagem, o estado é `PARAR`. Não saber o estado do jogo não autoriza a jogar, e um
+padrão otimista faria a equipe entrar em campo andando durante um `HALT` que ela ainda não
+ouviu.
+
+### Que lado é o nosso
+
+`blue_team_on_positive_half` é o campo mais importante da mensagem inteira para quem está
+começando a escrever estratégia: a visão não diz para que lado atacamos, e sem isso não dá para
+decidir nada. Ele fala do azul, então vira `defendemosLadoPositivo` conforme a nossa cor.
+
+### Árbitro de bancada
+
+O painel da esquerda troca a fonte entre o Game Controller e um árbitro local de teste, com
+botões para cada comando. Ele monta uma mensagem `Referee` de verdade e a entrega pelo mesmo
+caminho de tradução que a rede usa, em vez de injetar o estado já pronto: se um comando estiver
+mapeado errado, erra ali igual erraria em jogo.
+
+As duas fontes se excluem. Em modo local, pacote da rede é ignorado, senão um Game Controller
+rodando na mesma bancada sobrescreveria o comando de teste no quadro seguinte e o painel
+pareceria quebrado. O painel também não publica nada na rede: um segundo publicador no
+multicast oficial brigaria com o árbitro de verdade.
 
 ## Sensor de bola
 
@@ -115,13 +188,18 @@ a seleção de robô, que precisa mesmo ser compartilhada: clicar no campo acend
 clicar no cartão acende o robô.
 
 **Topo.** Cada equipe num bloco pintado com a própria cor, nas mesmas cores dos robôs no campo,
-porque a associação nome/cor tem de ser lida de relance no meio de um jogo. O tempo é o
-`t_capture` da visão, ou seja o relógio de quem gera os quadros. Não há placar: ele viria do
-Game Controller, que o simulador ainda não publica, e inventar um zero a zero seria mostrar
-dado que ninguém apurou.
+porque a associação nome/cor tem de ser lida de relance no meio de um jogo. Nome e placar vêm
+do Game Controller quando ele está no ar, que é quem sabe: `TeamInfo` carrega o nome inscrito e
+o placar oficial. Sem árbitro, os nomes caem para os configurados no painel da esquerda e o
+placar simplesmente não aparece, porque exibir zero a zero sem fonte seria inventar um dado.
 
-**Esquerda.** Estado da rede (para onde escutamos, a que taxa, para onde mandamos), a cor da
-equipe e os nomes. As portas ficam atrás do botão *Configurar...*, no mesmo desenho do
+O comando do árbitro fica no meio, grande e colorido, porque é a informação que muda o que a
+equipe pode fazer no instante seguinte. O relógio mostra o tempo restante do estágio quando há
+árbitro, e o `t_capture` da visão quando não há. São coisas diferentes: um é tempo de jogo, o
+outro é tempo de simulação.
+
+**Esquerda.** Estado da rede (para onde escutamos, a que taxa, para onde mandamos), a fonte do
+árbitro com o botão *Simular...*, a cor da equipe e os nomes. As portas ficam atrás do botão *Configurar...*, no mesmo desenho do
 simulador: cinco campos ocupavam metade do painel para algo que se mexe uma vez por bancada,
 enquanto o que se olha o tempo todo ficava espremido embaixo. Tudo é trocável com a janela
 aberta, porque numa bancada troca-se de porta o tempo todo.

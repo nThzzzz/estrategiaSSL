@@ -12,6 +12,11 @@ import percepcao.FiltroKalman1D;
 import percepcao.Rastreador;
 import percepcao.SensorDeBola;
 import percepcao.Trilha;
+import jogo.Acao;
+import jogo.Arbitro;
+import jogo.ArbitroLocal;
+import jogo.EstadoDeJogo;
+import proto.gc.SslGcRefereeMessage.Referee.Command;
 import proto.sim.SslSimulationRobotControl.RobotControl;
 import proto.vision.MessagesRobocupSslDetection.SSL_DetectionBall;
 import proto.vision.MessagesRobocupSslDetection.SSL_DetectionFrame;
@@ -19,9 +24,13 @@ import proto.vision.MessagesRobocupSslDetection.SSL_DetectionRobot;
 import proto.vision.MessagesRobocupSslGeometry.SSL_GeometryFieldSize;
 import rede.ConfigRede;
 import rede.EmissorDeComandos;
+import rede.ReceptorDeArbitro;
 
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.MulticastSocket;
 import java.util.Map;
 import java.util.Random;
 
@@ -60,6 +69,17 @@ public final class Autoteste {
         sensorIgnoraBolaNaLateral();
         sensorIgnoraBolaPorCima();
         sensorIgnoraBolaLongeDaBoca();
+
+        // --- arbitro ---
+        arbitroTraduzOComandoParaNos();
+        trocarDeCorReinterpretaSemPacoteNovo();
+        semArbitroMandaParar();
+        haltEStopImpoemLimites();
+        reposicaoNossaNaoNosAfastaDaBola();
+        ladoDoCampoSaiDoArbitro();
+        placarENomeVemDoArbitro();
+        modoLocalEModoRedeSeExcluem();
+        arbitroChegaPelaRede();
 
         // --- protocolo ---
         reconfigurarTrocaDePorta();
@@ -306,9 +326,193 @@ public final class Autoteste {
 
     // ------------------------------------------------------------------ protocolo
 
+    // ------------------------------------------------------------------ arbitro
+
+    /**
+     * O comando nomeia uma cor; nos precisamos de "nosso" ou "deles".
+     *
+     * <p>E o ponto central do arbitro: a mensagem e uma so, transmitida para
+     * todo mundo, e cada time a le do proprio ponto de vista.
+     */
+    private static void arbitroTraduzOComandoParaNos() {
+        Arbitro a = new Arbitro();
+        a.setModoLocal(true);
+        a.doPainel(new ArbitroLocal().comando(Command.PREPARE_KICKOFF_BLUE));
+
+        EstadoDeJogo azul = a.estado(Cor.AZUL);
+        verdadeiro("arbitro: kickoff azul e KICKOFF nosso para o azul",
+                azul.acao() == Acao.KICKOFF && azul.nosso());
+
+        EstadoDeJogo amarelo = a.estado(Cor.AMARELO);
+        verdadeiro("arbitro: o mesmo comando e KICKOFF deles para o amarelo",
+                amarelo.acao() == Acao.KICKOFF && !amarelo.nosso());
+    }
+
+    /**
+     * Trocar de cor na janela tem de virar "deles" na hora, sem esperar pacote
+     * novo -- em HALT o Game Controller pode ficar quieto por bastante tempo.
+     */
+    private static void trocarDeCorReinterpretaSemPacoteNovo() {
+        Arbitro a = new Arbitro();
+        a.setModoLocal(true);
+        a.doPainel(new ArbitroLocal().comando(Command.DIRECT_FREE_YELLOW));
+
+        verdadeiro("arbitro: falta amarela e nossa jogando de amarelo",
+                a.estado(Cor.AMARELO).nosso());
+        verdadeiro("arbitro: e deles jogando de azul, sem pacote novo",
+                !a.estado(Cor.AZUL).nosso());
+    }
+
+    /** Nao saber o estado do jogo nao autoriza a jogar. */
+    private static void semArbitroMandaParar() {
+        EstadoDeJogo j = new Arbitro().estado(Cor.AZUL);
+        verdadeiro("arbitro: sem mensagem nenhuma, o estado e PARAR",
+                j.acao() == Acao.PARAR && !j.podemosMover() && j.semArbitro());
+    }
+
+    private static void haltEStopImpoemLimites() {
+        Arbitro a = new Arbitro();
+        a.setModoLocal(true);
+        ArbitroLocal gc = new ArbitroLocal();
+
+        a.doPainel(gc.comando(Command.HALT));
+        EstadoDeJogo halt = a.estado(Cor.AZUL);
+        verdadeiro("arbitro: HALT proibe mover", !halt.podemosMover());
+        aproximado("arbitro: e zera o limite de velocidade", halt.limiteDeVelocidade(), 0, 1e-9);
+
+        a.doPainel(gc.comando(Command.STOP));
+        EstadoDeJogo stop = a.estado(Cor.AZUL);
+        verdadeiro("arbitro: STOP permite mover", stop.podemosMover());
+        aproximado("arbitro: com teto de 1,5 m/s", stop.limiteDeVelocidade(), 1500, 1e-9);
+        aproximado("arbitro: e 0,5 m de distancia da bola", stop.afastamentoDaBola(), 500, 1e-9);
+
+        a.doPainel(gc.comando(Command.FORCE_START));
+        verdadeiro("arbitro: FORCE START poe a bola em jogo",
+                a.estado(Cor.AZUL).bolaEmJogo());
+    }
+
+    /** Na nossa reposicao quem tem de dar espaco e o adversario, nao nos. */
+    private static void reposicaoNossaNaoNosAfastaDaBola() {
+        Arbitro a = new Arbitro();
+        a.setModoLocal(true);
+        a.doPainel(new ArbitroLocal().comando(Command.DIRECT_FREE_BLUE));
+
+        aproximado("arbitro: falta nossa nao nos afasta da bola",
+                a.estado(Cor.AZUL).afastamentoDaBola(), 0, 1e-9);
+        aproximado("arbitro: falta deles nos afasta 0,5 m",
+                a.estado(Cor.AMARELO).afastamentoDaBola(), 500, 1e-9);
+    }
+
+    /**
+     * Para que lado atacamos. A visao nao diz, e sem isto nao da para escrever
+     * estrategia nenhuma.
+     */
+    private static void ladoDoCampoSaiDoArbitro() {
+        Arbitro a = new Arbitro();
+        a.setModoLocal(true);
+        ArbitroLocal gc = new ArbitroLocal();
+        gc.setAzulNoLadoPositivo(true);
+        a.doPainel(gc.comando(Command.STOP));
+
+        verdadeiro("arbitro: azul no lado positivo defende +x",
+                a.estado(Cor.AZUL).defendemosLadoPositivo()
+                        && a.estado(Cor.AZUL).nossoLado() == 1);
+        verdadeiro("arbitro: e o amarelo defende -x",
+                !a.estado(Cor.AMARELO).defendemosLadoPositivo()
+                        && a.estado(Cor.AMARELO).nossoLado() == -1);
+
+        gc.setAzulNoLadoPositivo(false);
+        a.doPainel(gc.comando(Command.STOP));
+        verdadeiro("arbitro: trocando de lado, o azul passa a defender -x",
+                a.estado(Cor.AZUL).nossoLado() == -1);
+    }
+
+    private static void placarENomeVemDoArbitro() {
+        Arbitro a = new Arbitro();
+        a.setModoLocal(true);
+        ArbitroLocal gc = new ArbitroLocal();
+        gc.setNomes("RoboFEI", "Adversario");
+        gc.marcarGol(Cor.AZUL);
+        gc.marcarGol(Cor.AZUL);
+        gc.marcarGol(Cor.AMARELO);
+        a.doPainel(gc.comando(Command.STOP));
+
+        EstadoDeJogo azul = a.estado(Cor.AZUL);
+        verdadeiro("arbitro: nome e placar do nosso lado",
+                azul.nomeNosso().equals("RoboFEI") && azul.golsNossos() == 2);
+        verdadeiro("arbitro: e do lado deles",
+                azul.nomeDeles().equals("Adversario") && azul.golsDeles() == 1);
+
+        EstadoDeJogo amarelo = a.estado(Cor.AMARELO);
+        verdadeiro("arbitro: o placar inverte com a cor",
+                amarelo.golsNossos() == 1 && amarelo.golsDeles() == 2);
+    }
+
+    /**
+     * Um Game Controller na mesma rede nao pode atropelar o comando de teste, nem
+     * o painel pode mexer no estado quando quem manda e a rede.
+     */
+    private static void modoLocalEModoRedeSeExcluem() {
+        Arbitro a = new Arbitro();
+        ArbitroLocal gc = new ArbitroLocal();
+
+        a.setModoLocal(true);
+        a.doPainel(gc.comando(Command.HALT));
+        a.daRede(gc.comando(Command.FORCE_START));
+        verdadeiro("arbitro: em modo local, pacote da rede e ignorado",
+                a.estado(Cor.AZUL).acao() == Acao.PARAR);
+
+        a.setModoLocal(false);
+        verdadeiro("arbitro: trocar de fonte descarta o estado anterior",
+                a.estado(Cor.AZUL).semArbitro());
+
+        a.doPainel(gc.comando(Command.HALT));
+        verdadeiro("arbitro: em modo rede, o painel nao tem efeito",
+                a.estado(Cor.AZUL).semArbitro());
+
+        a.daRede(gc.comando(Command.FORCE_START));
+        verdadeiro("arbitro: e o pacote da rede vale",
+                a.estado(Cor.AZUL).bolaEmJogo());
+    }
+
+    /**
+     * O caminho de rede do arbitro, ponta a ponta.
+     *
+     * <p>Publica um {@code Referee} de verdade no multicast e confere que o
+     * receptor o entrega traduzido. Sem isto, o unico trecho nao exercitado seria
+     * justamente o que so falha em campo, com o Game Controller ligado.
+     */
+    private static void arbitroChegaPelaRede() throws Exception {
+        int porta = 11903;
+        ConfigRede c = new ConfigRede(ConfigRede.VISAO_GRUPO, 11902,
+                ConfigRede.ARBITRO_GRUPO, porta, "127.0.0.1", 11904, 11905);
+
+        Arbitro arbitro = new Arbitro();
+        try (ReceptorDeArbitro _ = new ReceptorDeArbitro(c, arbitro); // so precisa estar no ar
+             MulticastSocket emissor = new MulticastSocket()) {
+
+            byte[] dados = new ArbitroLocal().comando(Command.PREPARE_PENALTY_YELLOW).toByteArray();
+            InetSocketAddress destino = new InetSocketAddress(
+                    InetAddress.getByName(ConfigRede.ARBITRO_GRUPO), porta);
+
+            // Multicast se perde; algumas tentativas evitam um teste instavel.
+            EstadoDeJogo estado = EstadoDeJogo.SEM_ARBITRO;
+            for (int i = 0; i < 20 && estado.semArbitro(); i++) {
+                emissor.send(new DatagramPacket(dados, dados.length, destino));
+                Thread.sleep(25);
+                estado = arbitro.estado(Cor.AMARELO);
+            }
+
+            verdadeiro("arbitro: mensagem do GC chega pelo multicast", !estado.semArbitro());
+            verdadeiro("arbitro: e chega traduzida (penalti nosso, jogando de amarelo)",
+                    estado.acao() == Acao.PENALTI && estado.nosso());
+        }
+    }
+
     /** Trocar de porta com a janela aberta e o que o botao Configurar faz. */
     private static void reconfigurarTrocaDePorta() throws Exception {
-        ConfigRede inicial = new ConfigRede("224.5.23.2", 11821, "127.0.0.1", 11831, 11832);
+        ConfigRede inicial = new ConfigRede("224.5.23.2", 11821,
+                "224.5.23.1", 11891, "127.0.0.1", 11831, 11832);
         app.Cliente cliente = new app.Cliente(inicial, Cor.AZUL);
         cliente.conectar();
 
@@ -327,7 +531,8 @@ public final class Autoteste {
      * voltar, em vez de deixar a estrategia surda por causa de um numero errado.
      */
     private static void reconfigurarRestauraSeOBindFalha() throws Exception {
-        ConfigRede inicial = new ConfigRede("224.5.23.2", 11841, "127.0.0.1", 11851, 11852);
+        ConfigRede inicial = new ConfigRede("224.5.23.2", 11841,
+                "224.5.23.1", 11892, "127.0.0.1", 11851, 11852);
         app.Cliente cliente = new app.Cliente(inicial, Cor.AZUL);
         cliente.conectar();
 
@@ -405,6 +610,7 @@ public final class Autoteste {
             int porta = espia.getLocalPort();
 
             ConfigRede c = new ConfigRede(ConfigRede.VISAO_GRUPO, ConfigRede.VISAO_PORTA,
+                    ConfigRede.ARBITRO_GRUPO, ConfigRede.ARBITRO_PORTA,
                     "127.0.0.1", porta, porta + 1);
 
             try (EmissorDeComandos e = new EmissorDeComandos(c, Cor.AZUL)) {
