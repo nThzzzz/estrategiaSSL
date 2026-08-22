@@ -25,7 +25,17 @@ import java.util.List;
 import java.util.function.BiConsumer;
 
 /**
- * Painel da direita: um cartao por robo, com o que a estrategia sabe dele.
+ * Painel da direita: um cartao por robo NOSSO, com o que a estrategia sabe dele.
+ *
+ * <p>O adversario fica de fora de proposito. Estes cartoes existem para operar os
+ * nossos robos -- e sobre eles que se decide, e serao eles que ganharao comando,
+ * atribuicao de papel e estado de skill conforme a estrategia crescer. Nada disso
+ * existe para um robo do outro time, de quem so se sabe onde esta. Misturar os
+ * doze dobraria a lista e empurraria para fora da tela justamente o que se olha.
+ * O adversario continua no campo, e clicavel la.
+ *
+ * <p>Segue {@link Cliente#getEquipe()}: trocar de cor no painel da esquerda troca
+ * a lista inteira, sem nada aqui precisar saber que isso aconteceu.
  *
  * <p>Desenhado em um componente so, e nao montado com um {@code JPanel} por
  * robo. A lista muda de tamanho a cada quadro -- robo entra, robo some por
@@ -91,14 +101,14 @@ public final class PainelRobos extends JPanel {
         faixas.clear();
 
         Quadro q = cliente.quadro();
-        int y = 6;
-        y = secao(g2, q, cliente.getEquipe(), y);
-        y = secao(g2, q, cliente.getAdversario(), y);
+        int y = secao(g2, q, cliente.getEquipe(), 6);
 
-        if (q.robos().isEmpty()) {
+        if (q.robos(cliente.getEquipe()).isEmpty()) {
             g2.setColor(Paleta.APAGADO);
             g2.setFont(new Font("SansSerif", Font.PLAIN, 12));
-            g2.drawString("nenhum robo na visao", 16, y + 22);
+            g2.drawString(q.robos().isEmpty()
+                    ? "nenhum robo na visao"
+                    : "nenhum robo nosso na visao", 16, y + 6);
         }
 
         setPreferredSize(new Dimension(LARGURA, Math.max(y + 10, 100)));

@@ -61,6 +61,8 @@ public final class Autoteste {
         sensorIgnoraBolaLongeDaBoca();
 
         // --- protocolo ---
+        reconfigurarTrocaDePorta();
+        reconfigurarRestauraSeOBindFalha();
         visaoViraQuadro();
         geometriaVemDaRede();
         comandoSaiEmMetrosPorSegundo();
@@ -277,6 +279,46 @@ public final class Autoteste {
     }
 
     // ------------------------------------------------------------------ protocolo
+
+    /** Trocar de porta com a janela aberta e o que o botao Configurar faz. */
+    private static void reconfigurarTrocaDePorta() throws Exception {
+        ConfigRede inicial = new ConfigRede("224.5.23.2", 11821, "127.0.0.1", 11831, 11832);
+        app.Cliente cliente = new app.Cliente(inicial, Cor.AZUL);
+        cliente.conectar();
+
+        ConfigRede nova = inicial.comPortaVisao(11822).comPortaAzul(11833);
+        cliente.reconfigurar(nova, Cor.AZUL);
+
+        verdadeiro("rede: reconfigurar troca a porta de escuta",
+                cliente.getConfig().portaVisao() == 11822);
+        verdadeiro("rede: e o destino dos comandos acompanha",
+                cliente.destinoDeComandos().endsWith(":11833"));
+        cliente.close();
+    }
+
+    /**
+     * Porta ocupada so aparece no bind. Nesse caso a configuracao anterior tem de
+     * voltar, em vez de deixar a estrategia surda por causa de um numero errado.
+     */
+    private static void reconfigurarRestauraSeOBindFalha() throws Exception {
+        ConfigRede inicial = new ConfigRede("224.5.23.2", 11841, "127.0.0.1", 11851, 11852);
+        app.Cliente cliente = new app.Cliente(inicial, Cor.AZUL);
+        cliente.conectar();
+
+        try (DatagramSocket _ = new DatagramSocket(11842)) { // so ocupa a porta
+            boolean lancou = false;
+            try {
+                cliente.reconfigurar(inicial.comPortaVisao(11842), Cor.AZUL);
+            } catch (Exception e) {
+                lancou = true;
+            }
+            verdadeiro("rede: bind em porta ocupada falha", lancou);
+            verdadeiro("rede: e a configuracao anterior e restaurada",
+                    cliente.getConfig().portaVisao() == 11841);
+            verdadeiro("rede: com a escuta anterior de volta no ar", cliente.getFalha() == null);
+        }
+        cliente.close();
+    }
 
     /** Um quadro montado como o simulador monta tem de virar Quadro com os robos certos. */
     private static void visaoViraQuadro() {

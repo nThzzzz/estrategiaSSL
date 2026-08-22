@@ -1,7 +1,6 @@
 package app;
 
 import model.Cor;
-import rede.ConfigRede;
 import view.Campo;
 import view.Paleta;
 
@@ -15,9 +14,7 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JSpinner;
 import javax.swing.JTextField;
-import javax.swing.SpinnerNumberModel;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -25,35 +22,30 @@ import java.awt.Font;
 import java.io.IOException;
 
 /**
- * Painel da esquerda: para onde a estrategia escuta e para onde ela manda.
+ * Painel da esquerda: estado da rede, quem somos e o que aparece no campo.
  *
- * <p>Tudo aqui pode ser trocado com a janela aberta. Numa bancada de teste
- * troca-se de porta o tempo todo -- duas instancias do simulador, um colega
- * rodando outra estrategia na mesma rede -- e obrigar a fechar o programa para
- * mudar um numero tornaria isso insuportavel.
+ * <p>As portas nao moram aqui: ficam no {@link DialogoRede}, atras do botao
+ * "Configurar...", no mesmo desenho que o simulador usa. Cinco campos de rede
+ * ocupavam metade do painel para algo que se mexe uma vez por bancada, enquanto
+ * o que se olha o tempo todo -- se esta chegando visao, a que taxa, para onde
+ * vao os comandos -- ficava espremido embaixo.
  *
- * <p>A validacao segue a mesma divisao do simulador: {@link ConfigRede#problema()}
- * responde o que da para saber sem tocar no sistema e o erro aparece antes de
- * qualquer socket ser mexido; o que so aparece no bind -- porta ocupada -- vira
- * dialogo com a configuracao anterior ja restaurada por {@link Cliente}.
+ * <p>Cor da equipe e nomes continuam aqui porque nao sao configuracao de rede:
+ * dizem quem somos. A cor decide para qual porta os comandos vao, mas essa e
+ * consequencia da escolha, nao a escolha.
  */
 public final class PainelRede extends JPanel {
 
     private final Cliente cliente;
     private final Campo campo;
 
-    private final JTextField grupo = campoTexto(12);
-    private final JSpinner portaVisao = porta(ConfigRede.VISAO_PORTA);
-    private final JTextField host = campoTexto(12);
-    private final JSpinner portaAzul = porta(ConfigRede.CONTROLE_AZUL_PORTA);
-    private final JSpinner portaAmarelo = porta(ConfigRede.CONTROLE_AMARELO_PORTA);
-
     private final JComboBox<String> nossaCor = new JComboBox<>(new String[]{"Azul", "Amarelo"});
-    private final JTextField nomeAzul = campoTexto(12);
-    private final JTextField nomeAmarelo = campoTexto(12);
+    private final JTextField nomeAzul = new JTextField(12);
+    private final JTextField nomeAmarelo = new JTextField(12);
 
-    private final JLabel estadoVisao = rotulo("--", Paleta.APAGADO);
-    private final JLabel estadoEnvio = rotulo("--", Paleta.APAGADO);
+    private final JLabel escuta = rotulo("--", Paleta.APAGADO);
+    private final JLabel taxa = rotulo("--", Paleta.APAGADO);
+    private final JLabel envio = rotulo("--", Paleta.APAGADO);
 
     public PainelRede(Cliente cliente, Campo campo) {
         this.cliente = cliente;
@@ -66,40 +58,42 @@ public final class PainelRede extends JPanel {
 
         carregar();
 
-        add(titulo("Visao  (entrada)"));
-        add(linha("grupo", grupo));
-        add(linha("porta", portaVisao));
-        add(estadoVisao);
+        add(titulo("Rede"));
+        add(escuta);
+        add(taxa);
+        add(Box.createVerticalStrut(6));
+        add(rotulo("comandos", Paleta.APAGADO));
+        add(envio);
+        add(Box.createVerticalStrut(10));
 
-        add(espaco(16));
-        add(titulo("Comandos  (saida)"));
-        add(linha("host", host));
-        add(linha("porta azul", portaAzul));
-        add(linha("porta amarelo", portaAmarelo));
-        add(estadoEnvio);
+        JButton configurar = new JButton("Configurar...");
+        configurar.setAlignmentX(Component.LEFT_ALIGNMENT);
+        configurar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
+        configurar.addActionListener(e -> DialogoRede.abrir(campo, cliente));
+        add(configurar);
 
-        add(espaco(16));
+        add(Box.createVerticalStrut(20));
         add(titulo("Equipe"));
         add(linha("jogamos de", nossaCor));
         add(linha("nome azul", nomeAzul));
         add(linha("nome amarelo", nomeAmarelo));
+        add(Box.createVerticalStrut(8));
 
-        add(espaco(14));
         JButton aplicar = new JButton("Aplicar");
         aplicar.setAlignmentX(Component.LEFT_ALIGNMENT);
-        aplicar.addActionListener(e -> aplicar());
+        aplicar.addActionListener(e -> aplicarEquipe());
         add(aplicar);
 
-        add(espaco(18));
+        add(Box.createVerticalStrut(20));
         add(titulo("Exibicao"));
         add(caixa("vetores de velocidade", true, campo::setMostrarVetores));
         add(caixa("area do sensor de bola", true, campo::setMostrarSensor));
         add(caixa("incerteza do Kalman", true, campo::setMostrarIncerteza));
+        add(Box.createVerticalStrut(8));
 
         JButton enquadrar = new JButton("Reenquadrar campo");
         enquadrar.setAlignmentX(Component.LEFT_ALIGNMENT);
         enquadrar.addActionListener(e -> { campo.enquadrar(); campo.repaint(); });
-        add(espaco(8));
         add(enquadrar);
 
         add(Box.createVerticalGlue());
@@ -108,60 +102,66 @@ public final class PainelRede extends JPanel {
         atualizarEstado(); // sem isso os rotulos ficam em "--" ate o primeiro tique
     }
 
-    /** Recarrega os campos a partir do que o cliente esta usando de fato. */
     private void carregar() {
-        ConfigRede c = cliente.getConfig();
-        grupo.setText(c.grupoVisao());
-        portaVisao.setValue(c.portaVisao());
-        host.setText(c.hostComandos());
-        portaAzul.setValue(c.portaAzul());
-        portaAmarelo.setValue(c.portaAmarelo());
         nossaCor.setSelectedIndex(cliente.getEquipe() == Cor.AZUL ? 0 : 1);
         nomeAzul.setText(cliente.getNomeAzul());
         nomeAmarelo.setText(cliente.getNomeAmarelo());
     }
 
-    private void aplicar() {
+    /**
+     * Troca cor e nomes.
+     *
+     * <p>Mudar de cor reabre os sockets, porque a porta de destino dos comandos
+     * depende dela -- por isso passa pelo {@link Cliente#reconfigurar} e nao por
+     * um setter simples.
+     */
+    private void aplicarEquipe() {
         cliente.setNomes(nomeAzul.getText(), nomeAmarelo.getText());
-
-        ConfigRede nova = new ConfigRede(
-                grupo.getText().trim(), (Integer) portaVisao.getValue(),
-                host.getText().trim(), (Integer) portaAzul.getValue(),
-                (Integer) portaAmarelo.getValue());
         Cor cor = nossaCor.getSelectedIndex() == 0 ? Cor.AZUL : Cor.AMARELO;
-
         try {
-            cliente.reconfigurar(nova, cor);
+            cliente.reconfigurar(cliente.getConfig(), cor);
         } catch (IOException e) {
             JOptionPane.showMessageDialog(this, e.getMessage(),
-                    "Configuracao de rede", JOptionPane.WARNING_MESSAGE);
+                    "Equipe", JOptionPane.WARNING_MESSAGE);
         }
-        carregar(); // o cliente pode ter voltado para a config anterior
+        carregar();
     }
 
     /** Chamado pelo relogio da janela; so texto, sem recriar componente. */
     public void atualizarEstado() {
-        if (cliente.recebendo()) {
-            estadoVisao.setForeground(Paleta.OK);
-            estadoVisao.setText(String.format("%.0f Hz  ·  %d pacotes",
+        var c = cliente.getConfig();
+        escuta.setText(c.grupoVisao() + ":" + c.portaVisao());
+
+        if (cliente.getFalha() != null) {
+            taxa.setForeground(Paleta.ERRO);
+            taxa.setText(encurtar(cliente.getFalha()));
+        } else if (cliente.recebendo()) {
+            taxa.setForeground(Paleta.OK);
+            taxa.setText(String.format("%.0f Hz  ·  %d pacotes",
                     cliente.taxaHz(), cliente.pacotesRecebidos()));
         } else {
-            estadoVisao.setForeground(Paleta.ALERTA);
-            estadoVisao.setText(cliente.pacotesRecebidos() == 0
+            taxa.setForeground(Paleta.ALERTA);
+            taxa.setText(cliente.pacotesRecebidos() == 0
                     ? "nada recebido ainda"
                     : String.format("parado ha %.0f s", cliente.silencio()));
         }
 
-        estadoEnvio.setForeground(Paleta.APAGADO);
-        estadoEnvio.setText(cliente.destinoDeComandos() + "  ·  "
+        envio.setText(cliente.destinoDeComandos() + "  ·  "
                 + cliente.pacotesEnviados() + " pacotes");
+    }
+
+    private static String encurtar(String texto) {
+        return "<html><body style='width:200px'>"
+                + (texto.length() > 90 ? texto.substring(0, 90) + "..." : texto)
+                + "</body></html>";
     }
 
     // -------------------------------------------------------------- estilo
 
     private JComponent rodape() {
         JLabel l = rotulo("<html><body style='width:200px'>Sem estrategia escrita nenhum "
-                + "comando sai, e os robos ficam parados -- como no grSim.</body></html>",
+                + "comando sai, e os robos ficam parados, como no grSim."
+                + "<br><br>scroll aplica zoom, botao direito arrasta</body></html>",
                 new Color(120, 120, 130));
         l.setFont(l.getFont().deriveFont(10f));
         return l;
@@ -177,7 +177,6 @@ public final class PainelRede extends JPanel {
         JLabel l = rotulo(nome, Paleta.APAGADO);
         l.setPreferredSize(new Dimension(92, 22));
         l.setMaximumSize(new Dimension(92, 22));
-        l.setFont(l.getFont().deriveFont(11f));
 
         campo.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
         p.add(l);
@@ -208,22 +207,5 @@ public final class PainelRede extends JPanel {
         l.setAlignmentX(Component.LEFT_ALIGNMENT);
         l.setFont(l.getFont().deriveFont(11f));
         return l;
-    }
-
-    private static Component espaco(int altura) { return Box.createVerticalStrut(altura); }
-
-    private static JTextField campoTexto(int colunas) {
-        JTextField t = new JTextField(colunas);
-        t.setAlignmentX(Component.LEFT_ALIGNMENT);
-        return t;
-    }
-
-    /** Spinner de porta sem separador de milhar: 10006, nunca "10.006". */
-    private static JSpinner porta(int inicial) {
-        JSpinner s = new JSpinner(new SpinnerNumberModel(inicial, 1024, 65535, 1));
-        JSpinner.NumberEditor editor = new JSpinner.NumberEditor(s, "#");
-        s.setEditor(editor);
-        s.setAlignmentX(Component.LEFT_ALIGNMENT);
-        return s;
     }
 }

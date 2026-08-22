@@ -106,10 +106,11 @@ public final class Cliente implements AutoCloseable {
         } catch (IOException erro) {
             try {
                 abrir(anterior, equipeAnterior);
-                throw new IOException(erro.getMessage() + " -- a configuracao anterior foi mantida", erro);
+                throw new IOException(erro.getMessage()
+                        + ". A configuracao anterior foi mantida.", erro);
             } catch (IOException perdida) {
                 throw new IOException(erro.getMessage()
-                        + " -- e a anterior tambem nao voltou: " + perdida.getMessage(), erro);
+                        + ". E a anterior tambem nao voltou: " + perdida.getMessage(), erro);
             }
         }
     }
