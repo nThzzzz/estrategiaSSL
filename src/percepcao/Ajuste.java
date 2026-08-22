@@ -15,6 +15,7 @@ package percepcao;
  * @param portao                limite de qui-quadrado (2 graus de liberdade) para aceitar a medida
  * @param maxRejeicoes          rejeicoes seguidas antes de admitir que a trilha e que esta errada
  * @param sigmaVelocidadeInicial mm/s de incerteza da velocidade no primeiro avistamento
+ * @param velocidadeMaxima      mm/s que o objeto pode atingir; separa manobra de fantasma
  */
 public record Ajuste(
         double sigmaAceleracao,
@@ -23,7 +24,8 @@ public record Ajuste(
         double sigmaMedidaAngular,
         double portao,
         int maxRejeicoes,
-        double sigmaVelocidadeInicial
+        double sigmaVelocidadeInicial,
+        double velocidadeMaxima
 ) {
     /**
      * Robo: acelera ate uns 3 m/s^2, e o que a visao erra na posicao e da ordem
@@ -34,20 +36,18 @@ public record Ajuste(
      * num campo com quatro cameras -- sem descartar manobra brusca legitima.
      */
     public static Ajuste robo() {
-        return new Ajuste(3000, 12, 50, 0.05, 16.0, 4, 3000);
+        return new Ajuste(3000, 12, 50, 0.05, 16.0, 4, 3000, 4000);
     }
 
     /**
      * Bola: o modelo de velocidade constante e uma mentira conveniente aqui.
      *
-     * <p>Chute e impulso, nao aceleracao -- a bola vai de 0 a 6,5 m/s dentro de
-     * um quadro, o que nenhuma sintonia de ruido de processo acompanha. Por isso
-     * a bola tem portao mais largo e desiste mais rapido: duas rejeicoes seguidas
-     * ja fazem a trilha se reinicializar sobre as medidas novas, com velocidade
-     * semeada por diferenca. E o que transforma o chute em uns 30 ms de atraso em
-     * vez de meio segundo de trilha perdida.
+     * <p>Chute e impulso, nao aceleracao: a bola vai de 0 a 6,5 m/s dentro de um
+     * quadro, o que nenhuma sintonia de ruido de processo acompanha. Quem resolve
+     * isso e {@code velocidadeMaxima}, o teto de chute da regra, que separa
+     * manobra de fantasma sem depender da confianca do filtro.
      */
     public static Ajuste bola() {
-        return new Ajuste(8000, 10, 0, 0, 30.0, 2, 6500);
+        return new Ajuste(8000, 10, 0, 0, 30.0, 2, 6500, 6500);
     }
 }

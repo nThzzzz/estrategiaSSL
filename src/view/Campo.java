@@ -49,6 +49,15 @@ public final class Campo extends JPanel {
     /** Quantos segundos de velocidade o vetor representa. */
     private static final double SEGUNDOS_DO_VETOR = 0.35;
 
+    /**
+     * Teto da previsao ate o instante do desenho.
+     *
+     * <p>Se a visao parar, o desenho nao pode sair correndo campo afora: passado
+     * este tempo sem quadro novo, a cena congela onde estava. E preferivel ver a
+     * cena parar do que ve-la inventar.
+     */
+    private static final double MAX_PREVISAO = 0.08; // s
+
     private final Supplier<Quadro> fonte;
 
     private double zoom = 1.0;
@@ -61,6 +70,7 @@ public final class Campo extends JPanel {
     private boolean mostrarVetores = true;
     private boolean mostrarSensor = true;
     private boolean mostrarIncerteza = true;
+    private boolean preverAteODesenho = true;
 
     public Campo(Supplier<Quadro> fonte) {
         this.fonte = fonte;
@@ -80,6 +90,7 @@ public final class Campo extends JPanel {
     public void setMostrarVetores(boolean b) { mostrarVetores = b; }
     public void setMostrarSensor(boolean b)  { mostrarSensor = b; }
     public void setMostrarIncerteza(boolean b) { mostrarIncerteza = b; }
+    public void setPreverAteODesenho(boolean b) { preverAteODesenho = b; }
 
     /**
      * Selecao guardada por identidade (cor + id), nao por referencia ao record.
@@ -91,12 +102,23 @@ public final class Campo extends JPanel {
     public Cor getCorSelecionada() { return corSelecionada; }
     public int getIdSelecionado()  { return idSelecionado; }
 
-    /** Robo mais proximo do ponto de mundo, dentro do proprio raio. */
+    private static Vec2 prever(Vec2 posicao, Vec2 velocidade, double dt) {
+        return dt <= 0 ? posicao : posicao.mais(velocidade.escala(dt));
+    }
+
+    /**
+     * Robo mais proximo do ponto de mundo, dentro do proprio raio.
+     *
+     * <p>Usa a mesma previsao do desenho: clicar tem de acertar o robo que esta
+     * na tela, nao o lugar onde ele estava quando o ultimo pacote chegou.
+     */
     public EstadoRobo roboEm(Vec2 ponto) {
         EstadoRobo achado = null;
         double melhor = Robo.RAIO * 1.6;
-        for (EstadoRobo r : quadro().robos()) {
-            double d = r.posicao().distancia(ponto);
+        Quadro q = quadro();
+        double avanco = avanco(q);
+        for (EstadoRobo r : q.robos()) {
+            double d = prever(r.posicao(), r.velocidade(), avanco).distancia(ponto);
             if (d < melhor) { melhor = d; achado = r; }
         }
         return achado;
@@ -110,6 +132,26 @@ public final class Campo extends JPanel {
         } catch (NoninvertibleTransformException e) {
             return Vec2.ZERO; // so com escala zero, que nao acontece
         }
+    }
+
+    /**
+     * Quanto tempo passou desde que o quadro desenhado chegou.
+     *
+     * <p>A tela repinta a 60 Hz e a visao chega a 60 Hz, mas as duas cadencias nao
+     * sao a mesma nem estao em fase: sem isto, alguns repaints mostram o mesmo
+     * quadro duas vezes e outros pulam um, e o movimento treme mesmo com o filtro
+     * perfeito. Na janela do simulador o problema nao existe, porque la a fisica
+     * e integrada no mesmo instante em que se pinta.
+     *
+     * <p>A cura e usar o que o Kalman ja fornece: cada objeto tem velocidade
+     * estimada, entao desenha-lo em {@code p + v*dt} coloca a cena no instante do
+     * desenho, e nao no instante do ultimo pacote. E a mesma previsao que o filtro
+     * faz internamente, so que levada ate a tela.
+     */
+    private double avanco(Quadro q) {
+        if (!preverAteODesenho) return 0;
+        double dt = (System.nanoTime() - q.recebidoEm()) / 1e9;
+        return Math.max(0, Math.min(dt, MAX_PREVISAO));
     }
 
     private AffineTransform transform(Geometria g) {
@@ -132,16 +174,17 @@ public final class Campo extends JPanel {
         g2.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
 
         Quadro q = quadro();
+        double avanco = avanco(q);
         AffineTransform at = transform(q.geometria());
 
         Graphics2D gm = (Graphics2D) g2.create();
         gm.transform(at);
         desenharCampo(gm, q.geometria());
-        for (EstadoRobo r : q.robos()) desenharRobo(gm, r, q.geometria());
-        desenharBola(gm, q.bola(), q.geometria());
+        for (EstadoRobo r : q.robos()) desenharRobo(gm, r, q.geometria(), avanco);
+        desenharBola(gm, q.bola(), q.geometria(), avanco);
         gm.dispose();
 
-        desenharIdentificadores(g2, at, q);
+        desenharIdentificadores(g2, at, q, avanco);
         desenharCursor(g2);
         g2.dispose();
     }
@@ -188,10 +231,11 @@ public final class Campo extends JPanel {
      * que permite ver por que o sensor disparou ou nao -- uma bola que passa
      * raspando fica visivelmente fora da faixa.
      */
-    private void desenharRobo(Graphics2D g, EstadoRobo r, Geometria geo) {
+    private void desenharRobo(Graphics2D g, EstadoRobo r, Geometria geo, double avanco) {
+        Vec2 pos = prever(r.posicao(), r.velocidade(), avanco);
         AffineTransform anterior = g.getTransform();
-        g.translate(r.posicao().x(), r.posicao().y());
-        g.rotate(r.theta());
+        g.translate(pos.x(), pos.y());
+        g.rotate(r.theta() + r.omega() * avanco);
 
         if (mostrarSensor) desenharAreaDoSensor(g, r, geo);
         if (mostrarIncerteza) desenharIncerteza(g, r.incerteza(), r.idade());
@@ -234,7 +278,7 @@ public final class Campo extends JPanel {
         g.setComposite(composto);
         g.setTransform(anterior);
 
-        if (mostrarVetores && r.rapidez() > 40) desenharVetor(g, r.posicao(), r.velocidade());
+        if (mostrarVetores && r.rapidez() > 40) desenharVetor(g, pos, r.velocidade());
     }
 
     /**
@@ -282,12 +326,13 @@ public final class Campo extends JPanel {
         }
     }
 
-    private void desenharBola(Graphics2D g, EstadoBola bola, Geometria geo) {
+    private void desenharBola(Graphics2D g, EstadoBola bola, Geometria geo, double avanco) {
         if (bola == EstadoBola.AUSENTE) return;
 
+        Vec2 pos = prever(bola.posicao(), bola.velocidade(), avanco);
         double raio = geo.raioBola();
-        double x = bola.posicao().x();
-        double y = bola.posicao().y();
+        double x = pos.x();
+        double y = pos.y();
         boolean noAr = bola.z() > raio * 2.5;
 
         if (noAr) {
@@ -316,7 +361,7 @@ public final class Campo extends JPanel {
             g.draw(new Ellipse2D.Double(x - inc, y - inc, inc * 2, inc * 2));
         }
 
-        if (mostrarVetores && bola.rapidez() > 60) desenharVetor(g, bola.posicao(), bola.velocidade());
+        if (mostrarVetores && bola.rapidez() > 60) desenharVetor(g, pos, bola.velocidade());
     }
 
     /** Seta de velocidade, em espaco de mundo: ela representa mm/s vezes tempo. */
@@ -335,13 +380,14 @@ public final class Campo extends JPanel {
     }
 
     /** Numeros em espaco de tela, para nao herdarem escala nem o espelho do eixo Y. */
-    private void desenharIdentificadores(Graphics2D g, AffineTransform at, Quadro q) {
+    private void desenharIdentificadores(Graphics2D g, AffineTransform at, Quadro q, double avanco) {
         g.setFont(new Font("SansSerif", Font.BOLD, 12));
         FontMetrics fm = g.getFontMetrics();
         Point2D destino = new Point2D.Double();
 
         for (EstadoRobo r : q.robos()) {
-            at.transform(new Point2D.Double(r.posicao().x(), r.posicao().y()), destino);
+            Vec2 pos = prever(r.posicao(), r.velocidade(), avanco);
+            at.transform(new Point2D.Double(pos.x(), pos.y()), destino);
             String id = String.valueOf(r.id());
             g.setColor(Paleta.textoSobre(r.cor()));
             g.drawString(id, (float) (destino.getX() - fm.stringWidth(id) / 2.0),

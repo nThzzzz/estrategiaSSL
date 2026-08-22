@@ -132,7 +132,17 @@ A validação segue a mesma divisão do simulador. O que dá para saber sem toca
 de deixar a estratégia surda.
 
 **Centro.** Zoom no scroll, arrasto com o botão direito, clique seleciona robô. Vetores de
-velocidade, área do sensor e anel de incerteza podem ser desligados.
+velocidade, área do sensor, anel de incerteza e a previsão do desenho podem ser desligados.
+
+A previsão existe porque aqui a cena não é integrada no mesmo instante em que se pinta, como
+acontece na janela do simulador: ela chega em amostras discretas pela rede. A tela repinta a 60
+Hz e a visão chega a 60 Hz, mas as duas cadências não estão em fase, então alguns repaints
+mostram o mesmo quadro duas vezes e outros pulam um, e o movimento treme mesmo com a
+estimativa perfeita. Como cada objeto tem velocidade estimada, desenhá-lo em `p + v·dt` põe a
+cena no instante do desenho em vez do instante do último pacote. Medido com a bola em
+movimento, os repaints sem avanço caem de 9 em 120 para 1 em 163. O avanço é limitado a 80 ms:
+se a visão parar, a cena congela onde estava, porque é melhor vê-la parar do que vê-la
+inventar.
 
 **Direita.** Um cartão por robô **nosso**, com ID, velocidade, direção e o selo do sensor. O
 adversário fica de fora porque estes cartões existem para operar os nossos robôs: é sobre eles

@@ -51,7 +51,8 @@ public final class Autoteste {
         incertezaCresceSemMedida();
         portaoRecusaDeteccaoFantasma();
         portaoSeRendeDepoisDeInsistencia();
-        chuteEhAbsorvidoEmPoucosQuadros();
+        chuteNaoTeleportaABola();
+        ruidoNaoPassaPorManobra();
         anguloAtravessaPiSemSalto();
 
         // --- sensor de bola ---
@@ -206,29 +207,54 @@ public final class Autoteste {
     }
 
     /**
-     * Chute: a bola sai de parada a 6 m/s dentro de um quadro. Nenhum modelo de
-     * velocidade constante preve isso, entao o que se cobra e recuperacao rapida
-     * -- poucos quadros ate a velocidade estimada bater com a real.
+     * Chute: a bola sai de parada a 6,5 m/s dentro de um quadro.
+     *
+     * <p>Regressao do bug da "teleportada". O portao estatistico recusava as
+     * primeiras medidas do chute -- surpresa enorme perto da confianca que o
+     * filtro tinha na bola parada -- e a bola congelava dois quadros antes de
+     * saltar 325 mm. O que se cobra aqui e o comportamento certo: a POSICAO nao
+     * pode errar feio em quadro nenhum, porque e ela que se ve na tela.
      */
-    private static void chuteEhAbsorvidoEmPoucosQuadros() {
+    private static void chuteNaoTeleportaABola() {
         Trilha t = new Trilha(Ajuste.bola(), false);
-        double tempo = 0;
-        for (int i = 0; i < 30; i++, tempo += DT) {
+        double v = 6500; // teto da regra
+        int parados = 30;
+        double pior = 0;
+
+        for (int i = 0; i <= parados + 10; i++) {
+            double tempo = i * DT;
+            double verdade = i <= parados ? 1000 : 1000 + v * (i - parados) * DT;
             t.prever(tempo);
-            t.corrigir(Vec2.ZERO, Double.NaN, tempo);
+            t.corrigir(new Vec2(verdade, 0), Double.NaN, tempo);
+            if (i > parados) pior = Math.max(pior, Math.abs(t.posicao().x() - verdade));
         }
 
-        double v = 6000; // mm/s
-        double inicio = tempo;
-        for (int i = 1; i <= 8; i++) {
-            tempo += DT;
-            t.prever(tempo);
-            t.corrigir(new Vec2(v * (tempo - inicio), 0), Double.NaN, tempo);
-        }
+        verdadeiro(String.format("kalman: chute nao teleporta a bola (pior erro %.0f mm)", pior),
+                pior < 40);
+        aproximado("kalman: e a velocidade do chute sai certa", t.velocidade().x(), v, 300);
+    }
 
-        double erro = Math.abs(t.velocidade().x() - v);
-        verdadeiro(String.format("kalman: absorve chute de 6 m/s em 8 quadros (erro %.0f mm/s)", erro),
-                erro < 900);
+    /**
+     * A contrapartida do caminho de manobra: ruido nao pode aciona-lo.
+     *
+     * <p>Se ruido comum passasse por manobra, a trilha se reinicializaria toda
+     * hora e a velocidade viraria a diferenca crua entre dois quadros -- ou seja,
+     * o filtro deixaria de filtrar exatamente onde mais importa.
+     */
+    private static void ruidoNaoPassaPorManobra() {
+        Random r = new Random(7);
+        Trilha t = new Trilha(Ajuste.bola(), false);
+        double sigma = 10, pior = 0;
+
+        for (int i = 0; i < 200; i++) {
+            double tempo = i * DT;
+            t.prever(tempo);
+            t.corrigir(new Vec2(2000 + r.nextGaussian() * sigma,
+                                r.nextGaussian() * sigma), Double.NaN, tempo);
+            if (i > 30) pior = Math.max(pior, t.velocidade().norma());
+        }
+        verdadeiro(String.format("kalman: bola parada com ruido segue parada (pico %.0f mm/s)", pior),
+                pior < 400);
     }
 
     /** Orientacao cruzando 180 graus nao pode virar uma volta inteira de omega. */

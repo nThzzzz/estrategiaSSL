@@ -84,16 +84,17 @@ public final class FiltroKalman1D {
     }
 
     /**
-     * Planta uma velocidade inicial conhecida por fora do filtro.
+     * Planta uma velocidade obtida por diferenca de duas posicoes medidas.
      *
-     * <p>Usada quando a trilha se reinicializa depois de um chute: a velocidade
-     * vem da diferenca entre duas posicoes, entao a incerteza dela e a do proprio
-     * ruido de medida propagado por {@code dt}, e nao a ignorancia total com que
-     * {@link #iniciar} comeca.
+     * <p>Usada quando a trilha reconhece uma manobra e se reinicializa. A
+     * incerteza dessa velocidade nao e a ignorancia total com que {@link #iniciar}
+     * comeca: e o ruido de duas medidas propagado pelo intervalo entre elas,
+     * {@code 2*sigma_z^2 / dt^2}. Declarar isso e o que faz o filtro confiar na
+     * semente em vez de leva-la de volta para zero no quadro seguinte.
      */
-    public void semear(double velocidade) {
+    public void semear(double velocidade, double dt) {
         v = velocidade;
-        p11 = Math.min(p11, varMedida * 2 / (1.0 / 60 * 1.0 / 60));
+        if (dt > 1e-9) p11 = Math.min(p11, 2 * varMedida / (dt * dt));
     }
 
     /** Avanca o estado em {@code dt} segundos, sem medida nova. */
