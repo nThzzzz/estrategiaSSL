@@ -99,7 +99,7 @@ public final class Arbitro {
         // estagio estourou o tempo -- o protocolo usa sint64 exatamente por isso.
         double restante = r.hasStageTimeLeft() ? r.getStageTimeLeft() / 1e6 : -1;
 
-        return new EstadoDeJogo(acao, nosso, nossoLadoPositivo,
+        return new EstadoDeJogo(acao, nosso, corDe(r.getCommand()), nossoLadoPositivo,
                 r.getStage().name(), restante,
                 nos.getName(), eles.getName(),
                 nos.getScore(), eles.getScore(),
@@ -109,18 +109,30 @@ public final class Arbitro {
 
     static Acao acaoDe(Referee.Command c) {
         return switch (c) {
-            case HALT -> Acao.PARAR;
-            case STOP -> Acao.AFASTAR;
-            case NORMAL_START, FORCE_START -> Acao.JOGAR;
+            case HALT -> Acao.HALT;
+            case STOP -> Acao.STOP;
+            case NORMAL_START, FORCE_START -> Acao.RUNNING;
             case PREPARE_KICKOFF_BLUE, PREPARE_KICKOFF_YELLOW -> Acao.KICKOFF;
-            case PREPARE_PENALTY_BLUE, PREPARE_PENALTY_YELLOW -> Acao.PENALTI;
+            case PREPARE_PENALTY_BLUE, PREPARE_PENALTY_YELLOW -> Acao.PENALTY;
             case DIRECT_FREE_BLUE, DIRECT_FREE_YELLOW,
-                 INDIRECT_FREE_BLUE, INDIRECT_FREE_YELLOW -> Acao.FALTA;
-            case BALL_PLACEMENT_BLUE, BALL_PLACEMENT_YELLOW -> Acao.POSICIONAR_BOLA;
-            case TIMEOUT_BLUE, TIMEOUT_YELLOW -> Acao.TEMPO;
+                 INDIRECT_FREE_BLUE, INDIRECT_FREE_YELLOW -> Acao.DIRECT_FREE;
+            case BALL_PLACEMENT_BLUE, BALL_PLACEMENT_YELLOW -> Acao.BALL_PLACEMENT;
+            case TIMEOUT_BLUE, TIMEOUT_YELLOW -> Acao.TIMEOUT;
             // GOAL_* estao aposentados no protocolo: o placar vem no TeamInfo, e o
             // jogo segue por STOP. Tratar como parada e o que o arbitro faria.
-            case GOAL_BLUE, GOAL_YELLOW -> Acao.AFASTAR;
+            case GOAL_BLUE, GOAL_YELLOW -> Acao.STOP;
+        };
+    }
+
+    /** De que cor e o comando, ou {@code null} se ele nao nomeia nenhuma. */
+    static Cor corDe(Referee.Command c) {
+        return switch (c) {
+            case PREPARE_KICKOFF_BLUE, PREPARE_PENALTY_BLUE, DIRECT_FREE_BLUE,
+                 INDIRECT_FREE_BLUE, TIMEOUT_BLUE, BALL_PLACEMENT_BLUE, GOAL_BLUE -> Cor.AZUL;
+            case PREPARE_KICKOFF_YELLOW, PREPARE_PENALTY_YELLOW, DIRECT_FREE_YELLOW,
+                 INDIRECT_FREE_YELLOW, TIMEOUT_YELLOW, BALL_PLACEMENT_YELLOW,
+                 GOAL_YELLOW -> Cor.AMARELO;
+            default -> null;
         };
     }
 

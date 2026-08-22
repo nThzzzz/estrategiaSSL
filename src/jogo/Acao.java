@@ -1,51 +1,58 @@
 package jogo;
 
 /**
- * O que o arbitro esta mandando fazer, ja traduzido do protocolo.
+ * O comando do arbitro, no vocabulario do proprio protocolo.
  *
- * <p>O {@code Referee.Command} nomeia cores: {@code PREPARE_KICKOFF_BLUE},
- * {@code DIRECT_FREE_YELLOW}. Aqui a cor sumiu, porque quem le e a nossa
- * estrategia e para ela o que importa e "a favor" ou "contra" -- o lado fica em
- * {@link EstadoDeJogo#nosso()}. Sem essa traducao, cada pedaco do codigo teria de
- * lembrar de que cor jogamos hoje, e trocar de cor no painel viraria uma cacada a
- * comparacoes espalhadas.
+ * <p>Os nomes sao os do {@code Referee.Command}, sem a cor: o protocolo tem
+ * {@code PREPARE_KICKOFF_BLUE} e {@code PREPARE_KICKOFF_YELLOW}, e aqui isso e
+ * {@link #KICKOFF} mais a cor, que vive em {@link EstadoDeJogo#corDaAcao()}.
+ *
+ * <p>Manter o vocabulario da liga em vez de traduzir foi escolha deliberada.
+ * Quem opera a estrategia esta olhando o Game Controller ao lado, ouvindo o
+ * arbitro humano falar "stop" e lendo o log da competicao, e tudo isso diz
+ * {@code STOP}. Um rotulo traduzido obrigaria a fazer a conversao de cabeca
+ * justamente no momento em que nao ha tempo para isso.
+ *
+ * <p>A pergunta "e a favor de quem?" continua respondida por
+ * {@link EstadoDeJogo#nosso()}, e e ela que a estrategia consulta. A cor serve
+ * para exibir, nao para decidir.
  */
 public enum Acao {
 
-    /** {@code HALT}: ninguem se mexe. */
-    PARAR("Parado"),
+    /** Ninguem se mexe. */
+    HALT("HALT"),
 
-    /** {@code STOP}: jogo interrompido, com limite de velocidade e distancia da bola. */
-    AFASTAR("Afastar"),
+    /** Jogo interrompido, com limite de velocidade e distancia da bola. */
+    STOP("STOP"),
 
     /** {@code NORMAL_START} e {@code FORCE_START}: bola em jogo. */
-    JOGAR("Jogo corrido"),
+    RUNNING("RUNNING"),
 
     /** {@code PREPARE_KICKOFF_*}: posicionamento para a saida de bola. */
-    KICKOFF("Kickoff"),
+    KICKOFF("KICKOFF"),
 
     /** {@code PREPARE_PENALTY_*}. */
-    PENALTI("Penalti"),
+    PENALTY("PENALTY"),
 
     /** {@code DIRECT_FREE_*}, e os {@code INDIRECT_FREE_*} que o protocolo aposentou. */
-    FALTA("Falta"),
+    DIRECT_FREE("DIRECT FREE"),
 
     /** {@code BALL_PLACEMENT_*}: alguem tem de levar a bola ate a posicao designada. */
-    POSICIONAR_BOLA("Posicionar bola"),
+    BALL_PLACEMENT("BALL PLACEMENT"),
 
     /** {@code TIMEOUT_*}. */
-    TEMPO("Tempo tecnico");
+    TIMEOUT("TIMEOUT");
 
     private final String rotulo;
 
     Acao(String rotulo) { this.rotulo = rotulo; }
 
-    /** Nome curto para a interface. */
+    /** Como aparece na tela, ja em caixa alta. */
     public String rotulo() { return rotulo; }
 
-    /** True quando a acao tem dono, ou seja quando "nosso" quer dizer alguma coisa. */
+    /** True quando a acao tem dono, ou seja quando cor e {@code nosso} querem dizer algo. */
     public boolean temDono() {
-        return this == KICKOFF || this == PENALTI || this == FALTA
-                || this == POSICIONAR_BOLA || this == TEMPO;
+        return this == KICKOFF || this == PENALTY || this == DIRECT_FREE
+                || this == BALL_PLACEMENT || this == TIMEOUT;
     }
 }

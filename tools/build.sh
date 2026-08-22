@@ -38,4 +38,5 @@ echo
 echo "  java -cp \"$saida:lib/*\" Main             janela, escutando a visao"
 echo "  java -cp \"$saida:lib/*\" Main --amarelo   jogando de amarelo"
 echo "  java -cp \"$saida:lib/*\" Main --ajuda     opcoes"
-echo "  java -cp \"$saida:lib/*\" teste.Autoteste  percepcao e protocolo"
+echo "  java -cp \"$saida:lib/*\" teste.Autoteste            percepcao, arbitro e protocolo"
+echo "  java -cp \"$saida:lib/*\" teste.AutotesteEstrategia  ciclo de vida de play, role e skill"

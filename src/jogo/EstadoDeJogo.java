@@ -14,6 +14,9 @@ import core.Vec2;
  *
  * @param acao        o que fazer
  * @param nosso       a acao e a nosso favor; so tem sentido quando {@link Acao#temDono()}
+ * @param corDaAcao   de quem e a acao, ou {@code null} quando nao tem dono. Existe
+ *                    para EXIBIR: na tela le-se "KICKOFF BLUE", como no Game
+ *                    Controller e como o arbitro fala. Para decidir, use {@code nosso}
  * @param defendemosLadoPositivo em qual metade fica o NOSSO gol, do
  *        {@code blue_team_on_positive_half}. A visao nao diz isto, e sem ele nao
  *        da para saber para que lado atacar
@@ -31,6 +34,7 @@ import core.Vec2;
 public record EstadoDeJogo(
         Acao acao,
         boolean nosso,
+        model.Cor corDaAcao,
         boolean defendemosLadoPositivo,
         String estagio,
         double tempoRestante,
@@ -46,12 +50,12 @@ public record EstadoDeJogo(
     /**
      * Antes de qualquer mensagem chegar.
      *
-     * <p>Comeca em {@link Acao#PARAR} de proposito: enquanto nao se sabe o estado
+     * <p>Comeca em {@link Acao#HALT} de proposito: enquanto nao se sabe o estado
      * do jogo, o certo e nao mover robo nenhum. Um padrao otimista faria a equipe
      * entrar em campo andando durante um HALT que ela ainda nao ouviu.
      */
     public static final EstadoDeJogo SEM_ARBITRO = new EstadoDeJogo(
-            Acao.PARAR, false, false, "sem arbitro", -1,
+            Acao.HALT, false, null, false, "sem arbitro", -1,
             null, null, 0, 0, -1, null, -1, false);
 
     /** Limite de velocidade durante {@code STOP}, em mm/s. */
@@ -63,10 +67,10 @@ public record EstadoDeJogo(
     public boolean semArbitro() { return contador < 0; }
 
     /** True quando a bola esta em jogo e vale disputar. */
-    public boolean bolaEmJogo() { return acao == Acao.JOGAR; }
+    public boolean bolaEmJogo() { return acao == Acao.RUNNING; }
 
     /** True quando podemos mover os robos. */
-    public boolean podemosMover() { return acao != Acao.PARAR; }
+    public boolean podemosMover() { return acao != Acao.HALT; }
 
     /**
      * Teto de velocidade imposto pelas regras neste instante, em mm/s.
@@ -75,8 +79,8 @@ public record EstadoDeJogo(
      * regra, e por isso mora aqui e nao no planejador.
      */
     public double limiteDeVelocidade() {
-        if (acao == Acao.PARAR) return 0;
-        if (acao == Acao.JOGAR) return Double.POSITIVE_INFINITY;
+        if (acao == Acao.HALT) return 0;
+        if (acao == Acao.RUNNING) return Double.POSITIVE_INFINITY;
         return VEL_MAX_PARADO;
     }
 
@@ -87,7 +91,7 @@ public record EstadoDeJogo(
      * caso e o adversario que tem de dar espaco.
      */
     public double afastamentoDaBola() {
-        if (acao == Acao.JOGAR || acao == Acao.PARAR) return 0;
+        if (acao == Acao.RUNNING || acao == Acao.HALT) return 0;
         if (acao.temDono() && nosso) return 0;
         return DISTANCIA_MINIMA_DA_BOLA;
     }
@@ -95,10 +99,14 @@ public record EstadoDeJogo(
     /** Sinal do nosso lado do campo: -1 ou +1 em x. */
     public int nossoLado() { return defendemosLadoPositivo ? 1 : -1; }
 
-    /** Descricao curta para a barra do topo. */
+    /**
+     * Como o comando aparece na tela: {@code STOP}, {@code KICKOFF BLUE}.
+     *
+     * <p>Formato do Game Controller, de proposito -- ver {@link Acao}.
+     */
     public String descricao() {
-        if (semArbitro()) return "sem arbitro";
-        if (!acao.temDono()) return acao.rotulo();
-        return acao.rotulo() + (nosso ? " nosso" : " deles");
+        if (semArbitro()) return "SEM ARBITRO";
+        if (!acao.temDono() || corDaAcao == null) return acao.rotulo();
+        return acao.rotulo() + " " + corDaAcao.tag().toUpperCase();
     }
 }

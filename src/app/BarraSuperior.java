@@ -116,7 +116,7 @@ public final class BarraSuperior extends JPanel {
     private void centro(Graphics2D g, Quadro q, EstadoDeJogo jogo, int larguraBloco) {
         int meio = getWidth() / 2;
 
-        String comando = jogo.descricao().toUpperCase();
+        String comando = jogo.descricao();
         g.setFont(new Font("SansSerif", Font.BOLD, 17));
         FontMetrics fmc = g.getFontMetrics();
         int largura = fmc.stringWidth(comando) + 28;
@@ -161,9 +161,9 @@ public final class BarraSuperior extends JPanel {
 
     private static Color corDaAcao(EstadoDeJogo jogo) {
         if (jogo.semArbitro()) return new Color(52, 52, 58);
-        if (jogo.acao() == Acao.PARAR)   return new Color(235, 90, 90);
-        if (jogo.acao() == Acao.AFASTAR) return new Color(245, 170, 60);
-        if (jogo.acao() == Acao.JOGAR)   return new Color(120, 215, 130);
+        if (jogo.acao() == Acao.HALT)    return new Color(235, 90, 90);
+        if (jogo.acao() == Acao.STOP)    return new Color(245, 170, 60);
+        if (jogo.acao() == Acao.RUNNING) return new Color(120, 215, 130);
         return jogo.nosso() ? new Color(120, 180, 255) : new Color(190, 190, 200);
     }
 

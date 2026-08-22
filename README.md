@@ -17,7 +17,8 @@ java -cp "out/production/estrategiaSSL:lib/*" Main --amarelo   # joga de amarelo
 java -cp "out/production/estrategiaSSL:lib/*" Main --host 192.168.0.10   # simulador em outra máquina
 java -cp "out/production/estrategiaSSL:lib/*" Main --ajuda
 
-java -cp "out/production/estrategiaSSL:lib/*" teste.Autoteste  # percepção e protocolo
+java -cp "out/production/estrategiaSSL:lib/*" teste.Autoteste            # percepção, árbitro e protocolo
+java -cp "out/production/estrategiaSSL:lib/*" teste.AutotesteEstrategia  # ciclo de vida da estratégia
 ```
 
 A única dependência é `protobuf-java`, versionada em `lib/` junto com o Java gerado dos
@@ -56,15 +57,20 @@ como tal.
 Dependências em uma direção, sem ciclos, como no simulador:
 
 ```
-core      →  (nada)              Vec2, Angulo
-model     →  core, proto         Geometria, Cor, Robo, Comando
-mundo     →  core, model         Quadro, EstadoRobo, EstadoBola
-jogo      →  core, model, proto  Arbitro, EstadoDeJogo, Acao, ArbitroLocal
-percepcao →  + proto             Rastreador, Trilha, FiltroKalman1D, SensorDeBola, Ajuste
-rede      →  + percepcao, jogo   ConfigRede, ReceptorDeVisao, ReceptorDeArbitro, EmissorDeComandos
-view      →  core, model, mundo  Campo, Paleta
-app       →  tudo                Cliente, Janela, BarraSuperior, PainelRede, PainelRobos
+core       →  (nada)              Vec2, Angulo
+model      →  core, proto         Geometria, Cor, Robo, Comando
+mundo      →  core, model         Quadro, EstadoRobo, EstadoBola
+jogo       →  core, model, proto  Arbitro, EstadoDeJogo, Acao, ArbitroLocal
+percepcao  →  + proto             Rastreador, Trilha, FiltroKalman1D, SensorDeBola, Ajuste
+estrategia →  mundo, jogo, model  Coach, Play, Role, Tactic, Skill, Ambiente, Jogador, Executor
+rede       →  + percepcao, jogo   ConfigRede, ReceptorDeVisao, ReceptorDeArbitro, EmissorDeComandos
+view       →  core, model, mundo  Campo, Paleta
+app        →  tudo                Cliente, Janela, BarraSuperior, PainelRede, PainelRobos
 ```
+
+Note que `estrategia` não depende de `rede` nem de `view`. Quem decide o que os robôs
+fazem só conhece `Ambiente` e `Jogador`, e é isso que permite rodar mil partidas de treino
+sem abrir janela nem tocar em socket.
 
 Duas entradas e uma saída:
 
@@ -152,6 +158,84 @@ As duas fontes se excluem. Em modo local, pacote da rede é ignorado, senão um 
 rodando na mesma bancada sobrescreveria o comando de teste no quadro seguinte e o painel
 pareceria quebrado. O painel também não publica nada na rede: um segundo publicador no
 multicast oficial brigaria com o árbitro de verdade.
+
+## Estratégia
+
+Quatro camadas, no mesmo desenho do [SSL-Strategy](https://gitlab.com/robofei/ssl/SSL-Strategy)
+da RoboFEI, inclusive na nomenclatura:
+
+```
+Coach   ->  escolhe a Play          (o time todo)
+Play    ->  quem faz o quê          (o time todo)
+Role    ->  o papel de um robô      (um robô)
+Tactic  ->  conjunto de Skills      (um robô)
+Skill   ->  uma micro habilidade    (um robô)
+```
+
+Toda Role tem Tactic, e toda Tactic é um conjunto de Skills. Se descrever a coisa exige um "e
+depois", ela não é uma Skill: é uma Tactic.
+
+### O que se implementa, e o que já vem pronto
+
+Quem escreve uma jogada implementa `vRun()` e as condições. O ciclo em volta é `final` nas
+classes base, justamente para que nenhuma implementação possa esquecer um pedaço dele:
+
+| implementa | herda pronto |
+|---|---|
+| `vRun()`, o que fazer no tique | `vRunPlay`, `vRunRole`, `vRunTactic`, `vRunSkill` |
+| `bCheckPreConditions()` | inicialização automática na primeira vez |
+| `bCheckEndConditions()` | tempo limite e aborto |
+| `dGetScore()`, `vUpdateScore()`, `vSaveScore()` | atribuição de robôs aos papéis |
+| `dCusto()` de cada Role | limites do árbitro aplicados na saída |
+
+`vRun()` roda uma vez por tique e **não bloqueia**. Uma skill de "andar até o ponto" não anda:
+ela calcula a velocidade daquele tique e escreve no `Jogador`. Bloquear até chegar congelaria o
+time inteiro e impediria reagir a uma bola que mudou de rumo no meio do caminho.
+
+### O ciclo da play
+
+Uma play sai de execução por quatro caminhos, e em qualquer um deles o coach escolhe outra:
+
+- `bCheckEndConditions()` virou verdadeira, e ela é abortada
+- o tempo limite estourou, e ela é abortada
+- as roles terminaram, e ela é concluída
+- alguém forçou outra play
+
+Esse ciclo fechado é o **episódio** do aprendizado: começa em uma escolha e termina em um
+resultado que dá para creditar àquela escolha. Quando a play sai de execução, o coach chama
+`vUpdateScore()` uma vez, com o mundo como ele ficou, e depois `vSaveScore()`.
+
+O tempo limite é contado no relógio da **visão**, não no de parede. Com o simulador acelerado
+os dois divergem muito, e uma play de 10 segundos que virasse 10 segundos de tempo real duraria
+dez vezes menos jogo: o coach treinado assim aprenderia sobre um jogo que não existe.
+
+### Como o coach escolhe
+
+Entre as plays cujas pré-condições valem agora, a escolha é por **roleta**: a chance de cada uma
+é proporcional à sua nota. Não é pegar a melhor, de propósito. Sempre pegar a melhor nunca
+experimenta as outras, e uma play com nota baixa por azar nas primeiras tentativas jamais teria
+a chance de se provar.
+
+Há um modo manual, em que a play é escolhida no `vRun()` do coach, para teste e para jogadas
+ensaiadas.
+
+### Papéis e robôs
+
+A Role não escolhe qual robô a executa. Ela declara o papel, a prioridade e o `dCusto()` de cada
+candidato, e a Play atribui. É o que faz a mesma play continuar valendo quando um robô leva
+cartão ou quebra: uma play que fixasse "o 3 é o goleiro" pararia de funcionar no instante em que
+o 3 saísse de campo.
+
+A atribuição tem **histerese**: quem já está no papel leva 30% de vantagem. Sem isso, dois robôs
+a distâncias parecidas ficam trocando de função a cada quadro e nenhum dos dois chega a lugar
+nenhum.
+
+### Os limites do árbitro ficam fora das plays
+
+`HALT` não deixa sair comando, e fora de jogo corrido a velocidade satura enquanto chute e
+dribbler são cortados. Isso é aplicado no `Executor`, no fim do tique, depois de todo mundo ter
+opinado. Poderia ficar em cada play, e é assim que se costuma errar: basta uma esquecer de
+checar `HALT` para o time andar com o jogo parado, e o custo disso é falta.
 
 ## Sensor de bola
 

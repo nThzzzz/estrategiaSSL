@@ -80,6 +80,7 @@ public final class Autoteste {
         placarENomeVemDoArbitro();
         modoLocalEModoRedeSeExcluem();
         arbitroChegaPelaRede();
+        rotuloUsaOVocabularioDoProtocolo();
 
         // --- protocolo ---
         reconfigurarTrocaDePorta();
@@ -366,8 +367,8 @@ public final class Autoteste {
     /** Nao saber o estado do jogo nao autoriza a jogar. */
     private static void semArbitroMandaParar() {
         EstadoDeJogo j = new Arbitro().estado(Cor.AZUL);
-        verdadeiro("arbitro: sem mensagem nenhuma, o estado e PARAR",
-                j.acao() == Acao.PARAR && !j.podemosMover() && j.semArbitro());
+        verdadeiro("arbitro: sem mensagem nenhuma, o estado e HALT",
+                j.acao() == Acao.HALT && !j.podemosMover() && j.semArbitro());
     }
 
     private static void haltEStopImpoemLimites() {
@@ -460,7 +461,7 @@ public final class Autoteste {
         a.doPainel(gc.comando(Command.HALT));
         a.daRede(gc.comando(Command.FORCE_START));
         verdadeiro("arbitro: em modo local, pacote da rede e ignorado",
-                a.estado(Cor.AZUL).acao() == Acao.PARAR);
+                a.estado(Cor.AZUL).acao() == Acao.HALT);
 
         a.setModoLocal(false);
         verdadeiro("arbitro: trocar de fonte descarta o estado anterior",
@@ -505,8 +506,29 @@ public final class Autoteste {
 
             verdadeiro("arbitro: mensagem do GC chega pelo multicast", !estado.semArbitro());
             verdadeiro("arbitro: e chega traduzida (penalti nosso, jogando de amarelo)",
-                    estado.acao() == Acao.PENALTI && estado.nosso());
+                    estado.acao() == Acao.PENALTY && estado.nosso());
         }
+    }
+
+    /** Na tela le-se o vocabulario do Game Controller, nao uma traducao. */
+    private static void rotuloUsaOVocabularioDoProtocolo() {
+        Arbitro a = new Arbitro();
+        a.setModoLocal(true);
+        ArbitroLocal gc = new ArbitroLocal();
+
+        a.doPainel(gc.comando(Command.STOP));
+        verdadeiro("rotulo: comando sem dono e so a acao",
+                a.estado(Cor.AZUL).descricao().equals("STOP"));
+
+        a.doPainel(gc.comando(Command.PREPARE_KICKOFF_BLUE));
+        verdadeiro("rotulo: comando com dono leva a cor",
+                a.estado(Cor.AZUL).descricao().equals("KICKOFF BLUE"));
+        verdadeiro("rotulo: e a cor e a do comando, nao a nossa",
+                a.estado(Cor.AMARELO).descricao().equals("KICKOFF BLUE"));
+
+        a.doPainel(gc.comando(Command.BALL_PLACEMENT_YELLOW));
+        verdadeiro("rotulo: BALL PLACEMENT YELLOW",
+                a.estado(Cor.AZUL).descricao().equals("BALL PLACEMENT YELLOW"));
     }
 
     /** Trocar de porta com a janela aberta e o que o botao Configurar faz. */
