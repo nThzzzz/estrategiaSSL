@@ -52,7 +52,7 @@ public final class Jogador {
     /**
      * Velocidade linear no referencial local do robo: frente e esquerda.
      *
-     * <p>Nao mexe no giro. E o que permite {@code AndarPara} e {@code OlharPara}
+     * <p>Nao mexe no giro. E o que permite {@code SkillAndarPara} e {@code SkillOlharPara}
      * rodarem no mesmo tique sem uma apagar a outra: uma escreve o deslocamento,
      * a outra a orientacao, e o robo faz as duas coisas ao mesmo tempo, que e
      * como um omnidirecional se move de verdade.

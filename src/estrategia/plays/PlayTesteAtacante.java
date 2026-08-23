@@ -3,7 +3,7 @@ package estrategia.plays;
 import estrategia.ids.Jogada;
 import estrategia.ids.Papel;
 import estrategia.esqueleto.Play;
-import estrategia.roles.Atacante;
+import estrategia.roles.RoleAtacante;
 
 /**
  * Jogada minima de bancada: um robo busca a bola, conduz e chuta.
@@ -18,18 +18,18 @@ import estrategia.roles.Atacante;
  * {@link #vUpdateScore()} passa a ter sentido: e onde o resultado do episodio
  * vira reforco.
  */
-public final class TesteAtacante extends Play {
+public final class PlayTesteAtacante extends Play {
 
     private double dScore = 1.0;
 
-    public TesteAtacante() {
+    public PlayTesteAtacante() {
         super(Jogada.TESTE_ATACANTE);
-        bAddRole(new Atacante(Papel.ATACANTE), Prioridade.MAXIMA);
+        bAddRole(new RoleAtacante(Papel.ATACANTE), Prioridade.MAXIMA);
         vSetTempoLimite(30);
     }
 
     @Override
-    public String strName() { return "TesteAtacante"; }
+    public String strName() { return "PlayTesteAtacante"; }
 
     @Override
     public void vInitialize() { }
@@ -47,7 +47,7 @@ public final class TesteAtacante extends Play {
      * Aborta se a bola sumiu da visao ou se o arbitro parou o jogo.
      *
      * <p>Nao aborta por "a bola escapou do dribbler": perder a bola faz parte da
-     * jogada, e o {@link Atacante} volta sozinho para a tatica de buscar.
+     * jogada, e o {@link RoleAtacante} volta sozinho para a tatica de buscar.
      */
     @Override
     public boolean bCheckEndConditions() {

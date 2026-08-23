@@ -9,7 +9,7 @@ import model.Robo;
  * Gira o robo ate ele encarar um ponto.
  *
  * <p>Escreve so a parte ANGULAR do comando, entao roda junto com
- * {@link AndarPara} sem conflito.
+ * {@link SkillAndarPara} sem conflito.
  *
  * <p>O erro passa por {@link Angulo#diferenca}, que devolve o menor giro com
  * sinal. Sem isso, um robo a 170 graus do alvo daria a volta pelo caminho longo,
@@ -19,7 +19,7 @@ import model.Robo;
  * permitida e a maior que ainda deixa o robo PARAR encarando o alvo, em vez de
  * um proporcional que oscila em torno dele.
  */
-public final class OlharPara extends Skill {
+public final class SkillOlharPara extends Skill {
 
     private static final double FATOR_DE_SEGURANCA = 0.8;
 
@@ -28,9 +28,9 @@ public final class OlharPara extends Skill {
 
     private Vec2 alvo = Vec2.ZERO;
 
-    public OlharPara() { }
+    public SkillOlharPara() { }
 
-    public OlharPara(Vec2 _alvo) { this.alvo = _alvo; }
+    public SkillOlharPara(Vec2 _alvo) { this.alvo = _alvo; }
 
     public void vSetAlvo(Vec2 _alvo) { this.alvo = _alvo; }
 
@@ -45,7 +45,7 @@ public final class OlharPara extends Skill {
     }
 
     @Override
-    public String strName() { return "OlharPara"; }
+    public String strName() { return "SkillOlharPara"; }
 
     @Override
     public void vInitialize() { }

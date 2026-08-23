@@ -11,10 +11,10 @@ import estrategia.esqueleto.Play;
 import estrategia.esqueleto.Role;
 import estrategia.esqueleto.Skill;
 import estrategia.esqueleto.Tactic;
-import estrategia.skills.AndarPara;
-import estrategia.skills.Chutar;
-import estrategia.skills.OlharPara;
-import estrategia.tactics.ConduzirAoGol;
+import estrategia.skills.SkillAndarPara;
+import estrategia.skills.SkillChutar;
+import estrategia.skills.SkillOlharPara;
+import estrategia.tactics.TacticConduzirAoGol;
 import model.Robo;
 import mundo.Projecao;
 import jogo.Arbitro;
@@ -342,7 +342,7 @@ public final class AutotesteEstrategia {
      *
      * <p>A 3 m/s ele ainda percorre 1,5 m depois do comando ir a zero. O que se
      * limita e a velocidade de aproximacao, ao maior valor que ainda deixa parar
-     * antes da linha -- o mesmo perfil de frenagem de {@code AndarPara}.
+     * antes da linha -- o mesmo perfil de frenagem de {@code SkillAndarPara}.
      */
     private static void areaDeDefesaFreiaEmVezDeCortarSeco() {
         double x = 3000;
@@ -610,7 +610,7 @@ public final class AutotesteEstrategia {
     // -------------------------------------------------------------------- skills
 
     private static void andarParaAceleraDeLongeEFreiaDePerto() {
-        AndarPara skill = new AndarPara(new Vec2(3000, 0));
+        SkillAndarPara skill = new SkillAndarPara(new Vec2(3000, 0));
         Jogador longe = jogadorEm(new Vec2(0, 0));
         Jogador perto = jogadorEm(new Vec2(2900, 0));
 
@@ -629,7 +629,7 @@ public final class AutotesteEstrategia {
     }
 
     private static void andarParaTerminaNoDestino() {
-        AndarPara skill = new AndarPara(new Vec2(1000, 0));
+        SkillAndarPara skill = new SkillAndarPara(new Vec2(1000, 0));
         Jogador j = jogadorEm(new Vec2(1000, 0));
         skill.vRunSkill(ambiente(0, Command.FORCE_START, 1), j);
 
@@ -640,7 +640,7 @@ public final class AutotesteEstrategia {
 
     /** Um robo a 170 graus do alvo tem de girar 10, e nao 350. */
     private static void olharParaGiraPeloCaminhoCurto() {
-        OlharPara skill = new OlharPara(new Vec2(1000, 0));
+        SkillOlharPara skill = new SkillOlharPara(new Vec2(1000, 0));
         // Olhando para 170 graus; o alvo esta a 0 grau, logo o caminho curto e horario.
         Jogador j = jogadorOlhando(new Vec2(0, 0), Math.toRadians(170));
         skill.vRunSkill(ambiente(0, Command.FORCE_START, 1), j);
@@ -648,7 +648,7 @@ public final class AutotesteEstrategia {
         verdadeiro(String.format("skill: gira pelo lado curto (omega %.1f)",
                 j.comando().velAngular()), j.comando().velAngular() < 0);
 
-        OlharPara alinhada = new OlharPara(new Vec2(1000, 0));
+        SkillOlharPara alinhada = new SkillOlharPara(new Vec2(1000, 0));
         Jogador certo = jogadorOlhando(new Vec2(0, 0), 0);
         alinhada.vRunSkill(ambiente(0, Command.FORCE_START, 1), certo);
         verdadeiro("skill: ja alinhado, termina sem girar",
@@ -656,7 +656,7 @@ public final class AutotesteEstrategia {
     }
 
     private static void chutarSoChutaComABola() {
-        Chutar skill = new Chutar(4000);
+        SkillChutar skill = new SkillChutar(4000);
 
         Jogador semBola = jogadorEm(new Vec2(0, 0));
         skill.vRunSkill(ambiente(0, Command.FORCE_START, 1), semBola);
@@ -677,8 +677,8 @@ public final class AutotesteEstrategia {
      */
     private static void conducaoParaDentroDaZonaDeChute() {
         verdadeiro(String.format("taticas: conducao (%.0f) para dentro da zona de chute (%.0f)",
-                        ConduzirAoGol.DISTANCIA_DE_CONDUCAO, ConduzirAoGol.DISTANCIA_DE_CHUTE),
-                ConduzirAoGol.DISTANCIA_DE_CONDUCAO < ConduzirAoGol.DISTANCIA_DE_CHUTE - 100);
+                        TacticConduzirAoGol.DISTANCIA_DE_CONDUCAO, TacticConduzirAoGol.DISTANCIA_DE_CHUTE),
+                TacticConduzirAoGol.DISTANCIA_DE_CONDUCAO < TacticConduzirAoGol.DISTANCIA_DE_CHUTE - 100);
     }
 
     // ------------------------------------------------------------------- diario

@@ -65,11 +65,11 @@ percepcao  →  + proto             Rastreador, Trilha, FiltroKalman1D, SensorDe
 estrategia →  mundo, jogo, model  Ambiente, Jogador, Executor, Diario
   ids      →  os números estáveis       Jogada, Papel, Tatica, Habilidade
   esqueleto→  o que se estende          Coach, Play, Role, Tactic, Skill
-  skills   →  as micro habilidades      AndarPara, OlharPara, Chutar
-  tactics  →  conjuntos de skills       BuscarBola, ConduzirAoGol, ChutarAoGol
-  roles    →  papéis de um robô         Atacante, Goleiro
-  plays    →  jogadas do time           TesteAtacante
-  coaches  →  quem escolhe a play       Bancada
+  skills   →  as micro habilidades      SkillAndarPara, SkillOlharPara, SkillChutar
+  tactics  →  conjuntos de skills       TacticBuscarBola, TacticConduzirAoGol, ...
+  roles    →  papéis de um robô         RoleAtacante, RoleGoleiro
+  plays    →  jogadas do time           PlayTesteAtacante
+  coaches  →  quem escolhe a play       CoachBancada
 rede       →  + percepcao, jogo   ConfigRede, ReceptorDeVisao, ReceptorDeArbitro, EmissorDeComandos
 view       →  core, model, mundo  Campo, Paleta
 app        →  tudo                Cliente, Janela, BarraSuperior, PainelRede, PainelRobos
@@ -78,6 +78,11 @@ app        →  tudo                Cliente, Janela, BarraSuperior, PainelRede, 
 Note que `estrategia` não depende de `rede` nem de `view`. Quem decide o que os robôs
 fazem só conhece `Ambiente` e `Jogador`, e é isso que permite rodar mil partidas de treino
 sem abrir janela nem tocar em socket.
+
+As implementações levam o **tipo no nome**: `SkillAndarPara`, `TacticBuscarBola`,
+`RoleAtacante`, `PlayTesteAtacante`, `CoachBancada`. É verboso de propósito — numa lista de
+arquivos ou numa pilha de exceção, `AndarPara` sozinho não diz se é a skill que move o robô ou a
+tática que a usa, e as duas existem. O prefixo responde antes de abrir o arquivo.
 
 Dentro de `estrategia` as pastas separam **coisas de naturezas diferentes**, que antes moravam
 juntas: `ids` são só números estáveis e não dependem de nada; `esqueleto` são as cinco classes
@@ -302,16 +307,16 @@ Três consequências, e as três são o que faz o mecanismo funcionar de verdade
 Cada camada guarda as de baixo num mapa indexado por `int`: a Role tem um mapa de táticas, a
 Tactic um de skills, o Coach um de plays. Esses números eram **locais** — cada arquivo declarava
 o seu `private static final int TATICA_BUSCAR = 1`. Funcionava com um papel só e quebrava do jeito
-mais chato assim que aparecia o segundo: o mesmo `BuscarBola` era 1 num papel e 2 em outro, e nada
+mais chato assim que aparecia o segundo: o mesmo `TacticBuscarBola` era 1 num papel e 2 em outro, e nada
 impedia dois papéis de discordarem. O número acabava sendo propriedade de **quem registrou**, e
 não da coisa registrada.
 
 Agora há um enum público por família — `Jogada`, `Papel`, `Tatica`, `Habilidade` — e o número é
-propriedade da coisa. `BuscarBola` é `Tatica.BUSCAR_BOLA` em qualquer papel, para sempre, e um
+propriedade da coisa. `TacticBuscarBola` é `Tatica.BUSCAR_BOLA` em qualquer papel, para sempre, e um
 papel novo não inventa numeração: escolhe da lista.
 
 ```java
-private final BuscarBola buscar = new BuscarBola();          // sabe o próprio id
+private final TacticBuscarBola buscar = new TacticBuscarBola();          // sabe o próprio id
 bAddTactic(Tatica.BUSCAR_BOLA, buscar);
 bSetTactic(Tatica.CHUTAR_AO_GOL);
 ```
@@ -370,7 +375,7 @@ Game Controller ou do árbitro de teste — é declaração de equipe, não esco
 **Cortar seco o comando não bastaria.** O robô desacelera a `ACEL_MAX`, então a 3 m/s ele ainda
 percorreria 1,5 m depois do comando ir a zero, e entraria na área assim mesmo. O que se limita é
 a velocidade de **aproximação**, ao maior valor que ainda deixa parar antes da linha —
-`v = √(2·a·d)`, o mesmo perfil de frenagem que `AndarPara` usa para chegar num ponto. De longe
+`v = √(2·a·d)`, o mesmo perfil de frenagem que `SkillAndarPara` usa para chegar num ponto. De longe
 não corta nada; chegando perto, freia na taxa certa; já dentro, sobra só a componente de saída.
 
 Só a componente **normal** é tocada; a tangencial passa inteira. Uma defesa que trava ao encostar
@@ -420,9 +425,9 @@ Ele também anota o que o árbitro **corta**: a play pediu chute, o `Executor` p
 
 ### A jogada de bancada
 
-`TesteAtacante` existe para provar que o encanamento inteiro funciona, do `Coach` até o
+`PlayTesteAtacante` existe para provar que o encanamento inteiro funciona, do `Coach` até o
 `Comando` no fio: um papel só, sem passe, sem marcação, sem desvio de obstáculo e **sem prever
-a bola** — o atacante vai onde ela está, não onde ela estará. O `Atacante`
+a bola** — o atacante vai onde ela está, não onde ela estará. O `RoleAtacante`
 escolhe entre três táticas **pelo estado do mundo**, e não por lembrar em que fase está: sem a
 bola, buscar; com a bola longe do gol, conduzir; com a bola perto, chutar. Uma máquina de
 estados com memória ficaria presa em "conduzindo" no instante em que a bola escapasse, e o robô

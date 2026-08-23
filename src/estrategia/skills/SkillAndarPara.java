@@ -8,7 +8,7 @@ import model.Robo;
  * Leva o robo ate um ponto.
  *
  * <p>Escreve so a parte LINEAR do comando. Quem cuida da orientacao e
- * {@link OlharPara}, e as duas rodam no mesmo tique sem se atrapalhar: um robo
+ * {@link SkillOlharPara}, e as duas rodam no mesmo tique sem se atrapalhar: um robo
  * omnidirecional anda para um lado enquanto olha para outro, e separar as duas
  * skills e o que permite escrever isso naturalmente.
  *
@@ -25,7 +25,7 @@ import model.Robo;
  * alguns milissegundos depois, ele passa do ponto e volta -- o famoso robo que
  * fica bailando em cima do alvo.
  */
-public final class AndarPara extends Skill {
+public final class SkillAndarPara extends Skill {
 
     /** Quanto da frenagem teorica realmente se pede. */
     private static final double FATOR_DE_SEGURANCA = 0.8;
@@ -36,9 +36,9 @@ public final class AndarPara extends Skill {
     private Vec2 destino = Vec2.ZERO;
     private double dVelMax = Robo.VEL_MAX;
 
-    public AndarPara() { }
+    public SkillAndarPara() { }
 
-    public AndarPara(Vec2 _destino) { this.destino = _destino; }
+    public SkillAndarPara(Vec2 _destino) { this.destino = _destino; }
 
     /** Troca o destino. A tatica chama isto a cada tique quando o alvo se move. */
     public void vSetDestino(Vec2 _destino) { this.destino = _destino; }
@@ -51,7 +51,7 @@ public final class AndarPara extends Skill {
     public Vec2 destino() { return destino; }
 
     @Override
-    public String strName() { return "AndarPara"; }
+    public String strName() { return "SkillAndarPara"; }
 
     @Override
     public void vInitialize() { }

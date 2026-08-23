@@ -4,8 +4,8 @@ import core.Vec2;
 import estrategia.ids.Habilidade;
 import estrategia.esqueleto.Tactic;
 import estrategia.ids.Tatica;
-import estrategia.skills.AndarPara;
-import estrategia.skills.OlharPara;
+import estrategia.skills.SkillAndarPara;
+import estrategia.skills.SkillOlharPara;
 import model.Robo;
 
 /**
@@ -26,11 +26,11 @@ import model.Robo;
  * jogada seguinte comeca com um giro carregando a bola -- que e justamente
  * quando ela escapa.
  */
-public final class BuscarBola extends Tactic {
+public final class TacticBuscarBola extends Tactic {
 
 
-    private final AndarPara andar = new AndarPara();
-    private final OlharPara olhar = new OlharPara();
+    private final SkillAndarPara andar = new SkillAndarPara();
+    private final SkillOlharPara olhar = new SkillOlharPara();
 
     /**
      * O id vem de {@link Tatica}, e nao de quem registra a tatica.
@@ -39,9 +39,9 @@ public final class BuscarBola extends Tactic {
      * papeis ainda numeram por conta propria; ele pode sair assim que o ultimo
      * deles passar a usar este.
      */
-    public BuscarBola() { this(Tatica.BUSCAR_BOLA.id()); }
+    public TacticBuscarBola() { this(Tatica.BUSCAR_BOLA.id()); }
 
-    public BuscarBola(int _id) {
+    public TacticBuscarBola(int _id) {
         super(_id);
         // Tolerancia menor que a folga do sensor. Ver vRun: parar com a folga
         // padrao deixa o robo a um palmo da bola, sem nunca captura-la.
@@ -50,7 +50,7 @@ public final class BuscarBola extends Tactic {
     }
 
     @Override
-    public String strName() { return "BuscarBola"; }
+    public String strName() { return "TacticBuscarBola"; }
 
     @Override
     public void vInitialize() { }

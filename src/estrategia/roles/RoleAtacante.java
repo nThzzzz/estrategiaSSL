@@ -5,9 +5,9 @@ import estrategia.Jogador;
 import estrategia.ids.Papel;
 import estrategia.esqueleto.Role;
 import estrategia.ids.Tatica;
-import estrategia.tactics.BuscarBola;
-import estrategia.tactics.ChutarAoGol;
-import estrategia.tactics.ConduzirAoGol;
+import estrategia.tactics.TacticBuscarBola;
+import estrategia.tactics.TacticChutarAoGol;
+import estrategia.tactics.TacticConduzirAoGol;
 
 /**
  * O robo que vai atras da bola e tenta o gol.
@@ -23,13 +23,13 @@ import estrategia.tactics.ConduzirAoGol;
  * pode estar indo para o outro lado, e o custo certo seria tempo ate um ponto de
  * encontro. Fica para quando a previsao de bola existir.
  */
-public final class Atacante extends Role {
+public final class RoleAtacante extends Role {
 
-    private final BuscarBola buscar = new BuscarBola();
-    private final ConduzirAoGol conduzir = new ConduzirAoGol();
-    private final ChutarAoGol chutar = new ChutarAoGol();
+    private final TacticBuscarBola buscar = new TacticBuscarBola();
+    private final TacticConduzirAoGol conduzir = new TacticConduzirAoGol();
+    private final TacticChutarAoGol chutar = new TacticChutarAoGol();
 
-    public Atacante(Papel _id) {
+    public RoleAtacante(Papel _id) {
         super(_id);
         bAddTactic(Tatica.BUSCAR_BOLA, buscar);
         bAddTactic(Tatica.CONDUZIR_AO_GOL, conduzir);
@@ -37,7 +37,7 @@ public final class Atacante extends Role {
     }
 
     @Override
-    public String strName() { return "Atacante"; }
+    public String strName() { return "RoleAtacante"; }
 
     @Override
     public void vInitialize() { bSetTactic(Tatica.BUSCAR_BOLA); }
@@ -50,7 +50,7 @@ public final class Atacante extends Role {
         }
 
         double aoGol = jogador.estado().posicao().distancia(ambiente.golDeles());
-        bSetTactic(aoGol <= ConduzirAoGol.DISTANCIA_DE_CHUTE
+        bSetTactic(aoGol <= TacticConduzirAoGol.DISTANCIA_DE_CHUTE
                 ? Tatica.CHUTAR_AO_GOL : Tatica.CONDUZIR_AO_GOL);
     }
 

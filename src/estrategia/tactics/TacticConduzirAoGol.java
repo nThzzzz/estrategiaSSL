@@ -4,8 +4,8 @@ import core.Vec2;
 import estrategia.ids.Habilidade;
 import estrategia.esqueleto.Tactic;
 import estrategia.ids.Tatica;
-import estrategia.skills.AndarPara;
-import estrategia.skills.OlharPara;
+import estrategia.skills.SkillAndarPara;
+import estrategia.skills.SkillOlharPara;
 
 /**
  * Leva a bola presa no dribbler ate a distancia de chute.
@@ -19,7 +19,7 @@ import estrategia.skills.OlharPara;
  * economiza o giro final, que e o momento mais arriscado da jogada inteira: girar
  * com a bola na boca e o jeito mais comum de perde-la.
  */
-public final class ConduzirAoGol extends Tactic {
+public final class TacticConduzirAoGol extends Tactic {
 
 
     /** Teto de velocidade com a bola presa, em mm/s. */
@@ -46,8 +46,8 @@ public final class ConduzirAoGol extends Tactic {
      */
     public static final double DISTANCIA_DE_CONDUCAO = 2000;
 
-    private final AndarPara andar = new AndarPara();
-    private final OlharPara olhar = new OlharPara();
+    private final SkillAndarPara andar = new SkillAndarPara();
+    private final SkillOlharPara olhar = new SkillOlharPara();
 
     /**
      * O id vem de {@link Tatica}, e nao de quem registra a tatica.
@@ -56,9 +56,9 @@ public final class ConduzirAoGol extends Tactic {
      * papeis ainda numeram por conta propria; ele pode sair assim que o ultimo
      * deles passar a usar este.
      */
-    public ConduzirAoGol() { this(Tatica.CONDUZIR_AO_GOL.id()); }
+    public TacticConduzirAoGol() { this(Tatica.CONDUZIR_AO_GOL.id()); }
 
-    public ConduzirAoGol(int _id) {
+    public TacticConduzirAoGol(int _id) {
         super(_id);
         andar.vSetVelMax(VEL_CONDUCAO);
         andar.vSetTolerancia(120);
@@ -66,7 +66,7 @@ public final class ConduzirAoGol extends Tactic {
     }
 
     @Override
-    public String strName() { return "ConduzirAoGol"; }
+    public String strName() { return "TacticConduzirAoGol"; }
 
     @Override
     public void vInitialize() { }

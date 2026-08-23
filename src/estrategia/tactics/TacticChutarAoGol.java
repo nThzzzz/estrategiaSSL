@@ -3,8 +3,8 @@ package estrategia.tactics;
 import estrategia.ids.Habilidade;
 import estrategia.esqueleto.Tactic;
 import estrategia.ids.Tatica;
-import estrategia.skills.Chutar;
-import estrategia.skills.OlharPara;
+import estrategia.skills.SkillChutar;
+import estrategia.skills.SkillOlharPara;
 
 /**
  * Mira o gol e chuta.
@@ -17,7 +17,7 @@ import estrategia.skills.OlharPara;
  * 2,5 m do gol, dois graus de desvio ja deslocam a bola quase 9 cm no fundo da
  * rede, e o gol tem 1 m de largura.
  */
-public final class ChutarAoGol extends Tactic {
+public final class TacticChutarAoGol extends Tactic {
 
 
     /** Erro de mira aceito antes de acionar o chutador. */
@@ -50,8 +50,8 @@ public final class ChutarAoGol extends Tactic {
      */
     public static final double VEL_MAX_CONTROLE = 1500; // mm/s
 
-    private final OlharPara olhar = new OlharPara();
-    private final Chutar chutar = new Chutar();
+    private final SkillOlharPara olhar = new SkillOlharPara();
+    private final SkillChutar chutar = new SkillChutar();
 
     /** Instante em que a bola entrou no sensor, ou NaN se ela nao esta la. */
     private double dPosseDesde = Double.NaN;
@@ -63,9 +63,9 @@ public final class ChutarAoGol extends Tactic {
      * papeis ainda numeram por conta propria; ele pode sair assim que o ultimo
      * deles passar a usar este.
      */
-    public ChutarAoGol() { this(Tatica.CHUTAR_AO_GOL.id()); }
+    public TacticChutarAoGol() { this(Tatica.CHUTAR_AO_GOL.id()); }
 
-    public ChutarAoGol(int _id) {
+    public TacticChutarAoGol(int _id) {
         super(_id);
         olhar.vSetTolerancia(TOLERANCIA_DE_MIRA);
         bAddSkill(Habilidade.OLHAR_PARA, olhar);
@@ -76,7 +76,7 @@ public final class ChutarAoGol extends Tactic {
     public void vSetVelocidade(double _mmPorSegundo) { chutar.vSetVelocidade(_mmPorSegundo); }
 
     @Override
-    public String strName() { return "ChutarAoGol"; }
+    public String strName() { return "TacticChutarAoGol"; }
 
     @Override
     public void vInitialize() {

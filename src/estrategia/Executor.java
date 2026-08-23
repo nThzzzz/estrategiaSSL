@@ -122,7 +122,7 @@ public final class Executor {
      * bastaria: ele desacelera a {@code ACEL_MAX}, entao a 3 m/s ainda entraria
      * 1,5 m depois do comando ir a zero. O que se limita e a velocidade de
      * APROXIMACAO, ao maior valor que ainda deixa o robo parar antes da linha --
-     * {@code v = sqrt(2*a*d)}, o mesmo perfil de frenagem que {@code AndarPara}
+     * {@code v = sqrt(2*a*d)}, o mesmo perfil de frenagem que {@code SkillAndarPara}
      * usa para chegar num ponto. De longe nao corta nada; chegando perto, freia na
      * taxa certa.
      *

@@ -11,18 +11,18 @@ import model.Robo;
  * enquanto a skill estiver ativa, um chute solto viraria uma sequencia de chutes
  * a vazio.
  *
- * <p>Ela nao mira. Mirar e girar o robo, ou seja {@link OlharPara}, e quem decide
+ * <p>Ela nao mira. Mirar e girar o robo, ou seja {@link SkillOlharPara}, e quem decide
  * que a mira ja esta boa o suficiente e a tatica. Uma skill que fizesse as duas
  * coisas nao poderia ser usada para tocar a bola de leve sem mirar.
  */
-public final class Chutar extends Skill {
+public final class SkillChutar extends Skill {
 
     private double dVelocidade = Robo.VEL_CHUTE_MAX;
     private boolean bChip;
 
-    public Chutar() { }
+    public SkillChutar() { }
 
-    public Chutar(double _velocidade) { this.dVelocidade = _velocidade; }
+    public SkillChutar(double _velocidade) { this.dVelocidade = _velocidade; }
 
     /** Velocidade de saida da bola, em mm/s. O teto da regra e 6500. */
     public void vSetVelocidade(double _mmPorSegundo) {
@@ -33,7 +33,7 @@ public final class Chutar extends Skill {
     public void vSetChip(boolean _chip) { this.bChip = _chip; }
 
     @Override
-    public String strName() { return "Chutar"; }
+    public String strName() { return "SkillChutar"; }
 
     @Override
     public void vInitialize() { }

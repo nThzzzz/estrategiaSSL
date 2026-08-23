@@ -130,7 +130,7 @@ public abstract class Tactic {
      * Roda uma skill agora, alem da corrente.
      *
      * <p>Serve para as skills que escrevem partes DIFERENTES do comando --
-     * {@code AndarPara} mexe no deslocamento, {@code OlharPara} no giro -- e por
+     * {@code SkillAndarPara} mexe no deslocamento, {@code SkillOlharPara} no giro -- e por
      * isso podem valer ao mesmo tempo. Um robo omnidirecional anda para um lado
      * enquanto olha para outro, e forcar essas duas a se revezarem produziria um
      * movimento aos trancos, sem necessidade nenhuma.

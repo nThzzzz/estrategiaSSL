@@ -2,7 +2,7 @@ package app;
 
 import estrategia.Ambiente;
 import estrategia.Executor;
-import estrategia.coaches.Bancada;
+import estrategia.coaches.CoachBancada;
 import jogo.Arbitro;
 import jogo.ArbitroLocal;
 import jogo.EstadoDeJogo;
@@ -42,7 +42,7 @@ public final class Cliente implements AutoCloseable {
     private final Rastreador rastreador = new Rastreador();
     private final Arbitro arbitro = new Arbitro();
     private final ArbitroLocal arbitroLocal = new ArbitroLocal();
-    private final Executor executor = new Executor(new Bancada());
+    private final Executor executor = new Executor(new CoachBancada());
 
     /**
      * Folga somada a area de defesa para formar a zona onde so o goleiro entra.
