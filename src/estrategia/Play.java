@@ -13,10 +13,10 @@ import java.util.Map;
  * comanda robo nenhum diretamente -- isso desce por Role, Tactic e Skill.
  *
  * <p>Uma play declara os papeis da jogada IDEAL, e nao os que couberem hoje. Cada
- * papel entra numa das tres categorias de {@link Role.Prioridade} -- {@code VERY},
- * {@code NORMAL}, {@code LESS} -- e e ela que decide quem fica sem robo quando
- * faltam robos. E o que permite escrever uma play pensando em seis e ela rodar
- * com cinco: quem sobra e o ultimo {@code LESS}, e nao o goleiro.
+ * papel entra numa categoria de {@link Role.Prioridade} -- de {@code MAXIMA} a
+ * {@code OPCIONAL} -- e e ela que decide quem fica sem robo quando faltam robos.
+ * E o que permite escrever uma play pensando em seis e ela rodar com cinco: quem
+ * sobra e o ultimo {@code OPCIONAL}, e nao o goleiro.
  *
  * <p>Uma play tem inicio e fim declarados, e e isso que permite ao {@link Coach}
  * aprender com ela:
@@ -155,9 +155,9 @@ public abstract class Play {
         if (bCheckEndConditions())            { vAbortar(); return; }
 
         vOptimizeRoleAssignment(_disponiveis);
-        // Perder um papel VERY no meio da jogada -- robo que quebrou ou sumiu da
-        // visao -- e o mesmo que a jogada deixar de existir. Continuar sem ele
-        // seria rodar uma defesa sem goleiro.
+        // Perder um papel de prioridade maxima no meio da jogada -- robo que
+        // quebrou ou sumiu da visao -- e o mesmo que a jogada deixar de existir.
+        // Continuar sem ele seria rodar uma defesa sem goleiro.
         if (!bPapeisEssenciaisAtribuidos()) { vAbortar(); return; }
 
         vRun();
@@ -251,7 +251,7 @@ public abstract class Play {
     public List<Role> roles() { return List.copyOf(playRoles.values()); }
 
     /**
-     * Quantos robos esta play precisa para existir: um por papel {@code VERY}.
+     * Quantos robos esta play precisa para existir: um por papel {@code MAXIMA}.
      *
      * <p>E o numero que o {@link Coach} compara com os robos em campo antes de
      * sortear. Uma play que precisa de goleiro e batedor nao deve nem entrar no
@@ -263,7 +263,7 @@ public abstract class Play {
                 .filter(r -> r.prioridade().bEssencial()).count();
     }
 
-    /** True quando todo papel {@code VERY} tem robo. */
+    /** True quando todo papel {@code MAXIMA} tem robo. */
     public boolean bPapeisEssenciaisAtribuidos() {
         return playRoles.values().stream()
                 .noneMatch(r -> r.prioridade().bEssencial() && r.player() == null);

@@ -250,8 +250,8 @@ public final class AutotesteEstrategia {
 
     private static void prioridadeDecideQuemEntraPrimeiro() {
         // Dois papeis, dois robos: o 1 esta perto da origem, o 2 esta longe.
-        RoleComCusto importante = new RoleComCusto(10, Role.Prioridade.VERY, Vec2.ZERO);
-        RoleComCusto secundaria = new RoleComCusto(11, Role.Prioridade.LESS, Vec2.ZERO);
+        RoleComCusto importante = new RoleComCusto(10, Role.Prioridade.MAXIMA, Vec2.ZERO);
+        RoleComCusto secundaria = new RoleComCusto(11, Role.Prioridade.BAIXA, Vec2.ZERO);
 
         PlayComRoles play = new PlayComRoles(importante, secundaria);
         CoachManual coach = new CoachManual(play);
@@ -259,15 +259,15 @@ public final class AutotesteEstrategia {
         coach.bSetPlay(play.id());
         exec.vTick(ambienteComRobos(0.0, new Vec2(100, 0), new Vec2(3000, 0)));
 
-        verdadeiro("prioridade: o papel VERY fica com o robo mais perto",
+        verdadeiro("prioridade: o papel MAXIMA fica com o robo mais perto",
                 importante.player() != null && importante.player().id() == 0);
-        verdadeiro("prioridade: e o de LESS fica com o que sobrou",
+        verdadeiro("prioridade: e o de BAIXA fica com o que sobrou",
                 secundaria.player() != null && secundaria.player().id() == 1);
     }
 
     /** Sem histerese, um empate quase perfeito faz os robos trocarem de papel toda hora. */
     private static void histereseEvitaTrocaTrocaDePapel() {
-        RoleComCusto papel = new RoleComCusto(10, Role.Prioridade.VERY, Vec2.ZERO);
+        RoleComCusto papel = new RoleComCusto(10, Role.Prioridade.MAXIMA, Vec2.ZERO);
         PlayComRoles play = new PlayComRoles(papel);
         CoachManual coach = new CoachManual(play);
         Executor exec = new Executor(coach);
@@ -419,27 +419,29 @@ public final class AutotesteEstrategia {
      * escreveu {@code bAddRole} -- o mesmo que decidir por acaso.
      */
     private static void categoriaDecideQuemFicaSemRobo() {
-        RoleComCusto goleiro = new RoleComCusto(10, Role.Prioridade.VERY, Vec2.ZERO);
-        RoleComCusto meio = new RoleComCusto(11, Role.Prioridade.NORMAL, Vec2.ZERO);
-        RoleComCusto apoio = new RoleComCusto(12, Role.Prioridade.LESS, Vec2.ZERO);
+        RoleComCusto goleiro = new RoleComCusto(10, Role.Prioridade.MAXIMA, Vec2.ZERO);
+        RoleComCusto meio = new RoleComCusto(11, Role.Prioridade.MEDIA, Vec2.ZERO);
+        RoleComCusto apoio = new RoleComCusto(12, Role.Prioridade.BAIXA, Vec2.ZERO);
+        RoleComCusto cobertura = new RoleComCusto(13, Role.Prioridade.OPCIONAL, Vec2.ZERO);
 
-        PlayComRoles play = new PlayComRoles(apoio, meio, goleiro); // fora de ordem
+        // Declaradas fora de ordem de proposito: quem manda e a categoria.
+        PlayComRoles play = new PlayComRoles(cobertura, apoio, meio, goleiro);
         CoachManual coach = new CoachManual(play);
         Executor exec = new Executor(coach);
         coach.bSetPlay(play.id());
         exec.vTick(ambienteComRobos(0.0, new Vec2(100, 0), new Vec2(200, 0)));
 
-        verdadeiro("categoria: VERY pega robo mesmo declarada por ultimo",
+        verdadeiro("categoria: MAXIMA pega robo mesmo declarada por ultimo",
                 goleiro.player() != null);
-        verdadeiro("categoria: NORMAL pega o robo que sobrou", meio.player() != null);
-        verdadeiro("categoria: LESS fica sem robo, e a play segue",
-                apoio.player() == null && play.bRodando());
+        verdadeiro("categoria: MEDIA pega o robo que sobrou", meio.player() != null);
+        verdadeiro("categoria: BAIXA e OPCIONAL ficam sem robo, e a play segue",
+                apoio.player() == null && cobertura.player() == null && play.bRodando());
     }
 
     /** Empate de categoria se desfaz pela ordem de declaracao: a ordenacao e estavel. */
     private static void dentroDaCategoriaValeAOrdemDeDeclaracao() {
-        RoleComCusto primeiro = new RoleComCusto(10, Role.Prioridade.NORMAL, Vec2.ZERO);
-        RoleComCusto segundo = new RoleComCusto(11, Role.Prioridade.NORMAL, Vec2.ZERO);
+        RoleComCusto primeiro = new RoleComCusto(10, Role.Prioridade.MEDIA, Vec2.ZERO);
+        RoleComCusto segundo = new RoleComCusto(11, Role.Prioridade.MEDIA, Vec2.ZERO);
 
         PlayComRoles play = new PlayComRoles(primeiro, segundo);
         CoachManual coach = new CoachManual(play);
@@ -458,8 +460,8 @@ public final class AutotesteEstrategia {
      * cada um escrevendo um comando por cima do outro.
      */
     private static void papelQuePerdeORoboFicaVazio() {
-        RoleComCusto fixa = new RoleComCusto(10, Role.Prioridade.VERY, Vec2.ZERO);
-        RoleComCusto solta = new RoleComCusto(11, Role.Prioridade.LESS, Vec2.ZERO);
+        RoleComCusto fixa = new RoleComCusto(10, Role.Prioridade.MAXIMA, Vec2.ZERO);
+        RoleComCusto solta = new RoleComCusto(11, Role.Prioridade.OPCIONAL, Vec2.ZERO);
 
         PlayComRoles play = new PlayComRoles(fixa, solta);
         CoachManual coach = new CoachManual(play);
@@ -480,8 +482,8 @@ public final class AutotesteEstrategia {
     /** Papel sem robo nunca roda, logo nunca termina: nao pode segurar a play. */
     private static void playTerminaComPapelSemRobo() {
         PlayQueTermina play = new PlayQueTermina(
-                new RoleQueAcaba(10, Role.Prioridade.VERY),
-                new RoleQueAcaba(11, Role.Prioridade.LESS));
+                new RoleQueAcaba(10, Role.Prioridade.MAXIMA),
+                new RoleQueAcaba(11, Role.Prioridade.OPCIONAL));
         CoachManual coach = new CoachManual(play);
         Executor exec = new Executor(coach);
         coach.bSetPlay(play.id());
@@ -499,13 +501,13 @@ public final class AutotesteEstrategia {
      */
     private static void playComEssencialDemaisNaoEntraNoSorteio() {
         PlayComRoles play = new PlayComRoles(
-                new RoleComCusto(10, Role.Prioridade.VERY, Vec2.ZERO),
-                new RoleComCusto(11, Role.Prioridade.VERY, Vec2.ZERO));
+                new RoleComCusto(10, Role.Prioridade.MAXIMA, Vec2.ZERO),
+                new RoleComCusto(11, Role.Prioridade.MAXIMA, Vec2.ZERO));
         CoachManual coach = new CoachManual(play);
         Executor exec = new Executor(coach);
 
         exec.vTick(ambienteComRobos(0.0, new Vec2(100, 0)));
-        verdadeiro("categoria: dois papeis VERY e um robo -- play indisponivel",
+        verdadeiro("categoria: dois papeis MAXIMA e um robo -- play indisponivel",
                 coach.playsDisponiveis().isEmpty());
 
         exec.vTick(ambienteComRobos(0.1, new Vec2(100, 0), new Vec2(200, 0)));
@@ -513,11 +515,11 @@ public final class AutotesteEstrategia {
                 coach.playsDisponiveis().size() == 1);
     }
 
-    /** Perder um VERY no meio da jogada e a jogada deixar de existir. */
+    /** Perder um papel MAXIMA no meio da jogada e a jogada deixar de existir. */
     private static void perderPapelEssencialAbortaAPlay() {
         PlayComRoles play = new PlayComRoles(
-                new RoleComCusto(10, Role.Prioridade.VERY, Vec2.ZERO),
-                new RoleComCusto(11, Role.Prioridade.VERY, new Vec2(3000, 0)));
+                new RoleComCusto(10, Role.Prioridade.MAXIMA, Vec2.ZERO),
+                new RoleComCusto(11, Role.Prioridade.MAXIMA, new Vec2(3000, 0)));
         CoachManual coach = new CoachManual(play);
         Executor exec = new Executor(coach);
         coach.bSetPlay(play.id());
@@ -526,7 +528,7 @@ public final class AutotesteEstrategia {
         verdadeiro("categoria: com os dois robos a play roda", play.bRodando());
 
         exec.vTick(ambienteComRobos(0.1, new Vec2(100, 0)));
-        verdadeiro("categoria: perder um papel VERY aborta a play",
+        verdadeiro("categoria: perder um papel MAXIMA aborta a play",
                 play.status() == Play.Status.ABORTADA);
     }
 
@@ -867,7 +869,7 @@ public final class AutotesteEstrategia {
 
     private static final class RoleContada extends Role {
         int iRuns;
-        RoleContada(Tactic t) { super(1, Prioridade.VERY); bAddTactic(1, t); }
+        RoleContada(Tactic t) { super(1, Prioridade.MAXIMA); bAddTactic(1, t); }
         @Override public String strName() { return "role de teste"; }
         @Override public void vInitialize() { }
         @Override protected void vRun() { iRuns++; }
@@ -975,7 +977,7 @@ public final class AutotesteEstrategia {
     /** Papel que chuta assim que a bola encosta; existe so para o diario ter o que anotar. */
     private static final class RoleQueChuta extends Role {
         RoleQueChuta(int id) {
-            super(id, Prioridade.VERY);
+            super(id, Prioridade.MAXIMA);
             bAddTactic(1, new TacticQueChuta());
         }
         @Override public String strName() { return "chutador"; }

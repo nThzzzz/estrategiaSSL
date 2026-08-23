@@ -251,13 +251,14 @@ três categorias:
 
 | categoria | pode faltar? | exemplo |
 |---|---|---|
-| `VERY` | **não** — sem ele a jogada não existe | goleiro numa defesa, batedor num pênalti |
-| `NORMAL` | sim, com perda de qualidade | o corpo da jogada |
-| `LESS` | sim, sem a jogada sentir | cobertura, apoio distante |
+| `MAXIMA` | **não** — sem ele a jogada não existe | goleiro numa defesa, batedor num pênalti |
+| `MEDIA` | sim, com perda de qualidade | o corpo da jogada |
+| `BAIXA` | sim | apoio |
+| `OPCIONAL` | sim, sem a jogada sentir | cobertura, apoio distante |
 
-São três e não cinco porque a pergunta que a play responde é "este papel pode faltar?", e ela tem
-três respostas úteis. É isso que permite escrever uma play pensando em seis robôs e ela rodar com
-**cinco**: com um robô a menos, quem fica sem função é o último `LESS`, e não o goleiro.
+A categoria responde "este papel pode faltar?". É isso que permite escrever uma play pensando em
+seis robôs e ela rodar com **cinco**: com um robô a menos, quem fica sem função é o último
+`OPCIONAL`, e não o goleiro.
 
 Dentro da mesma categoria vale a **ordem de declaração**, porque a ordenação é estável — papéis
 igualmente dispensáveis saem na ordem em que a play os escreveu, que é onde essa decisão fica
@@ -272,10 +273,10 @@ Três consequências, e as três são o que faz o mecanismo funcionar de verdade
 * **Papel que perde o robô fica explicitamente vazio.** Guardar o robô do quadro anterior faria o
   mesmo robô aparecer em dois papéis ao mesmo tempo, cada um escrevendo um comando por cima do
   outro.
-* **`VERY` é levado a sério nas duas pontas.** Uma play cujos `VERY` não cabem nos robôs
+* **`MAXIMA` é levado a sério nas duas pontas.** Uma play cujos `MAXIMA` não cabem nos robôs
   disponíveis não entra no sorteio do coach — começar e abortar no primeiro tique gastaria um
-  episódio de aprendizado com um resultado que não diz nada sobre a jogada — e perder um `VERY` no
-  meio da jogada aborta a play, porque continuar seria rodar uma defesa sem goleiro.
+  episódio de aprendizado com um resultado que não diz nada sobre a jogada — e perder um `MAXIMA`
+  no meio da jogada aborta a play, porque continuar seria rodar uma defesa sem goleiro.
 
 ### Projeção e o fantasma
 

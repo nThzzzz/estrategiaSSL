@@ -35,29 +35,31 @@ public abstract class Role {
      * classificacao, quem ficasse de fora seria decidido pela ordem em que
      * alguem escreveu {@code bAddRole}, o que e o mesmo que decidir por acaso.
      *
-     * <p>Sao tres categorias e nao cinco de proposito. A pergunta que a play
-     * responde e "este papel pode faltar?", e ela tem tres respostas uteis:
+     * <p>A categoria responde "este papel pode faltar?":
      *
      * <ul>
-     *   <li>{@link #VERY} -- nao pode. Sem ele a jogada nao existe: o goleiro numa
-     *       defesa, o batedor num penalti. Se nao houver robo para todos os VERY,
-     *       a play nao e nem escolhida, e aborta se perder um no meio.
-     *   <li>{@link #NORMAL} -- o corpo da jogada. Faltando um, ela perde qualidade
+     *   <li>{@link #MAXIMA} -- nao pode. Sem ele a jogada nao existe: o goleiro
+     *       numa defesa, o batedor num penalti. Se nao houver robo para todos os
+     *       papeis de prioridade maxima, a play nao e nem escolhida, e aborta se
+     *       perder um no meio.
+     *   <li>{@link #MEDIA} -- o corpo da jogada. Faltando um, ela perde qualidade
      *       e continua de pe.
-     *   <li>{@link #LESS} -- se sobrar robo, otimo. E onde entram os papeis de
-     *       cobertura e de apoio distante.
+     *   <li>{@link #BAIXA} -- apoio. Sai antes do resto quando falta robo.
+     *   <li>{@link #OPCIONAL} -- se sobrar robo, otimo; se nao, a jogada nao
+     *       sente. E onde entram cobertura e apoio distante.
      * </ul>
      *
      * <p>E isso que permite escrever uma play pensando em seis robos e ela rodar
-     * com cinco: com um robo a menos, quem fica sem funcao e o ultimo LESS, e nao
-     * o goleiro. Dentro da mesma categoria vale a ordem de declaracao, porque a
-     * ordenacao e estavel -- entao papeis igualmente dispensaveis saem na ordem em
-     * que a play os escreveu, que e onde essa decisao fica visivel.
+     * com cinco: com um robo a menos, quem fica sem funcao e o ultimo OPCIONAL, e
+     * nao o goleiro. Dentro da mesma categoria vale a ordem de declaracao, porque
+     * a ordenacao e estavel -- entao papeis igualmente dispensaveis saem na ordem
+     * em que a play os escreveu, que e onde essa decisao fica visivel.
      */
     public enum Prioridade {
-        VERY(2),
-        NORMAL(1),
-        LESS(0);
+        MAXIMA(3),
+        MEDIA(2),
+        BAIXA(1),
+        OPCIONAL(0);
 
         private final int peso;
         Prioridade(int peso) { this.peso = peso; }
@@ -66,7 +68,7 @@ public abstract class Role {
         public int peso() { return peso; }
 
         /** True quando a play nao roda sem este papel. */
-        public boolean bEssencial() { return this == VERY; }
+        public boolean bEssencial() { return this == MAXIMA; }
     }
 
     private final Map<Integer, Tactic> robotTactics = new LinkedHashMap<>();
@@ -77,7 +79,7 @@ public abstract class Role {
     protected int iID;
     protected boolean bInitialized;
     protected boolean bFinished;
-    protected Prioridade prioridade = Prioridade.NORMAL;
+    protected Prioridade prioridade = Prioridade.MEDIA;
 
     protected Tactic currentTactic;
 

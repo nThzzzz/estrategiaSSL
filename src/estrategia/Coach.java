@@ -165,12 +165,12 @@ public abstract class Coach {
      * tem resposta com o mundo em maos, e a play ainda nao comecou -- logo
      * ninguem mais teria entregado isso a ela.
      *
-     * <p>A segunda e quantos robos ha em campo. Uma play cujos papeis {@code VERY}
-     * nao cabem nos robos disponiveis fica de fora do sorteio, em vez de ser
-     * escolhida e abortar no primeiro tique: um episodio que morre antes de
-     * comecar gastaria uma rodada de aprendizado com um resultado que nao diz nada
-     * sobre a jogada. Os papeis {@code NORMAL} e {@code LESS} nao entram na conta,
-     * porque a play roda sem eles -- e essa a razao de existirem.
+     * <p>A segunda e quantos robos ha em campo. Uma play cujos papeis de
+     * prioridade {@code MAXIMA} nao cabem nos robos disponiveis fica de fora do
+     * sorteio, em vez de ser escolhida e abortar no primeiro tique: um episodio
+     * que morre antes de comecar gastaria uma rodada de aprendizado com um
+     * resultado que nao diz nada sobre a jogada. As outras categorias nao entram
+     * na conta, porque a play roda sem elas -- e essa a razao de existirem.
      */
     public List<Play> playsDisponiveis() {
         List<Play> saida = new ArrayList<>();
