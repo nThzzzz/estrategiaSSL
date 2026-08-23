@@ -24,7 +24,7 @@ public final class TesteAtacante extends Play {
 
     public TesteAtacante(int _id) {
         super(_id);
-        bAddRole(new Atacante(ROLE_ATACANTE));
+        bAddRole(new Atacante(ROLE_ATACANTE), Prioridade.MAXIMA);
         vSetTempoLimite(30);
     }
 

@@ -13,10 +13,11 @@ import java.util.Map;
  * comanda robo nenhum diretamente -- isso desce por Role, Tactic e Skill.
  *
  * <p>Uma play declara os papeis da jogada IDEAL, e nao os que couberem hoje. Cada
- * papel entra numa categoria de {@link Role.Prioridade} -- de {@code MAXIMA} a
- * {@code OPCIONAL} -- e e ela que decide quem fica sem robo quando faltam robos.
- * E o que permite escrever uma play pensando em seis e ela rodar com cinco: quem
- * sobra e o ultimo {@code OPCIONAL}, e nao o goleiro.
+ * papel entra numa {@link Prioridade} -- de {@code MAXIMA} a {@code OPCIONAL} --
+ * declarada AQUI, no {@link #bAddRole}, e nao dentro da Role: o mesmo papel vale
+ * coisas diferentes em jogadas diferentes. E ela que decide quem fica sem robo
+ * quando faltam robos, e e o que permite escrever uma play pensando em seis e ela
+ * rodar com cinco: quem sobra e o ultimo {@code OPCIONAL}, e nao o goleiro.
  *
  * <p>Uma play tem inicio e fim declarados, e e isso que permite ao {@link Coach}
  * aprender com ela:
@@ -41,6 +42,56 @@ import java.util.Map;
  * aprenderia sobre um jogo que nao existe.
  */
 public abstract class Play {
+
+    /**
+     * Em que ordem os papeis desta play pegam robo quando faltam robos.
+     *
+     * <p>Uma play declara os papeis que a jogada IDEAL teria, e quase nunca ha
+     * robo para todos: cartao, quebra, robo fora do alcance da visao. Sem uma
+     * classificacao, quem ficasse de fora seria decidido pela ordem em que alguem
+     * escreveu {@code bAddRole}, o que e o mesmo que decidir por acaso.
+     *
+     * <p>Mora na PLAY e nao na {@link Role} de proposito. O mesmo papel vale
+     * coisas diferentes em jogadas diferentes: um marcador e {@code MAXIMA} numa
+     * defesa e {@code OPCIONAL} num ataque com o campo livre. Guardar a prioridade
+     * na Role obrigaria a escrever duas classes identicas so para dizer isso, ou a
+     * mexer no papel de uma jogada e quebrar outra sem perceber.
+     *
+     * <p>A categoria responde "este papel pode faltar?":
+     *
+     * <ul>
+     *   <li>{@link #MAXIMA} -- nao pode. Sem ele a jogada nao existe: o goleiro
+     *       numa defesa, o batedor num penalti. Se nao houver robo para todos os
+     *       papeis de prioridade maxima, a play nao e nem escolhida, e aborta se
+     *       perder um no meio.
+     *   <li>{@link #MEDIA} -- o corpo da jogada. Faltando um, ela perde qualidade
+     *       e continua de pe.
+     *   <li>{@link #BAIXA} -- apoio. Sai antes do resto quando falta robo.
+     *   <li>{@link #OPCIONAL} -- se sobrar robo, otimo; se nao, a jogada nao
+     *       sente. E onde entram cobertura e apoio distante.
+     * </ul>
+     *
+     * <p>E isso que permite escrever uma play pensando em seis robos e ela rodar
+     * com cinco: com um robo a menos, quem fica sem funcao e o ultimo OPCIONAL, e
+     * nao o goleiro. Dentro da mesma categoria vale a ordem de declaracao, porque
+     * a ordenacao e estavel -- entao papeis igualmente dispensaveis saem na ordem
+     * em que a play os escreveu, que e onde essa decisao fica visivel.
+     */
+    public enum Prioridade {
+        MAXIMA(3),
+        MEDIA(2),
+        BAIXA(1),
+        OPCIONAL(0);
+
+        private final int peso;
+        Prioridade(int peso) { this.peso = peso; }
+
+        /** Maior pega robo primeiro. */
+        public int peso() { return peso; }
+
+        /** True quando a play nao roda sem este papel. */
+        public boolean bEssencial() { return this == MAXIMA; }
+    }
 
     /** Onde a play esta no proprio ciclo. */
     public enum Status {
@@ -68,6 +119,9 @@ public abstract class Play {
     public static final double HISTERESE_DE_ATRIBUICAO = 0.7;
 
     private final Map<Integer, Role> playRoles = new LinkedHashMap<>();
+
+    /** A prioridade de cada papel NESTA play, indexada pelo id do papel. */
+    private final Map<Integer, Prioridade> prioridades = new LinkedHashMap<>();
 
     protected Ambiente ambiente;
     protected Status status = Status.PARADA;
@@ -242,10 +296,25 @@ public abstract class Play {
 
     // ------------------------------------------------- roles
 
-    public boolean bAddRole(Role _role) {
-        if (_role == null || playRoles.containsKey(_role.id())) return false;
+    /**
+     * Declara um papel e o quanto ele importa NESTA jogada.
+     *
+     * <p>A prioridade e obrigatoria porque e uma decisao de projeto da play, e nao
+     * um detalhe com padrao razoavel: e ela que diz quem fica sem robo quando
+     * faltam robos. Um padrao silencioso faria toda play nova cair na mesma
+     * categoria e o mecanismo inteiro virar enfeite.
+     */
+    public boolean bAddRole(Role _role, Prioridade _prioridade) {
+        if (_role == null || _prioridade == null) return false;
+        if (playRoles.containsKey(_role.id())) return false;
         playRoles.put(_role.id(), _role);
+        prioridades.put(_role.id(), _prioridade);
         return true;
+    }
+
+    /** A prioridade com que este papel foi declarado aqui. */
+    public Prioridade prioridadeDe(Role _role) {
+        return prioridades.getOrDefault(_role.id(), Prioridade.MEDIA);
     }
 
     public List<Role> roles() { return List.copyOf(playRoles.values()); }
@@ -260,13 +329,13 @@ public abstract class Play {
      */
     public int iRobosMinimos() {
         return (int) playRoles.values().stream()
-                .filter(r -> r.prioridade().bEssencial()).count();
+                .filter(r -> prioridadeDe(r).bEssencial()).count();
     }
 
     /** True quando todo papel {@code MAXIMA} tem robo. */
     public boolean bPapeisEssenciaisAtribuidos() {
         return playRoles.values().stream()
-                .noneMatch(r -> r.prioridade().bEssencial() && r.player() == null);
+                .noneMatch(r -> prioridadeDe(r).bEssencial() && r.player() == null);
     }
 
     public void vResetAllRoles() {
@@ -276,7 +345,7 @@ public abstract class Play {
     /**
      * Casa robos com papeis, da categoria mais alta para a mais baixa.
      *
-     * <p>Guloso, e nao otimo: para cada papel na ordem de {@link Role.Prioridade},
+     * <p>Guloso, e nao otimo: para cada papel na ordem de {@link Prioridade},
      * pega o robo de menor custo que ainda esta livre. Uma atribuicao otima (o
      * hungaro, que o SSL-Strategy usa) troca alguns milimetros de custo total por
      * bem mais codigo, e a diferenca so aparece em empates. O que importa de
@@ -297,7 +366,7 @@ public abstract class Play {
         List<Jogador> livres = new ArrayList<>(_disponiveis);
 
         List<Role> porPrioridade = new ArrayList<>(playRoles.values());
-        porPrioridade.sort(Comparator.comparingInt((Role r) -> r.prioridade().peso()).reversed());
+        porPrioridade.sort(Comparator.comparingInt((Role r) -> prioridadeDe(r).peso()).reversed());
 
         for (Role role : porPrioridade) {
             Jogador atual = role.player();

@@ -16,60 +16,22 @@ import java.util.Map;
  *   Skill   -> uma micro habilidade    (um robo)
  * </pre>
  *
- * <p>A Role NAO escolhe qual robo a executa. Ela declara o papel e a
- * {@link Prioridade}, e a Play atribui os robos em
- * {@link Play#vOptimizeRoleAssignment}. E o que faz a mesma play continuar
- * valendo quando um robo leva cartao ou quebra: sem isso, uma play que fixasse
- * "o 3 e o goleiro" pararia de funcionar no instante em que o 3 saisse de campo.
+ * <p>A Role NAO escolhe qual robo a executa, e tambem NAO diz o quanto ela
+ * importa. Ela declara o que o papel faz e o {@link #dCusto} de cada candidato; a
+ * {@link Play} e que atribui os robos, e e la que mora a
+ * {@link Play.Prioridade} deste papel NAQUELA jogada. O mesmo papel vale coisas
+ * diferentes em jogadas diferentes -- um marcador e essencial numa defesa e
+ * dispensavel num ataque com o campo livre -- e uma prioridade gravada na Role
+ * obrigaria a escrever duas classes iguais so para dizer isso.
+ *
+ * <p>Nao escolher o robo e o que faz a mesma play continuar valendo quando um
+ * robo leva cartao ou quebra: uma play que fixasse "o 3 e o goleiro" pararia de
+ * funcionar no instante em que o 3 saisse de campo.
  *
  * <p>Papel sem robo e situacao normal, e nao erro. Ele fica com
  * {@link #player()} nulo, nao roda e nao conta para o fim da play.
  */
 public abstract class Role {
-
-    /**
-     * Em que ordem os papeis pegam robo quando faltam robos.
-     *
-     * <p>Uma play declara os papeis que a jogada IDEAL teria, e quase nunca ha
-     * robo para todos: cartao, quebra, robo fora do alcance da visao. Sem uma
-     * classificacao, quem ficasse de fora seria decidido pela ordem em que
-     * alguem escreveu {@code bAddRole}, o que e o mesmo que decidir por acaso.
-     *
-     * <p>A categoria responde "este papel pode faltar?":
-     *
-     * <ul>
-     *   <li>{@link #MAXIMA} -- nao pode. Sem ele a jogada nao existe: o goleiro
-     *       numa defesa, o batedor num penalti. Se nao houver robo para todos os
-     *       papeis de prioridade maxima, a play nao e nem escolhida, e aborta se
-     *       perder um no meio.
-     *   <li>{@link #MEDIA} -- o corpo da jogada. Faltando um, ela perde qualidade
-     *       e continua de pe.
-     *   <li>{@link #BAIXA} -- apoio. Sai antes do resto quando falta robo.
-     *   <li>{@link #OPCIONAL} -- se sobrar robo, otimo; se nao, a jogada nao
-     *       sente. E onde entram cobertura e apoio distante.
-     * </ul>
-     *
-     * <p>E isso que permite escrever uma play pensando em seis robos e ela rodar
-     * com cinco: com um robo a menos, quem fica sem funcao e o ultimo OPCIONAL, e
-     * nao o goleiro. Dentro da mesma categoria vale a ordem de declaracao, porque
-     * a ordenacao e estavel -- entao papeis igualmente dispensaveis saem na ordem
-     * em que a play os escreveu, que e onde essa decisao fica visivel.
-     */
-    public enum Prioridade {
-        MAXIMA(3),
-        MEDIA(2),
-        BAIXA(1),
-        OPCIONAL(0);
-
-        private final int peso;
-        Prioridade(int peso) { this.peso = peso; }
-
-        /** Maior pega robo primeiro. */
-        public int peso() { return peso; }
-
-        /** True quando a play nao roda sem este papel. */
-        public boolean bEssencial() { return this == MAXIMA; }
-    }
 
     private final Map<Integer, Tactic> robotTactics = new LinkedHashMap<>();
 
@@ -79,14 +41,10 @@ public abstract class Role {
     protected int iID;
     protected boolean bInitialized;
     protected boolean bFinished;
-    protected Prioridade prioridade = Prioridade.MEDIA;
 
     protected Tactic currentTactic;
 
-    protected Role(int _id, Prioridade _prioridade) {
-        this.iID = _id;
-        this.prioridade = _prioridade;
-    }
+    protected Role(int _id) { this.iID = _id; }
 
     // ------------------------------------------------- a implementar
 
@@ -172,8 +130,6 @@ public abstract class Role {
     // ------------------------------------------------- atribuicao
 
     public int id() { return iID; }
-    public Prioridade prioridade() { return prioridade; }
-    public void vSetPrioridade(Prioridade p) { this.prioridade = p; }
 
     /** Robo que esta executando este papel, ou {@code null}. */
     public Jogador player() { return jogador; }

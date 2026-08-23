@@ -32,7 +32,7 @@ public final class Atacante extends Role {
     private final ChutarAoGol chutar = new ChutarAoGol(TATICA_CHUTAR);
 
     public Atacante(int _id) {
-        super(_id, Prioridade.MAXIMA);
+        super(_id);
         bAddTactic(TATICA_BUSCAR, buscar);
         bAddTactic(TATICA_CONDUZIR, conduzir);
         bAddTactic(TATICA_CHUTAR, chutar);

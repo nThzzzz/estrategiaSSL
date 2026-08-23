@@ -233,7 +233,7 @@ ensaiadas.
 
 ### Papéis e robôs
 
-A Role não escolhe qual robô a executa. Ela declara o papel, a categoria e o `dCusto()` de cada
+A Role não escolhe qual robô a executa. Ela declara o que o papel faz e o `dCusto()` de cada
 candidato, e a Play atribui. É o que faz a mesma play continuar valendo quando um robô leva
 cartão ou quebra: uma play que fixasse "o 3 é o goleiro" pararia de funcionar no instante em que
 o 3 saísse de campo.
@@ -242,12 +242,12 @@ A atribuição tem **histerese**: quem já está no papel leva 30% de vantagem. 
 a distâncias parecidas ficam trocando de função a cada quadro e nenhum dos dois chega a lugar
 nenhum.
 
-### As três categorias de papel
+### A prioridade de cada papel, declarada pela play
 
 Uma play declara os papéis da jogada **ideal**, e quase nunca há robô para todos: cartão, quebra,
 robô fora do alcance da visão. Sem uma classificação, quem ficasse de fora seria decidido pela
 ordem em que alguém escreveu `bAddRole` — o mesmo que decidir por acaso. Toda Role entra numa de
-três categorias:
+quatro categorias:
 
 | categoria | pode faltar? | exemplo |
 |---|---|---|
@@ -263,6 +263,17 @@ seis robôs e ela rodar com **cinco**: com um robô a menos, quem fica sem funç
 Dentro da mesma categoria vale a **ordem de declaração**, porque a ordenação é estável — papéis
 igualmente dispensáveis saem na ordem em que a play os escreveu, que é onde essa decisão fica
 visível para quem lê a jogada.
+
+A prioridade mora na **play**, e não na Role: quem a declara é o `bAddRole(role, prioridade)`.
+O mesmo papel vale coisas diferentes em jogadas diferentes — um marcador é `MAXIMA` numa defesa e
+`OPCIONAL` num ataque com o campo livre. Guardá-la dentro da Role obrigaria a escrever duas
+classes idênticas só para dizer isso, ou a mexer no papel de uma jogada e quebrar outra sem
+perceber. A Role declara o que faz e o `dCusto()` de cada candidato; o quanto ela importa é
+decisão de quem monta a jogada.
+
+E a prioridade é **obrigatória** no `bAddRole`, sem padrão silencioso: é uma decisão de projeto da
+play, não um detalhe. Um padrão faria toda play nova cair na mesma categoria e o mecanismo inteiro
+virar enfeite.
 
 Três consequências, e as três são o que faz o mecanismo funcionar de verdade:
 
