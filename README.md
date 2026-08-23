@@ -492,6 +492,25 @@ diferente da que está sendo obedecida seria pior que não ver borda nenhuma. Ap
 **nosso** lado: a área deles também é proibida pela regra, mas a estratégia ainda não a trata, e
 desenhar uma restrição que não está em vigor prometeria o que o código não cumpre.
 
+### O lado nunca se deduz de um campo ausente
+
+`blue_team_on_positive_half` é **`optional`** no protocolo, e a leitura era
+`has(...) && get(...)`. Um pacote sem o campo virava "azul no lado negativo" — que não é
+"não sei", é uma afirmação trocada. Com o Game Controller alternando pacotes com e sem ele, o
+lado invertia, a zona proibida pulava para a outra metade e a **nossa** área ficava
+desguarnecida: robô de linha entrava com o comando intacto, porque a zona que o `Executor`
+recortava era a do adversário. É pênalti, e do pior tipo — a tela desenhava a zona na metade
+errada com o mesmo ar de certeza.
+
+O `Arbitro` guarda agora o último valor que alguém **declarou**, fora do retrato cru: um pacote
+omisso não apaga o que já se sabia. Guardar o valor do *azul*, e não o nosso lado, mantém a
+tradução na leitura — trocar a nossa cor com a janela aberta continua valendo na hora.
+
+Enquanto ninguém declarou, o lado em uso é um chute, e o painel do árbitro diz isso em amarelo
+em vez de mostrar a contagem de pacotes. Vale a regra do projeto: o que está na tela ou veio da
+rede, ou é inferência, e inferência precisa aparecer como tal. O teste antigo só exercitava o
+árbitro de bancada, que preenche o campo sempre — foi por isso que o buraco sobreviveu.
+
 ### Os limites do árbitro ficam fora das plays
 
 `HALT` não deixa sair comando, e fora de jogo corrido a velocidade satura enquanto chute e

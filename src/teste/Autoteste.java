@@ -5,6 +5,7 @@ import java.util.List;
 import java.nio.file.Path;
 import java.nio.file.Files;
 import ajuste.Parametro;
+import core.Caixa;
 import core.Vec2;
 import model.Comando;
 import model.Cor;
@@ -21,6 +22,7 @@ import jogo.Acao;
 import jogo.Arbitro;
 import jogo.ArbitroLocal;
 import jogo.EstadoDeJogo;
+import proto.gc.SslGcRefereeMessage.Referee;
 import proto.gc.SslGcRefereeMessage.Referee.Command;
 import proto.sim.SslSimulationRobotControl.RobotControl;
 import proto.vision.MessagesRobocupSslDetection.SSL_DetectionBall;
@@ -112,6 +114,8 @@ public final class Autoteste {
         visaoViraQuadro();
         geometriaVemDaRede();
         comandoSaiEmMetrosPorSegundo();
+        ladoNaoInverteSemODeclarado();
+        zonaProibidaSegueONossoLado();
         zoomAncoraNoCursor();
         zoomNoBatenteNaoDesliza();
         zoomIgnoraPicoDoTrackpad();
@@ -123,6 +127,55 @@ public final class Autoteste {
     // ------------------------------------------------------------------ Kalman
 
     /** Alvo em velocidade constante: o filtro tem de achar a velocidade certa. */
+
+    /**
+     * O lado nao pode inverter quando o pacote omite quem esta no lado positivo.
+     *
+     * <p>{@code blue_team_on_positive_half} e OPTIONAL no protocolo. O codigo
+     * antigo fazia {@code has... && get...}, e um pacote sem o campo virava
+     * "azul no lado negativo" -- que nao e "nao sei", e uma AFIRMACAO trocada.
+     * Com o Game Controller alternando pacotes com e sem o campo, a zona proibida
+     * pulava para a outra metade e a nossa area ficava desguarnecida: robo de
+     * linha entrava sem nada cortar o comando, que e penalti.
+     *
+     * <p>O teste antigo so usava o {@link ArbitroLocal}, que preenche o campo
+     * sempre -- por isso o buraco nunca aparecia.
+     */
+    private static void ladoNaoInverteSemODeclarado() {
+        Arbitro a = new Arbitro();
+        a.setModoLocal(true);
+        ArbitroLocal gc = new ArbitroLocal();
+
+        gc.setAzulNoLadoPositivo(true);
+        a.doPainel(gc.comando(Command.STOP));
+        verdadeiro("arbitro: com o campo declarado, azul defende +x",
+                a.estado(Cor.AZUL).nossoLado() == 1);
+
+        // O mesmo comando, agora SEM o campo -- e o que um GC pode mandar.
+        Referee semLado = Referee.newBuilder(gc.comando(Command.STOP))
+                .clearBlueTeamOnPositiveHalf()
+                .build();
+        a.doPainel(semLado);
+
+        verdadeiro("arbitro: pacote sem o campo NAO inverte o lado do azul",
+                a.estado(Cor.AZUL).nossoLado() == 1);
+        verdadeiro("arbitro: nem o do amarelo",
+                a.estado(Cor.AMARELO).nossoLado() == -1);
+    }
+
+    /** A zona proibida tem de seguir o lado, e nao pular de metade sozinha. */
+    private static void zonaProibidaSegueONossoLado() {
+        Geometria g = Geometria.DIVISAO_B;
+        Caixa maisX = g.zonaProibida(1, 45, 0, 0);
+        Caixa menosX = g.zonaProibida(-1, 45, 0, 0);
+
+        verdadeiro("area: a zona de +x fica toda em x positivo",
+                maisX.xMin() > 0 && maisX.xMax() > 0);
+        verdadeiro("area: a zona de -x fica toda em x negativo",
+                menosX.xMin() < 0 && menosX.xMax() < 0);
+        verdadeiro("area: as duas nao se encostam",
+                maisX.xMin() > menosX.xMax());
+    }
 
     // ------------------------------------------------------- zoom do campo
 

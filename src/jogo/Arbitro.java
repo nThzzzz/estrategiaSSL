@@ -25,6 +25,26 @@ import proto.gc.SslGcRefereeMessage.Referee;
 public final class Arbitro {
 
     private volatile Referee ultima;
+
+    /**
+     * Ultimo {@code blue_team_on_positive_half} que alguem DECLAROU; null se
+     * ninguem declarou ainda.
+     *
+     * <p>Existe porque o campo e {@code optional} no protocolo, e a leitura
+     * antiga era {@code has(...) && get(...)}: um pacote sem o campo virava
+     * "azul no lado negativo", que nao e "nao sei" -- e uma afirmacao trocada.
+     * Com o Game Controller alternando pacotes com e sem ele, a zona proibida
+     * pulava de metade e a NOSSA area ficava desguarnecida, com robo de linha
+     * entrando sem nada cortar o comando. Isso e penalti, e o pior tipo de bug
+     * porque a tela mostrava a zona no lugar errado com a mesma confianca.
+     *
+     * <p>Fica fora da {@link #ultima} de proposito, e por isso sobrevive a um
+     * pacote omisso: e a unica coisa que o retrato cru nao consegue guardar.
+     * Guardar o valor do AZUL, e nao o nosso lado, mantem a traducao na leitura
+     * -- trocar a nossa cor com a janela aberta continua valendo na hora.
+     */
+    private volatile Boolean azulNoPositivoDeclarado;
+
     private volatile boolean modoLocal;
     private volatile long recebidoEm;
     private volatile long pacotes;
@@ -49,6 +69,7 @@ public final class Arbitro {
         this.modoLocal = local;
         this.ultima = null;
         this.recebidoEm = 0;
+        this.azulNoPositivoDeclarado = null;
     }
 
     /** Mensagem vinda do Game Controller. Ignorada em modo local. */
@@ -65,9 +86,22 @@ public final class Arbitro {
     }
 
     private void aceitar(Referee r) {
+        // So sobrescreve quando o pacote realmente declara: um pacote omisso nao
+        // apaga o que ja se sabia.
+        if (r.hasBlueTeamOnPositiveHalf()) {
+            this.azulNoPositivoDeclarado = r.getBlueTeamOnPositiveHalf();
+        }
         this.ultima = r;
         this.recebidoEm = System.nanoTime();
     }
+
+    /**
+     * True quando alguem ja declarou de que lado joga o azul.
+     *
+     * <p>Falso quer dizer que o lado em uso e um CHUTE, e nao um dado. Quem
+     * mostra a zona proibida na tela precisa saber a diferenca.
+     */
+    public boolean ladoDeclarado() { return azulNoPositivoDeclarado != null; }
 
     /** Segundos desde a ultima mensagem, ou infinito se nunca chegou nenhuma. */
     public double silencio() {
@@ -94,8 +128,10 @@ public final class Arbitro {
         boolean nosso = ehNosso(r.getCommand(), somosAzul);
 
         // blue_team_on_positive_half fala do AZUL; para nos, depende da cor.
-        boolean azulNoPositivo = r.hasBlueTeamOnPositiveHalf() && r.getBlueTeamOnPositiveHalf();
-        boolean nossoLadoPositivo = somosAzul == azulNoPositivo;
+        // Vem do ultimo pacote que DECLAROU, e nao deste: o campo e optional, e
+        // ler direto daqui fazia um pacote omisso inverter o lado.
+        Boolean declarado = azulNoPositivoDeclarado;
+        boolean nossoLadoPositivo = somosAzul == (declarado != null && declarado);
 
         Vec2 designada = r.hasDesignatedPosition()
                 ? new Vec2(r.getDesignatedPosition().getX(), r.getDesignatedPosition().getY())

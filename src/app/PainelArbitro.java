@@ -153,9 +153,16 @@ public final class PainelArbitro extends JPanel {
                     jogo.semArbitro() ? "nenhum comando ainda" : jogo.descricao(),
                     "nosso gol em " + (jogo.defendemosLadoPositivo() ? "+x" : "-x")));
         } else if (cliente.recebendoArbitro()) {
-            estado.setForeground(Paleta.OK);
-            estado.setText(duasLinhas(jogo.descricao(),
-                    cliente.pacotesArbitro() + " pacotes"));
+            // O lado so aparece aqui quando NAO foi declarado. Com ele declarado a
+            // contagem de pacotes e mais util; sem ele, o que esta na tela e um
+            // palpite -- e uma zona proibida desenhada na metade errada com ar de
+            // certeza foi exatamente como o lado invertido passou despercebido.
+            boolean declarado = cliente.getArbitro().ladoDeclarado();
+            estado.setForeground(declarado ? Paleta.OK : Paleta.ALERTA);
+            estado.setText(duasLinhas(jogo.descricao(), declarado
+                    ? cliente.pacotesArbitro() + " pacotes"
+                    : "lado nao declarado, supondo nosso gol em "
+                            + (jogo.defendemosLadoPositivo() ? "+x" : "-x")));
         } else {
             var c = cliente.getConfig();
             estado.setForeground(Paleta.ALERTA);
