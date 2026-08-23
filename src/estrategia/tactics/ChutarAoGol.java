@@ -21,10 +21,26 @@ public final class ChutarAoGol extends Tactic {
     private static final int SKILL_CHUTAR = 2;
 
     /** Erro de mira aceito antes de acionar o chutador. */
-    public static final double TOLERANCIA_DE_MIRA = Math.toRadians(3);
+    public static final double TOLERANCIA_DE_MIRA = Math.toRadians(2);
+
+    /**
+     * Quanto tempo a bola precisa ficar no sensor antes de valer o chute.
+     *
+     * <p>Sem esta espera o robo chuta no instante em que a bola ENCOSTA, e isso
+     * da errado de duas maneiras. Uma bola que so passa raspando pela boca aciona
+     * o sensor por um quadro e leva um chute para lugar nenhum. E mesmo quando a
+     * bola e nossa, ela chega a boca ainda quicando: chutar antes de o rolete
+     * assentar manda a bola para qualquer lado menos o mirado.
+     *
+     * <p>Contado no relogio da visao, entao vale igual com o simulador acelerado.
+     */
+    public static final double POSSE_MINIMA = 0.15; // s
 
     private final OlharPara olhar = new OlharPara();
     private final Chutar chutar = new Chutar();
+
+    /** Instante em que a bola entrou no sensor, ou NaN se ela nao esta la. */
+    private double dPosseDesde = Double.NaN;
 
     public ChutarAoGol(int _id) {
         super(_id);
@@ -40,24 +56,35 @@ public final class ChutarAoGol extends Tactic {
     public String strName() { return "ChutarAoGol"; }
 
     @Override
-    public void vInitialize() { bSetSkill(SKILL_OLHAR); }
+    public void vInitialize() {
+        bSetSkill(SKILL_OLHAR);
+        dPosseDesde = Double.NaN;
+    }
 
     @Override
     protected void vRun() {
         olhar.vSetAlvo(ambiente.golDeles());
         jogador.vDribbler(true);
 
-        if (Math.abs(olhar.dErro()) <= TOLERANCIA_DE_MIRA) {
-            bSetSkill(SKILL_CHUTAR);
-        } else {
-            bSetSkill(SKILL_OLHAR);
-        }
+        if (!jogador.bComABola()) dPosseDesde = Double.NaN;
+        else if (Double.isNaN(dPosseDesde)) dPosseDesde = ambiente.tempo();
+
+        boolean mirado = Math.abs(olhar.dErro()) <= TOLERANCIA_DE_MIRA;
+        boolean assentada = !Double.isNaN(dPosseDesde)
+                && ambiente.tempo() - dPosseDesde >= POSSE_MINIMA;
+
+        bSetSkill(mirado && assentada ? SKILL_CHUTAR : SKILL_OLHAR);
+    }
+
+    /** Segundos com a bola no sensor, ou zero. Util para o log. */
+    public double dTempoDePosse() {
+        if (Double.isNaN(dPosseDesde) || ambiente == null) return 0;
+        return ambiente.tempo() - dPosseDesde;
     }
 
     /** Acaba quando o chute saiu, ou se a bola escapou antes disso. */
     @Override
     public void vCheckTacticFinished() {
         if (chutar.bIsFinished()) vFinalizar();
-        else if (jogador != null && jogador.bEmCampo() && !jogador.bComABola()) vFinalizar();
     }
 }

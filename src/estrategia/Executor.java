@@ -32,11 +32,13 @@ import java.util.Map;
 public final class Executor {
 
     private final Coach coach;
+    private final Diario diario = new Diario();
     private final Map<Integer, Jogador> jogadores = new LinkedHashMap<>();
 
     public Executor(Coach _coach) { this.coach = _coach; }
 
-    public Coach coach() { return coach; }
+    public Coach coach()   { return coach; }
+    public Diario diario() { return diario; }
 
     /**
      * Roda um tique e devolve o comando de cada robo nosso.
@@ -47,10 +49,18 @@ public final class Executor {
         List<Jogador> disponiveis = vAtualizarJogadores(_ambiente);
 
         coach.vRunCoach(_ambiente, disponiveis);
+        diario.vObservar(coach, disponiveis, _ambiente.tempo());
 
         Map<Integer, Comando> saida = new LinkedHashMap<>();
         for (Jogador j : disponiveis) {
-            saida.put(j.id(), cAplicarLimites(j.comando(), _ambiente.jogo()));
+            Comando podado = cAplicarLimites(j.comando(), _ambiente.jogo());
+            // O que o arbitro corta e o que mais confunde quem depura: o robo
+            // pediu e nao saiu, e sem esta linha some sem deixar rastro.
+            if (j.comando().temChute() && !podado.temChute()) {
+                diario.vAnotar(_ambiente.tempo(), Diario.Nivel.ALERTA,
+                        "robo " + j.id() + ": chute cortado por " + _ambiente.jogo().descricao());
+            }
+            saida.put(j.id(), podado);
         }
         return saida;
     }

@@ -68,6 +68,7 @@ estrategia →  mundo, jogo, model  Coach, Play, Role, Tactic, Skill, Ambiente, 
   roles    →  papéis de um robô         Atacante
   plays    →  jogadas do time           TesteAtacante
   coaches  →  quem escolhe a play       Bancada
+             Diario                    o que esta acontecendo, por robo
 rede       →  + percepcao, jogo   ConfigRede, ReceptorDeVisao, ReceptorDeArbitro, EmissorDeComandos
 view       →  core, model, mundo  Campo, Paleta
 app        →  tudo                Cliente, Janela, BarraSuperior, PainelRede, PainelRobos
@@ -268,6 +269,28 @@ dribbler são cortados. Isso é aplicado no `Executor`, no fim do tique, depois 
 opinado. Poderia ficar em cada play, e é assim que se costuma errar: basta uma esquecer de
 checar `HALT` para o time andar com o jogo parado, e o custo disso é falta.
 
+### Janela de log
+
+O botão *Ver log...* abre uma janela com duas metades. Em cima, uma linha por robô com o papel,
+a tática e a skill que ele está executando, mais o que está saindo no comando. Embaixo, o que
+foi acontecendo, com o carimbo do relógio da visão.
+
+**Verde é o que existe, vermelho é o que falta.** Uma tática concluída aparece em verde com o
+sufixo "fim", porque concluir é ter dado certo: mirar e chegar terminam. Vermelho fica para robô
+sem papel, papel sem tática, tática sem skill — e para a coluna do comando, onde vermelho quer
+dizer que nada está saindo para aquele robô.
+
+Essa última coluna responde a pergunta que se faz de verdade olhando um robô parado. A cadeia
+inteira pode estar montada e mesmo assim não sair nada, e sem ela isso é invisível.
+
+O `Diario` **observa** em vez de ser chamado: olha a árvore do coach a cada tique e anota o que
+mudou. O contrário, com cada skill chamando um logger, obrigaria a passar o diário por todas as
+camadas e faria quem escreve uma skill nova ter de lembrar de registrar. Diferença não esquece.
+Em troca, o motivo de uma escolha fica de fora — só o resultado dela entra.
+
+Ele também anota o que o árbitro **corta**: a play pediu chute, o `Executor` podou por causa do
+`STOP`, e sem essa linha o comando sumiria sem deixar rastro.
+
 ### A jogada de bancada
 
 `TesteAtacante` existe para provar que o encanamento inteiro funciona, do `Coach` até o
@@ -278,13 +301,22 @@ bola, buscar; com a bola longe do gol, conduzir; com a bola perto, chutar. Uma m
 estados com memória ficaria presa em "conduzindo" no instante em que a bola escapasse, e o robô
 continuaria empurrando o ar.
 
-Medido contra o simulador, com o campo livre e a bola no centro: **gol em 5,2 s**.
+Medido contra o simulador, com o campo livre e a bola no centro: **gol em 6,2 s**.
 
-Um detalhe que custou uma depuração e virou teste: o destino da condução não pode ser igual ao
-limiar que decide entre conduzir e chutar. Com os dois em 2500 mm, o robô parava exatamente em
-cima da fronteira, a tolerância de chegada fazia ele ficar ora dentro ora fora, e quando ficava
-fora a jogada morria ali com a bola presa. A condução vai até 2000 mm e a mira começa em
-2500 mm, então a troca acontece durante a aproximação.
+Três detalhes que custaram depuração e viraram teste:
+
+**O destino da condução não pode ser igual ao limiar de chute.** Com os dois em 2500 mm, o robô
+parava exatamente em cima da fronteira, a tolerância de chegada o deixava ora dentro ora fora, e
+quando ficava fora a jogada morria ali com a bola presa. A condução vai até 2000 mm e a mira
+começa em 2500 mm.
+
+**A aproximação mira o centro da bola, não o ponto de contato.** Mirar o contato exato parece
+certo e não é: o robô declara chegada dentro da própria tolerância, e nessa folga a bola fica
+além do alcance do sensor. O resultado era um robô parado a um palmo da bola, para sempre.
+
+**O chute espera a posse assentar.** Sem isso o robô chuta no instante em que a bola encosta, e
+uma bola que só passa raspando pela boca aciona o sensor por um quadro e leva um chute para
+lugar nenhum. São 0,15 s de bola no sensor antes de o chutador valer.
 
 ## Sensor de bola
 

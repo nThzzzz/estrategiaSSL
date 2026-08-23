@@ -118,6 +118,13 @@ public final class PainelRede extends JPanel {
         add(titulo("Estrategia"));
         add(caixaEstrategia);
         add(estadoEstrategia);
+        add(Box.createVerticalStrut(8));
+
+        JButton log = new JButton("Ver log...");
+        log.setAlignmentX(Component.LEFT_ALIGNMENT);
+        log.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
+        log.addActionListener(e -> JanelaLog.abrir(campo, cliente));
+        add(log);
 
         add(Box.createVerticalStrut(20));
         add(titulo("Exibicao"));

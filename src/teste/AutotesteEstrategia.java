@@ -3,6 +3,7 @@ package teste;
 import core.Vec2;
 import estrategia.Ambiente;
 import estrategia.Coach;
+import estrategia.Diario;
 import estrategia.Executor;
 import estrategia.Jogador;
 import estrategia.Play;
@@ -70,6 +71,12 @@ public final class AutotesteEstrategia {
         andarParaTerminaNoDestino();
         olharParaGiraPeloCaminhoCurto();
         chutarSoChutaComABola();
+
+        // --- diario ---
+        diarioMarcaQuemNaoTemPapel();
+        diarioNaoRepeteLinhaIgual();
+        diarioAnotaChuteEPosse();
+        diarioAnotaChuteCortadoPeloArbitro();
 
         // --- coerencia das taticas ---
         conducaoParaDentroDaZonaDeChute();
@@ -410,6 +417,86 @@ public final class AutotesteEstrategia {
                 ConduzirAoGol.DISTANCIA_DE_CONDUCAO < ConduzirAoGol.DISTANCIA_DE_CHUTE - 100);
     }
 
+    // ------------------------------------------------------------------- diario
+
+    /** A pergunta que se faz olhando um robo travado: ele tem papel? */
+    private static void diarioMarcaQuemNaoTemPapel() {
+        PlayContada play = new PlayContada(new RoleContada(new TacticContada(new SkillContada())));
+        CoachManual coach = new CoachManual(play);
+        Executor exec = new Executor(coach);
+        coach.bSetPlay(play.id());
+        exec.vTick(ambiente(0.0, Command.FORCE_START, 3));
+        exec.vTick(ambiente(0.1, Command.FORCE_START, 3));
+
+        List<Diario.Situacao> lista = exec.diario().situacoes();
+        verdadeiro("diario: uma situacao por robo nosso", lista.size() == 3);
+
+        Diario.Situacao comPapel = lista.stream().filter(Diario.Situacao::temRole)
+                .findFirst().orElse(null);
+        verdadeiro("diario: quem tem papel aparece executando",
+                comPapel != null && comPapel.temTactic() && comPapel.temSkill()
+                        && comPapel.comandado() && comPapel.executando());
+
+        long semPapel = lista.stream().filter(x -> !x.temRole()).count();
+        verdadeiro("diario: os outros aparecem sem papel e sem comando",
+                semPapel == 2 && lista.stream().filter(x -> !x.temRole())
+                        .noneMatch(Diario.Situacao::comandado));
+    }
+
+    /** Estado que nao muda nao vira linha nova, senao o log rola sozinho e some. */
+    private static void diarioNaoRepeteLinhaIgual() {
+        PlayContada play = new PlayContada(new RoleContada(new TacticContada(new SkillContada())));
+        CoachManual coach = new CoachManual(play);
+        Executor exec = new Executor(coach);
+        coach.bSetPlay(play.id());
+
+        for (int i = 0; i < 30; i++) exec.vTick(ambiente(i * 0.1, Command.FORCE_START, 2));
+
+        int linhas = exec.diario().linhas().size();
+        verdadeiro("diario: 30 tiques iguais nao viram 30 linhas (" + linhas + ")", linhas <= 6);
+    }
+
+    private static void diarioAnotaChuteEPosse() {
+        PlayComRoles play = new PlayComRoles(new RoleQueChuta(10));
+        CoachManual coach = new CoachManual(play);
+        Executor exec = new Executor(coach);
+        coach.bSetPlay(play.id());
+
+        exec.vTick(comBola(0.0, Command.FORCE_START, false));
+        exec.vTick(comBola(0.1, Command.FORCE_START, true));
+
+        String tudo = String.join(" | ", exec.diario().linhas().stream()
+                .map(Diario.Linha::texto).toList());
+        verdadeiro("diario: anota a bola entrando no sensor", tudo.contains("bola no sensor"));
+        verdadeiro("diario: anota o chute com a velocidade", tudo.contains("chute a 6,0 m/s")
+                || tudo.contains("chute a 6.0 m/s"));
+    }
+
+    /**
+     * O caso mais traicoeiro de depurar: a play pediu chute, o arbitro cortou, e
+     * sem log o comando some sem deixar rastro.
+     */
+    private static void diarioAnotaChuteCortadoPeloArbitro() {
+        PlayComRoles play = new PlayComRoles(new RoleQueChuta(10));
+        CoachManual coach = new CoachManual(play);
+        Executor exec = new Executor(coach);
+        coach.bSetPlay(play.id());
+
+        exec.vTick(comBola(0.0, Command.STOP, true));
+
+        String tudo = String.join(" | ", exec.diario().linhas().stream()
+                .map(Diario.Linha::texto).toList());
+        verdadeiro("diario: anota o chute cortado pelo arbitro",
+                tudo.contains("chute cortado por STOP"));
+    }
+
+    /** Ambiente com o nosso robo 0 segurando (ou nao) a bola. */
+    private static Ambiente comBola(double tempo, Command comando, boolean posse) {
+        List<EstadoRobo> robos = List.of(
+                new EstadoRobo(0, Cor.AZUL, Vec2.ZERO, 0, Vec2.ZERO, 0, posse, 0, 5));
+        return montar(tempo, comando, robos);
+    }
+
     // -------------------------------------------------------------- apoio
 
     private static Jogador jogadorEm(Vec2 posicao) { return jogadorOlhando(posicao, 0); }
@@ -576,6 +663,36 @@ public final class AutotesteEstrategia {
         @Override public double dGetScore() { return 1; }
         @Override public void vUpdateScore() { }
         @Override public void vSaveScore() { }
+    }
+
+    /** Papel que chuta assim que a bola encosta; existe so para o diario ter o que anotar. */
+    private static final class RoleQueChuta extends Role {
+        RoleQueChuta(int id) {
+            super(id, Prioridade.MAXIMA);
+            bAddTactic(1, new TacticQueChuta());
+        }
+        @Override public String strName() { return "chutador"; }
+        @Override public void vInitialize() { }
+        @Override protected void vRun() { }
+        @Override public void vCheckRoleFinished() { }
+        @Override public double dCusto(Ambiente a, Jogador j) { return 0; }
+    }
+
+    private static final class TacticQueChuta extends Tactic {
+        TacticQueChuta() { super(1); bAddSkill(1, new SkillQueChutaSeTiver()); }
+        @Override public String strName() { return "chuta"; }
+        @Override public void vInitialize() { }
+        @Override protected void vRun() { }
+        @Override public void vCheckTacticFinished() { }
+    }
+
+    private static final class SkillQueChutaSeTiver extends Skill {
+        @Override public String strName() { return "chuta se tiver"; }
+        @Override public void vInitialize() { }
+        @Override protected void vRun() {
+            jogador.vMover(1000, 0);
+            if (jogador.bComABola()) jogador.vChutar(6000);
+        }
     }
 
     private static final class CoachManual extends Coach {

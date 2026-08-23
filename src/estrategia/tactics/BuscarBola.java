@@ -33,6 +33,9 @@ public final class BuscarBola extends Tactic {
 
     public BuscarBola(int _id) {
         super(_id);
+        // Tolerancia menor que a folga do sensor. Ver vRun: parar com a folga
+        // padrao deixa o robo a um palmo da bola, sem nunca captura-la.
+        andar.vSetTolerancia(30);
         bAddSkill(SKILL_ANDAR, andar);
     }
 
@@ -46,9 +49,14 @@ public final class BuscarBola extends Tactic {
     protected void vRun() {
         Vec2 bola = ambiente.bola().posicao();
 
-        // Recuo suficiente para a face do dribbler tocar a bola quando o centro
-        // do robo estiver no destino.
-        double recuo = Robo.DIST_FACE_FRONTAL + ambiente.geometria().raioBola();
+        // O destino poe a BOCA em cima do centro da bola, e nao encostada nela.
+        //
+        // Mirar o ponto de contato exato (face + raio da bola) parece certo e nao
+        // e: o robo declara chegada dentro da propria tolerancia, e nessa folga a
+        // bola fica alem do alcance do sensor. O resultado e um robo parado a um
+        // palmo da bola, para sempre, que foi exatamente o sintoma observado.
+        // Mirando o centro da bola, ele encosta com sobra e o rolete a captura.
+        double recuo = Robo.DIST_FACE_FRONTAL;
         Vec2 doGolParaABola = bola.menos(ambiente.golDeles());
         Vec2 destino = doGolParaABola.norma() < 1e-6
                 ? bola
