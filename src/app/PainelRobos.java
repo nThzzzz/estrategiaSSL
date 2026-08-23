@@ -52,9 +52,10 @@ import java.util.function.BiConsumer;
  * e do sensor dele. O log responde outra coisa, "o que aconteceu", e essa rola
  * para fora da tela por natureza.
  */
-public final class PainelRobos extends JPanel {
+public final class PainelRobos extends PainelRolavel {
 
-    private static final int LARGURA = 268;
+    /** Largura inicial da coluna; dai em diante quem manda e o divisor. */
+    public static final int LARGURA = 268;
 
     /** Altura do cartao sem a cadeia de execucao. */
     private static final int ALTURA_SIMPLES = 52;
@@ -80,6 +81,16 @@ public final class PainelRobos extends JPanel {
     private int idSelecionado = -1;
 
     private record Faixa(int y, int altura, Cor cor, int id) {}
+
+    /**
+     * Largura util para desenhar, que e a da coluna e nao mais uma constante.
+     *
+     * <p>Os cartoes sao pintados a mao, com a borda direita posicionada a partir
+     * daqui. Enquanto a coluna tinha largura fixa dava no mesmo usar a constante;
+     * agora que o divisor e arrastavel, usar a constante deixaria os cartoes
+     * parados na largura antiga enquanto a coluna cresce.
+     */
+    private int largura() { return Math.max(getWidth(), 160); }
 
     private int alturaDoCartao() {
         return cliente.isEstrategiaLigada() ? ALTURA_COM_CADEIA : ALTURA_SIMPLES;
@@ -151,7 +162,7 @@ public final class PainelRobos extends JPanel {
         g.setFont(new Font("SansSerif", Font.PLAIN, 11));
         String contagem = robos.size() + (robos.size() == 1 ? " robo" : " robos");
         FontMetrics fm = g.getFontMetrics();
-        g.drawString(contagem, LARGURA - 14 - fm.stringWidth(contagem), y + 20);
+        g.drawString(contagem, largura() - 14 - fm.stringWidth(contagem), y + 20);
 
         y += ALTURA_TITULO;
         int altura = alturaDoCartao();
@@ -179,7 +190,7 @@ public final class PainelRobos extends JPanel {
 
         g.setColor(Paleta.BORDA);
         g.setStroke(new BasicStroke(1f));
-        g.draw(new Line2D.Double(10, y + 4, LARGURA - 10, y + 4));
+        g.draw(new Line2D.Double(10, y + 4, largura() - 10, y + 4));
 
         g.setColor(Paleta.TEXTO);
         g.setFont(new Font("SansSerif", Font.BOLD, 12));
@@ -197,7 +208,7 @@ public final class PainelRobos extends JPanel {
         for (var j : jogadas) {
             if (j.atual()) {
                 g.setColor(new Color(60, 100, 70));
-                g.fill(new RoundRectangle2D.Double(10, linha, LARGURA - 20, 22, 6, 6));
+                g.fill(new RoundRectangle2D.Double(10, linha, largura() - 20, 22, 6, 6));
             }
 
             Color cor = j.atual() ? Paleta.OK : j.disponivel() ? Paleta.TEXTO : Paleta.APAGADO;
@@ -206,7 +217,7 @@ public final class PainelRobos extends JPanel {
             FontMetrics fm = g.getFontMetrics();
 
             String nome = j.nome();
-            while (nome.length() > 1 && fm.stringWidth(nome) > LARGURA - 110) {
+            while (nome.length() > 1 && fm.stringWidth(nome) > largura() - 110) {
                 nome = nome.substring(0, nome.length() - 1);
             }
             g.drawString(nome, 18, linha + 15);
@@ -216,7 +227,7 @@ public final class PainelRobos extends JPanel {
             String direita = j.disponivel() ? String.format("%.2f", j.nota()) : "fora";
             g.setFont(new Font("Monospaced", j.atual() ? Font.BOLD : Font.PLAIN, 11));
             FontMetrics fmd = g.getFontMetrics();
-            g.drawString(direita, LARGURA - 18 - fmd.stringWidth(direita), linha + 15);
+            g.drawString(direita, largura() - 18 - fmd.stringWidth(direita), linha + 15);
 
             linha += 24;
         }
@@ -227,11 +238,11 @@ public final class PainelRobos extends JPanel {
         boolean selecionado = r.cor() == corSelecionada && r.id() == idSelecionado;
 
         g.setColor(selecionado ? new Color(52, 52, 60) : Paleta.PAINEL_ALT);
-        g.fill(new RoundRectangle2D.Double(8, y + 2, LARGURA - 16, altura - 6, 8, 8));
+        g.fill(new RoundRectangle2D.Double(8, y + 2, largura() - 16, altura - 6, 8, 8));
         if (selecionado) {
             g.setColor(Color.WHITE);
             g.setStroke(new BasicStroke(1.5f));
-            g.draw(new RoundRectangle2D.Double(8, y + 2, LARGURA - 16, altura - 6, 8, 8));
+            g.draw(new RoundRectangle2D.Double(8, y + 2, largura() - 16, altura - 6, 8, 8));
         }
 
         // Distintivo com o numero, na cor da equipe: e como o robo aparece no campo.
@@ -289,7 +300,7 @@ public final class PainelRobos extends JPanel {
 
         g.setColor(Paleta.BORDA);
         g.setStroke(new BasicStroke(1f));
-        g.draw(new java.awt.geom.Line2D.Double(18, y + 56, LARGURA - 18, y + 56));
+        g.draw(new java.awt.geom.Line2D.Double(18, y + 56, largura() - 18, y + 56));
 
         if (!nosso || situacao == null) {
             g.setColor(Paleta.APAGADO);
@@ -315,7 +326,7 @@ public final class PainelRobos extends JPanel {
         g.setColor(presente ? Paleta.OK : Paleta.ERRO);
         FontMetrics fm = g.getFontMetrics();
         String curto = valor;
-        while (curto.length() > 1 && fm.stringWidth(curto) > LARGURA - 90) {
+        while (curto.length() > 1 && fm.stringWidth(curto) > largura() - 90) {
             curto = curto.substring(0, curto.length() - 1);
         }
         g.drawString(curto, 62, y);
@@ -342,9 +353,10 @@ public final class PainelRobos extends JPanel {
 
     /** Selo do sensor de bola: aceso e escrito, apagado e so contorno. */
     private void indicadorDeSensor(Graphics2D g, EstadoRobo r, int y) {
-        int largura = 54, altura = 20;
-        int x = LARGURA - largura - 18;
-        RoundRectangle2D selo = new RoundRectangle2D.Double(x, y + 16, largura, altura, 10, 10);
+        int larguraDoSelo = 54, altura = 20;
+        int x = largura() - larguraDoSelo - 18;
+        RoundRectangle2D selo =
+                new RoundRectangle2D.Double(x, y + 16, larguraDoSelo, altura, 10, 10);
 
         g.setFont(new Font("SansSerif", Font.BOLD, 10));
         FontMetrics fm = g.getFontMetrics();
@@ -354,14 +366,14 @@ public final class PainelRobos extends JPanel {
             g.fill(selo);
             g.setColor(new Color(10, 40, 10));
             String texto = "BOLA";
-            g.drawString(texto, x + (largura - fm.stringWidth(texto)) / 2, y + 30);
+            g.drawString(texto, x + (larguraDoSelo - fm.stringWidth(texto)) / 2, y + 30);
         } else {
             g.setColor(Paleta.BORDA);
             g.setStroke(new BasicStroke(1.2f));
             g.draw(selo);
             g.setColor(Paleta.APAGADO);
             String texto = "sensor";
-            g.drawString(texto, x + (largura - fm.stringWidth(texto)) / 2, y + 30);
+            g.drawString(texto, x + (larguraDoSelo - fm.stringWidth(texto)) / 2, y + 30);
         }
     }
 }

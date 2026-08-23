@@ -22,6 +22,19 @@ public final class Paleta {
 
     public static final Color ESCAPE  = new Color(30, 60, 35);
     public static final Color GRAMA   = new Color(25, 110, 45);
+
+    /**
+     * Faixas do corte do gramado, claro e escuro.
+     *
+     * <p>A media exata das duas e {@link #GRAMA}: (31+19)/2 = 25, (124+96)/2 =
+     * 110, (52+38)/2 = 45. Isso e proposital -- o simulador continua com o verde
+     * chapado, e as duas janelas costumam ficar lado a lado. Com a media
+     * preservada o campo texturizado ainda le como o MESMO verde de la, so que
+     * cortado; um par de tons escolhido no olho deixaria um dos campos
+     * visivelmente mais claro que o outro.
+     */
+    public static final Color GRAMA_CLARA  = new Color(31, 124, 52);
+    public static final Color GRAMA_ESCURA = new Color(19,  96, 38);
     public static final Color LINHA   = new Color(235, 235, 235);
     public static final Color AZUL    = new Color(50, 120, 255);
     public static final Color AMARELO = new Color(255, 205, 0);

@@ -10,9 +10,11 @@ import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JSplitPane;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.Timer;
 import java.awt.BorderLayout;
+import java.awt.Dimension;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
@@ -26,7 +28,10 @@ import java.awt.event.MouseWheelEvent;
  *   +--------+--------------------------------+--------+
  *   | Painel |                                | Painel |
  *   |  Rede  |             Campo              | Robos  |
+ *   |        |                                |        |
  *   +--------+--------------------------------+--------+
+ *            ^                                ^
+ *          divisores arrastaveis; o campo absorve a sobra
  * </pre>
  *
  * <p>Os tres paineis conversam so pelo {@link Cliente}: nenhum tem referencia
@@ -77,20 +82,90 @@ public final class Janela {
     private JComponent montarConteudo() {
         instalarMouse();
 
-        JScrollPane rolagem = new JScrollPane(painelRobos,
-                ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
-                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-        rolagem.setBorder(null);
-        rolagem.getViewport().setBackground(Paleta.PAINEL);
-        rolagem.getVerticalScrollBar().setUnitIncrement(16);
+        JScrollPane esquerda = rolagem(painelRede, PainelRede.LARGURA);
+        JScrollPane direita = rolagem(painelRobos, PainelRobos.LARGURA);
+        campo.setMinimumSize(new Dimension(320, 240));
+
+        // O campo fica na metade que CRESCE dos dois divisores: o de dentro
+        // segura a coluna dos robos (peso 1 para a esquerda), o de fora segura a
+        // coluna da rede (peso 0). Assim redimensionar a janela alarga o campo, e
+        // arrastar um divisor troca largura entre aquela coluna e o campo, sem
+        // mexer na outra.
+        JSplitPane interno = divisor(campo, direita, false);
+        JSplitPane externo = divisor(esquerda, interno, true);
 
         JPanel raiz = new JPanel(new BorderLayout());
         raiz.setBackground(Paleta.FUNDO);
         raiz.add(new BarraSuperior(cliente), BorderLayout.NORTH);
-        raiz.add(painelRede, BorderLayout.WEST);
-        raiz.add(campo, BorderLayout.CENTER);
-        raiz.add(rolagem, BorderLayout.EAST);
+        raiz.add(externo, BorderLayout.CENTER);
         return raiz;
+    }
+
+    /**
+     * Um divisor arrastavel entre dois componentes.
+     *
+     * <p>{@code fixaEsquerda} diz qual das duas metades e a COLUNA: e ela que
+     * guarda a largura quando a janela muda de tamanho, e a outra metade -- a que
+     * contem o campo -- absorve a diferenca. E por isso que redimensionar a
+     * janela alarga o campo e nao as colunas.
+     *
+     * <p>{@code continuousLayout} porque o campo se reenquadra sozinho a cada
+     * largura nova -- arrastar mostrando so uma linha e soltar no escuro seria
+     * escolher a largura sem ver o efeito dela, que e justamente o que se esta
+     * tentando ajustar.
+     *
+     * <p>{@code oneTouchExpandable} da as setinhas que recolhem a coluna inteira
+     * de uma vez. Numa bancada apertada, tirar as colunas e ficar so com o campo
+     * e o gesto mais pedido, e ele nao devia exigir arrastar ate a borda.
+     */
+    private static JSplitPane divisor(JComponent esquerda, JComponent direita,
+                                      boolean fixaEsquerda) {
+        JSplitPane sp = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, esquerda, direita) {
+            private boolean primeiroLayout = true;
+
+            /**
+             * Assenta o divisor na largura pedida pela coluna, uma vez so.
+             *
+             * <p>Enquanto ninguem tiver mexido no divisor, o JSplitPane reparte
+             * pelo MINIMO das duas metades sempre que a janela e menor que a soma
+             * dos tamanhos preferidos, e joga a sobra toda para o lado de peso
+             * maior. Com a coluna do lado de peso zero isso a deixava nascer nos
+             * 120 px do minimo: "Configurar..." virava "Configu..." e os botoes do
+             * arbitro ficavam ilegiveis. Fixar a posicao assim que existe largura
+             * de verdade resolve, e nao atrapalha arrasto nenhum feito depois --
+             * dali em diante quem manda e a posicao escolhida.
+             */
+            @Override
+            public void doLayout() {
+                if (primeiroLayout && getWidth() > 0) {
+                    primeiroLayout = false;
+                    int coluna = (fixaEsquerda ? esquerda : direita).getPreferredSize().width;
+                    setDividerLocation(fixaEsquerda
+                            ? coluna
+                            : getWidth() - getDividerSize() - coluna);
+                }
+                super.doLayout();
+            }
+        };
+        sp.setContinuousLayout(true);
+        sp.setOneTouchExpandable(true);
+        sp.setDividerSize(7);
+        sp.setResizeWeight(fixaEsquerda ? 0.0 : 1.0);
+        sp.setBorder(null);
+        sp.setBackground(Paleta.BORDA);
+        return sp;
+    }
+
+    private static JScrollPane rolagem(JComponent conteudo, int largura) {
+        JScrollPane r = new JScrollPane(conteudo,
+                ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
+                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        r.setBorder(null);
+        r.getViewport().setBackground(Paleta.PAINEL);
+        r.getVerticalScrollBar().setUnitIncrement(16);
+        r.setPreferredSize(new Dimension(largura, 100));
+        r.setMinimumSize(new Dimension(120, 100));
+        return r;
     }
 
     /** Atualiza os rotulos que nao se redesenham sozinhos. */

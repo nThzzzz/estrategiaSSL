@@ -155,10 +155,16 @@ decidir nada. Ele fala do azul, então vira `defendemosLadoPositivo` conforme a 
 
 ### Árbitro de bancada
 
-O painel da esquerda troca a fonte entre o Game Controller e um árbitro local de teste, com
-botões para cada comando. Ele monta uma mensagem `Referee` de verdade e a entrega pelo mesmo
+O painel da esquerda troca a fonte entre o Game Controller e um árbitro local de teste, e traz
+um botão para cada comando. Ele monta uma mensagem `Referee` de verdade e a entrega pelo mesmo
 caminho de tradução que a rede usa, em vez de injetar o estado já pronto: se um comando estiver
 mapeado errado, erra ali igual erraria em jogo.
+
+Trocar de fonte descarta o que a fonte anterior tinha dito, e isso é o certo — o último comando
+do Game Controller não vale mais depois de passar para o árbitro local. Mas só numa troca de
+verdade: reafirmar o modo que já está valendo apagava o comando corrente, e quem reencostava
+nisso era a própria interface, ao alinhar o seletor com o estado real. O painel exibia "nenhum
+comando ainda" logo depois de um STOP que ele mesmo tinha mandado.
 
 As duas fontes se excluem. Em modo local, pacote da rede é ignorado, senão um Game Controller
 rodando na mesma bancada sobrescreveria o comando de teste no quadro seguinte e o painel
@@ -351,7 +357,10 @@ simulador diz o mesmo `blue_0`.
 +--------+--------------------------------+--------+
 | Painel |                                | Painel |
 |  Rede  |             Campo              | Robos  |
+| árbitro|                                | jogadas|
 +--------+--------------------------------+--------+
+         ^                                ^
+      divisores arrastáveis; o campo absorve a sobra
 ```
 
 Os três painéis conversam só pelo `Cliente`, e nenhum tem referência para o outro. A exceção é
@@ -369,11 +378,20 @@ equipe pode fazer no instante seguinte. O relógio mostra o tempo restante do es
 árbitro, e o `t_capture` da visão quando não há. São coisas diferentes: um é tempo de jogo, o
 outro é tempo de simulação.
 
-**Esquerda.** Estado da rede (para onde escutamos, a que taxa, para onde mandamos), a fonte do
-árbitro com o botão *Simular...*, a cor da equipe e os nomes. As portas ficam atrás do botão *Configurar...*, no mesmo desenho do
-simulador: cinco campos ocupavam metade do painel para algo que se mexe uma vez por bancada,
-enquanto o que se olha o tempo todo ficava espremido embaixo. Tudo é trocável com a janela
-aberta, porque numa bancada troca-se de porta o tempo todo.
+**Esquerda.** A coluna é dividida pelo critério do que se **olha** e do que se **aperta**:
+estado da rede (para onde escutamos, a que taxa, para onde mandamos), estado do árbitro, estado
+da estratégia — e os **comandos de árbitro**, que são os botões que mais se usam numa bancada.
+
+Antes era o contrário. Os comandos moravam num diálogo atrás de um botão *Simular...*, a duas
+aberturas de distância de um STOP, enquanto nomes de equipe e caixas de exibição — coisas que se
+mexem uma vez por bancada — ocupavam a maior parte da coluna. Estes últimos foram para
+*Configuração avançada...*, e as portas continuam atrás de *Configurar...*, no mesmo desenho do
+simulador. Tudo é trocável com a janela aberta, porque numa bancada troca-se de porta o tempo
+todo.
+
+Em modo REDE os botões de árbitro ficam **desabilitados**, e não apenas inertes: num diálogo que
+alguém acabou de escolher abrir bastava uma linha de aviso, mas numa coluna sempre visível
+dezessete botões que parecem funcionar e não fazem nada são pior que aviso nenhum.
 
 A validação segue a mesma divisão do simulador. O que dá para saber sem tocar no sistema
 (endereço fora da faixa multicast, porta repetida) é recusado na hora em que se digita. Já
@@ -381,7 +399,21 @@ A validação segue a mesma divisão do simulador. O que dá para saber sem toca
 de deixar a estratégia surda.
 
 **Centro.** Zoom no scroll, arrasto com o botão direito, clique seleciona robô. Vetores de
-velocidade, área do sensor, anel de incerteza e a previsão do desenho podem ser desligados.
+velocidade, área do sensor, anel de incerteza e a previsão do desenho podem ser desligados em
+*Configuração avançada...*.
+
+O gramado é desenhado com as **faixas do corte**, como um campo de futebol de verdade. Não é
+enfeite: esta é uma tela de leitura — é nela que se percebe o filtro mentindo — e um retângulo
+verde uniforme não dá referência nenhuma de posição. Com o corte marcado, um robô que andou meia
+faixa e um que andou três se distinguem de relance, sem ler número. São doze faixas ao longo do
+comprimento, **contadas e não medidas em milímetros**, para o campo de Divisão A aparecer com o
+mesmo desenho do de Divisão B; sendo par, a divisória do meio cai na linha central. A média
+exata dos dois tons é o verde chapado do simulador, então as duas janelas lado a lado continuam
+lendo como o mesmo campo.
+
+As duas colunas têm **largura arrastável**, e o campo absorve a diferença — inclusive
+recolhendo uma coluna inteira pelas setinhas do divisor, quando a bancada aperta. Redimensionar
+a janela alarga o campo e não as colunas: são elas que guardam a largura escolhida.
 
 O gol é desenhado como estrutura **aberta** — dois postes e o fundo — e não mais como o bloco
 chapado atrás da linha de fundo. O bloco dava a entender que o gol é maciço, e desde que o

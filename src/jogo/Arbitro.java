@@ -39,7 +39,17 @@ public final class Arbitro {
      * da fonte anterior faria a estrategia agir por uma ordem que a fonte atual
      * nunca deu.
      */
+    /**
+     * Troca a fonte do arbitro, descartando o que a fonte anterior tinha dito.
+     *
+     * <p>Descartar e o certo numa troca de verdade: o ultimo comando do Game
+     * Controller nao vale mais depois de passar para o arbitro local, e vice
+     * versa. Mas so numa troca de VERDADE -- chamar com o modo que ja esta
+     * valendo apagava o comando corrente, e quem reencostava nisso era a
+     * interface, ao sincronizar o seletor com o estado real.
+     */
     public void setModoLocal(boolean local) {
+        if (local == modoLocal) return;
         this.modoLocal = local;
         this.ultima = null;
         this.recebidoEm = 0;

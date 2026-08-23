@@ -69,6 +69,16 @@ public final class Campo extends JPanel {
      */
     private static final double VEL_MINIMA_FANTASMA = 150;
 
+    /**
+     * Faixas de corte ao longo do comprimento do campo.
+     *
+     * <p>Par, para a divisoria do meio cair na linha central. Doze deixa cada
+     * faixa em 750 mm na Divisao B, um pouco menos que a distancia entre dois
+     * robos parados lado a lado -- perto o bastante para servir de regua, longe o
+     * bastante para nao virar listra fina.
+     */
+    private static final int FAIXAS_DO_CORTE = 12;
+
     private final Supplier<Quadro> fonte;
 
     private double zoom = 1.0;
@@ -78,6 +88,7 @@ public final class Campo extends JPanel {
     private Cor corSelecionada;
     private int idSelecionado = -1;
 
+    private boolean mostrarTextura = true;
     private boolean mostrarVetores = true;
     private boolean mostrarSensor = true;
     private boolean mostrarIncerteza = true;
@@ -99,11 +110,19 @@ public final class Campo extends JPanel {
     public void enquadrar() { zoom = 1.0; panX = 0; panY = 0; }
     public void setMouseTela(int x, int y) { mouseTelaX = x; mouseTelaY = y; }
 
+    public void setMostrarTextura(boolean b) { mostrarTextura = b; }
     public void setMostrarVetores(boolean b) { mostrarVetores = b; }
     public void setMostrarSensor(boolean b)  { mostrarSensor = b; }
     public void setMostrarIncerteza(boolean b) { mostrarIncerteza = b; }
     public void setPreverAteODesenho(boolean b) { preverAteODesenho = b; }
     public void setMostrarFantasma(boolean b) { mostrarFantasma = b; }
+
+    public boolean isMostrarTextura()    { return mostrarTextura; }
+    public boolean isMostrarVetores()    { return mostrarVetores; }
+    public boolean isMostrarSensor()     { return mostrarSensor; }
+    public boolean isMostrarIncerteza()  { return mostrarIncerteza; }
+    public boolean isPreverAteODesenho() { return preverAteODesenho; }
+    public boolean isMostrarFantasma()   { return mostrarFantasma; }
 
     /**
      * Selecao guardada por identidade (cor + id), nao por referencia ao record.
@@ -212,8 +231,7 @@ public final class Campo extends JPanel {
         g.fill(new Rectangle2D.Double(-geo.limiteParedeX(), -geo.limiteParedeY(),
                 geo.limiteParedeX() * 2, geo.limiteParedeY() * 2));
 
-        g.setColor(Paleta.GRAMA);
-        g.fill(new Rectangle2D.Double(-meioX, -meioY, geo.comprimento(), geo.largura()));
+        desenharGramado(g, geo);
 
         g.setColor(Paleta.LINHA);
         g.setStroke(new BasicStroke((float) geo.espessuraLinha(),
@@ -231,6 +249,47 @@ public final class Campo extends JPanel {
 
         desenharGol(g, geo, -1, Paleta.AZUL);
         desenharGol(g, geo, 1, Paleta.AMARELO);
+    }
+
+    /**
+     * O gramado: verde chapado ou faixas de corte, conforme a exibicao.
+     *
+     * <p>As faixas nao sao enfeite gratuito. O campo da estrategia e uma tela de
+     * leitura -- e nela que se acompanha se o filtro esta mentindo -- e um retangulo
+     * verde uniforme nao da referencia nenhuma de POSICAO. Com o corte marcado, um
+     * robo que anda meia faixa e um robo que anda tres faixas se distinguem de
+     * relance, sem ler numero.
+     *
+     * <p>Sao {@link #FAIXAS_DO_CORTE} faixas ao longo do comprimento, contadas e nao
+     * medidas em milimetros: assim o campo de Divisao A aparece com o mesmo desenho
+     * do de Divisao B, e nao com o dobro de faixas. Sendo par, a divisoria do meio
+     * cai exatamente na linha central, como num campo cortado de verdade.
+     *
+     * <p>O contraste e baixo de proposito, e as faixas ficam so DENTRO das linhas: a
+     * faixa externa segue lisa, porque ali nao ha campo -- ha area de escape.
+     *
+     * <p>A base e pintada inteira de escuro e so as faixas claras vao por cima. Duas
+     * pinturas lado a lado deixariam um fio de costura entre elas pelo antialias, e
+     * do jeito que esta o que aparece na emenda e o proprio tom escuro.
+     */
+    private void desenharGramado(Graphics2D g, Geometria geo) {
+        double meioX = geo.meioComprimento();
+        double meioY = geo.meiaLargura();
+
+        if (!mostrarTextura) {
+            g.setColor(Paleta.GRAMA);
+            g.fill(new Rectangle2D.Double(-meioX, -meioY, geo.comprimento(), geo.largura()));
+            return;
+        }
+
+        g.setColor(Paleta.GRAMA_ESCURA);
+        g.fill(new Rectangle2D.Double(-meioX, -meioY, geo.comprimento(), geo.largura()));
+
+        g.setColor(Paleta.GRAMA_CLARA);
+        double faixa = geo.comprimento() / FAIXAS_DO_CORTE;
+        for (int i = 0; i < FAIXAS_DO_CORTE; i += 2) {
+            g.fill(new Rectangle2D.Double(-meioX + i * faixa, -meioY, faixa, geo.largura()));
+        }
     }
 
     /**

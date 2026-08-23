@@ -80,6 +80,7 @@ public final class Autoteste {
         placarENomeVemDoArbitro();
         modoLocalEModoRedeSeExcluem();
         arbitroChegaPelaRede();
+        trocaDeModoParaOMesmoModoNaoApagaOComando();
         rotuloUsaOVocabularioDoProtocolo();
 
         // --- protocolo ---
@@ -369,6 +370,30 @@ public final class Autoteste {
         EstadoDeJogo j = new Arbitro().estado(Cor.AZUL);
         verdadeiro("arbitro: sem mensagem nenhuma, o estado e HALT",
                 j.acao() == Acao.HALT && !j.podemosMover() && j.semArbitro());
+    }
+
+    /**
+     * Reafirmar o modo que ja esta valendo nao pode apagar o comando corrente.
+     *
+     * <p>Trocar de fonte descarta o que a outra fonte disse, e isso e o certo: o
+     * ultimo comando do Game Controller nao vale mais depois de passar para o
+     * arbitro local. Mas a interface CHAMA esse mesmo metodo so para alinhar o
+     * seletor com o estado real, e a chamada redundante zerava o arbitro -- o
+     * painel exibia "nenhum comando ainda" logo depois de um STOP que ele mesmo
+     * tinha acabado de mandar.
+     */
+    private static void trocaDeModoParaOMesmoModoNaoApagaOComando() {
+        Arbitro a = new Arbitro();
+        a.setModoLocal(true);
+        a.doPainel(new ArbitroLocal().comando(Command.STOP));
+
+        a.setModoLocal(true); // reafirmar o modo: nao e troca de fonte
+        verdadeiro("arbitro: reafirmar o modo local preserva o comando",
+                !a.estado(Cor.AZUL).semArbitro() && a.estado(Cor.AZUL).acao() == Acao.STOP);
+
+        a.setModoLocal(false); // troca de verdade: dai sim descarta
+        verdadeiro("arbitro: trocar de fonte descarta o comando da anterior",
+                a.estado(Cor.AZUL).semArbitro());
     }
 
     private static void haltEStopImpoemLimites() {

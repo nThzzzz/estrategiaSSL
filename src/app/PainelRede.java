@@ -1,6 +1,5 @@
 package app;
 
-import model.Cor;
 import view.Campo;
 import view.Paleta;
 
@@ -9,67 +8,64 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
-import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JTextField;
+import javax.swing.JTextArea;
+
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
-import java.io.IOException;
 
 /**
- * Painel da esquerda: estado da rede, quem somos e o que aparece no campo.
+ * Coluna da esquerda: o que se OLHA e o que se APERTA durante uma bancada.
  *
- * <p>As portas nao moram aqui: ficam no {@link DialogoRede}, atras do botao
- * "Configurar...", no mesmo desenho que o simulador usa. Cinco campos de rede
- * ocupavam metade do painel para algo que se mexe uma vez por bancada, enquanto
- * o que se olha o tempo todo -- se esta chegando visao, a que taxa, para onde
- * vao os comandos -- ficava espremido embaixo.
+ * <p>A divisao e essa, e ela decide o que mora aqui. Estado da rede, estado do
+ * arbitro e estado da estrategia sao coisas que se le a todo instante; os
+ * comandos de arbitro sao os que mais se apertam. Ja portas, nomes de equipe e
+ * caixas de exibicao se mexem uma vez por bancada e nao merecem espaco
+ * permanente -- ficam atras de "Configurar..." ({@link DialogoRede}) e de
+ * "Configuracao avancada..." ({@link DialogoConfiguracao}).
  *
- * <p>Cor da equipe e nomes continuam aqui porque nao sao configuracao de rede:
- * dizem quem somos. A cor decide para qual porta os comandos vao, mas essa e
- * consequencia da escolha, nao a escolha.
+ * <p>Antes era o contrario: equipe e exibicao ocupavam a maior parte da coluna e
+ * os comandos de arbitro estavam escondidos num dialogo, a duas aberturas de
+ * distancia de um STOP.
+ *
+ * <p>A coluna e {@link PainelRolavel} porque a largura dela agora e arrastavel e
+ * o conteudo passou a ser mais alto que a janela em telas baixas.
  */
-public final class PainelRede extends JPanel {
+public final class PainelRede extends PainelRolavel {
+
+    /** Largura inicial da coluna; dai em diante quem manda e o divisor. */
+    public static final int LARGURA = 246;
 
     private final Cliente cliente;
     private final Campo campo;
-
-    private final JComboBox<String> nossaCor = new JComboBox<>(new String[]{"Azul", "Amarelo"});
-    private final JTextField nomeAzul = new JTextField(12);
-    private final JTextField nomeAmarelo = new JTextField(12);
+    private final PainelArbitro painelArbitro;
 
     private final JLabel escuta = rotulo("--", Paleta.APAGADO);
     private final JLabel taxa = rotulo("--", Paleta.APAGADO);
     private final JLabel envio = rotulo("--", Paleta.APAGADO);
 
-    private final JComboBox<String> fonteArbitro =
-            new JComboBox<>(new String[]{"Game Controller", "local (teste)"});
-    private final JLabel estadoArbitro = rotulo("--", Paleta.APAGADO);
     private final JLabel estadoEstrategia = rotulo("desligada", Paleta.APAGADO);
     private final JCheckBox caixaEstrategia = new JCheckBox("comandar os robos");
 
     public PainelRede(Cliente cliente, Campo campo) {
         this.cliente = cliente;
         this.campo = campo;
+        this.painelArbitro = new PainelArbitro(cliente);
 
         caixaEstrategia.setBackground(Paleta.PAINEL);
         caixaEstrategia.setForeground(Paleta.TEXTO);
         caixaEstrategia.setFont(caixaEstrategia.getFont().deriveFont(11f));
         caixaEstrategia.setAlignmentX(Component.LEFT_ALIGNMENT);
+        caixaEstrategia.setSelected(cliente.isEstrategiaLigada());
         caixaEstrategia.addActionListener(e ->
                 cliente.setEstrategiaLigada(caixaEstrategia.isSelected()));
 
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setBackground(Paleta.PAINEL);
         setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
-        setPreferredSize(new Dimension(238, 100));
-
-        carregar();
 
         add(titulo("Rede"));
         add(escuta);
@@ -78,67 +74,22 @@ public final class PainelRede extends JPanel {
         add(rotulo("comandos", Paleta.APAGADO));
         add(envio);
         add(Box.createVerticalStrut(10));
+        add(botao("Configurar...", () -> DialogoRede.abrir(campo, cliente)));
 
-        JButton configurar = new JButton("Configurar...");
-        configurar.setAlignmentX(Component.LEFT_ALIGNMENT);
-        configurar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
-        configurar.addActionListener(e -> DialogoRede.abrir(campo, cliente));
-        add(configurar);
-
-        add(Box.createVerticalStrut(20));
+        add(Box.createVerticalStrut(18));
         add(titulo("Arbitro"));
-        add(linha("fonte", fonteArbitro));
-        add(estadoArbitro);
-        add(Box.createVerticalStrut(8));
+        add(painelArbitro);
 
-        JButton simular = new JButton("Simular...");
-        simular.setAlignmentX(Component.LEFT_ALIGNMENT);
-        simular.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
-        simular.addActionListener(e -> DialogoArbitro.abrir(campo, cliente));
-        add(simular);
-
-        fonteArbitro.addActionListener(e -> {
-            cliente.getArbitro().setModoLocal(fonteArbitro.getSelectedIndex() == 1);
-            atualizarEstado();
-        });
-
-        add(Box.createVerticalStrut(20));
-        add(titulo("Equipe"));
-        add(linha("jogamos de", nossaCor));
-        add(linha("nome azul", nomeAzul));
-        add(linha("nome amarelo", nomeAmarelo));
-        add(Box.createVerticalStrut(8));
-
-        JButton aplicar = new JButton("Aplicar");
-        aplicar.setAlignmentX(Component.LEFT_ALIGNMENT);
-        aplicar.addActionListener(e -> aplicarEquipe());
-        add(aplicar);
-
-        add(Box.createVerticalStrut(20));
+        add(Box.createVerticalStrut(18));
         add(titulo("Estrategia"));
         add(caixaEstrategia);
         add(estadoEstrategia);
         add(Box.createVerticalStrut(8));
+        add(botao("Ver log...", () -> JanelaLog.abrir(campo, cliente)));
 
-        JButton log = new JButton("Ver log...");
-        log.setAlignmentX(Component.LEFT_ALIGNMENT);
-        log.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
-        log.addActionListener(e -> JanelaLog.abrir(campo, cliente));
-        add(log);
-
-        add(Box.createVerticalStrut(20));
-        add(titulo("Exibicao"));
-        add(caixa("vetores de velocidade", true, campo::setMostrarVetores));
-        add(caixa("area do sensor de bola", true, campo::setMostrarSensor));
-        add(caixa("incerteza do Kalman", true, campo::setMostrarIncerteza));
-        add(caixa("prever ate o desenho", true, campo::setPreverAteODesenho));
-        add(caixa("fantasma de 1 s", true, campo::setMostrarFantasma));
-        add(Box.createVerticalStrut(8));
-
-        JButton enquadrar = new JButton("Reenquadrar campo");
-        enquadrar.setAlignmentX(Component.LEFT_ALIGNMENT);
-        enquadrar.addActionListener(e -> { campo.enquadrar(); campo.repaint(); });
-        add(enquadrar);
+        add(Box.createVerticalStrut(18));
+        add(botao("Configuracao avancada...",
+                () -> DialogoConfiguracao.abrir(campo, cliente, campo)));
 
         add(Box.createVerticalGlue());
         add(rodape());
@@ -147,36 +98,16 @@ public final class PainelRede extends JPanel {
     }
 
     /**
-     * Recarrega os controles a partir do estado real, e nao do que o painel
-     * presume ter configurado. A fonte do arbitro pode ter sido trocada por fora
-     * -- por exemplo por um teste ou pela linha de comando -- e um seletor que
-     * mente sobre o modo em que se esta e pior do que nao ter seletor.
-     */
-    private void carregar() {
-        nossaCor.setSelectedIndex(cliente.getEquipe() == Cor.AZUL ? 0 : 1);
-        nomeAzul.setText(cliente.getNomeAzul());
-        nomeAmarelo.setText(cliente.getNomeAmarelo());
-        fonteArbitro.setSelectedIndex(cliente.getArbitro().isModoLocal() ? 1 : 0);
-        caixaEstrategia.setSelected(cliente.isEstrategiaLigada());
-    }
-
-    /**
-     * Troca cor e nomes.
+     * Largura inicial pedida; a altura vem do conteudo.
      *
-     * <p>Mudar de cor reabre os sockets, porque a porta de destino dos comandos
-     * depende dela -- por isso passa pelo {@link Cliente#reconfigurar} e nao por
-     * um setter simples.
+     * <p>Nao usa {@code setPreferredSize} com altura fixa porque o painel vive
+     * dentro de uma rolagem: uma altura chumbada faria o viewport achar que o
+     * conteudo cabe e a barra nunca apareceria.
      */
-    private void aplicarEquipe() {
-        cliente.setNomes(nomeAzul.getText(), nomeAmarelo.getText());
-        Cor cor = nossaCor.getSelectedIndex() == 0 ? Cor.AZUL : Cor.AMARELO;
-        try {
-            cliente.reconfigurar(cliente.getConfig(), cor);
-        } catch (IOException e) {
-            JOptionPane.showMessageDialog(this, e.getMessage(),
-                    "Equipe", JOptionPane.WARNING_MESSAGE);
-        }
-        carregar();
+    @Override
+    public Dimension getPreferredSize() {
+        Dimension d = super.getPreferredSize();
+        return new Dimension(LARGURA, d.height);
     }
 
     /** Chamado pelo relogio da janela; so texto, sem recriar componente. */
@@ -215,23 +146,7 @@ public final class PainelRede extends JPanel {
                     : play.strName() + "  ·  " + String.format("%.0fs", play.dTempoRestante()));
         }
 
-        var jogo = cliente.estadoDeJogo();
-        boolean local = cliente.getArbitro().isModoLocal();
-        if (fonteArbitro.getSelectedIndex() != (local ? 1 : 0)) {
-            fonteArbitro.setSelectedIndex(local ? 1 : 0);
-        }
-        if (local) {
-            estadoArbitro.setForeground(jogo.semArbitro() ? Paleta.APAGADO : Paleta.OK);
-            estadoArbitro.setText(jogo.semArbitro() ? "nenhum comando ainda" : jogo.descricao());
-        } else if (cliente.recebendoArbitro()) {
-            estadoArbitro.setForeground(Paleta.OK);
-            estadoArbitro.setText(jogo.descricao() + "  ·  " + cliente.pacotesArbitro() + " pacotes");
-        } else {
-            estadoArbitro.setForeground(Paleta.ALERTA);
-            estadoArbitro.setText(cliente.pacotesArbitro() == 0
-                    ? "GC nao encontrado em " + c.grupoArbitro() + ":" + c.portaArbitro()
-                    : "GC calado ha " + String.format("%.0f s", cliente.getArbitro().silencio()));
-        }
+        painelArbitro.atualizar();
     }
 
     private static String encurtar(String texto) {
@@ -242,40 +157,54 @@ public final class PainelRede extends JPanel {
 
     // -------------------------------------------------------------- estilo
 
-    private JComponent rodape() {
-        JLabel l = rotulo("<html><body style='width:200px'>Com a estrategia desligada nenhum "
-                + "comando sai, e os robos ficam parados, como no grSim."
-                + "<br><br>scroll aplica zoom, botao direito arrasta</body></html>",
-                new Color(120, 120, 130));
-        l.setFont(l.getFont().deriveFont(10f));
-        return l;
+    private static JButton botao(String texto, Runnable ao) {
+        JButton b = new JButton(texto);
+        b.setAlignmentX(Component.LEFT_ALIGNMENT);
+        b.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
+        b.addActionListener(e -> ao.run());
+        return b;
     }
 
-    private JPanel linha(String nome, JComponent campo) {
-        JPanel p = new JPanel();
-        p.setLayout(new BoxLayout(p, BoxLayout.X_AXIS));
-        p.setBackground(Paleta.PAINEL);
-        p.setAlignmentX(Component.LEFT_ALIGNMENT);
-        p.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
-
-        JLabel l = rotulo(nome, Paleta.APAGADO);
-        l.setPreferredSize(new Dimension(92, 22));
-        l.setMaximumSize(new Dimension(92, 22));
-
-        campo.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
-        p.add(l);
-        p.add(campo);
-        return p;
+    private static JComponent rodape() {
+        return new Dicas("Com a estrategia desligada nenhum comando sai, e os robos ficam "
+                + "parados, como no grSim.\n\nscroll aplica zoom, botao direito arrasta");
     }
 
-    private JCheckBox caixa(String texto, boolean marcada, java.util.function.Consumer<Boolean> ao) {
-        JCheckBox c = new JCheckBox(texto, marcada);
-        c.setBackground(Paleta.PAINEL);
-        c.setForeground(Paleta.TEXTO);
-        c.setFont(c.getFont().deriveFont(11f));
-        c.setAlignmentX(Component.LEFT_ALIGNMENT);
-        c.addActionListener(e -> { ao.accept(c.isSelected()); campo.repaint(); });
-        return c;
+    /**
+     * Texto corrido que quebra na largura que a coluna tiver no momento.
+     *
+     * <p>Um {@link JLabel} com HTML exigiria uma largura fixa no estilo, e a
+     * coluna agora e arrastavel: a quebra sobrava numa coluna larga e vazava numa
+     * estreita. Um {@link JTextArea} quebra sozinho, mas dentro de um
+     * {@code BoxLayout} ele pede a altura do texto SEM quebra -- uma linha so, com
+     * o resto cortado embaixo. Por isso a altura preferida e recalculada na
+     * largura corrente, e nao na preferida.
+     */
+    private static final class Dicas extends JTextArea {
+
+        Dicas(String texto) {
+            super(texto);
+            setLineWrap(true);
+            setWrapStyleWord(true);
+            setEditable(false);
+            setFocusable(false);
+            setOpaque(false);
+            setBorder(null);
+            setForeground(new Color(120, 120, 130));
+            setFont(getFont().deriveFont(10f));
+            setAlignmentX(Component.LEFT_ALIGNMENT);
+        }
+
+        @Override
+        public Dimension getPreferredSize() {
+            if (getWidth() > 0) setSize(getWidth(), Short.MAX_VALUE);
+            return super.getPreferredSize();
+        }
+
+        @Override
+        public Dimension getMaximumSize() {
+            return new Dimension(Integer.MAX_VALUE, getPreferredSize().height);
+        }
     }
 
     private static JComponent titulo(String texto) {
