@@ -62,6 +62,21 @@ public final class Paleta {
      */
     public static final Color ZONA_DO_GOLEIRO = new Color(120, 255, 120, 130);
 
+    /**
+     * Linha da bola incidindo no gol: para onde ela vai dar se ninguem tocar.
+     *
+     * <p>Vermelha e continua, e nao tracejada como as zonas: as zonas sao regra,
+     * esta linha e PREVISAO, e continua justamente porque ela e o que esta
+     * acontecendo agora. Some sozinha quando a bola muda de rumo.
+     */
+    public static final Color LINHA_DE_MIRA = new Color(255, 80, 80, 220);
+
+    /** Linha de chute ou passe com o caminho livre. */
+    public static final Color LINHA_LIVRE = new Color(120, 255, 120, 190);
+
+    /** A mesma linha com alguem no caminho. */
+    public static final Color LINHA_BLOQUEADA = new Color(255, 170, 60, 170);
+
     /** Verde do sensor de bola: o mesmo tom que o simulador usa para posse. */
     public static final Color SENSOR      = new Color(120, 255, 120);
     public static final Color SENSOR_FRACO = new Color(120, 255, 120, 40);

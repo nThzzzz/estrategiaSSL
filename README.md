@@ -57,7 +57,7 @@ como tal.
 Dependências em uma direção, sem ciclos, como no simulador:
 
 ```
-core       →  (nada)              Vec2, Angulo, Caixa
+core       →  (nada)              Vec2, Angulo, Caixa, Geo
 ajuste     →  (nada)              Parametro, Json
 model      →  core, proto         Geometria, Cor, Robo, Comando
 mundo      →  core, model         Quadro, EstadoRobo, EstadoBola
@@ -376,6 +376,48 @@ O que **não** entra no enum, e por quê:
 inconsistência: é a mesma regra que já vale para a rede — a conversão acontece na borda, e um
 arquivo de ajuste é uma borda. Quem digita "2" para tolerância de mira está pensando em dois
 graus, e `0.03490658503988659` num campo de texto não é um número que alguém revise.
+
+### Geometria: reta, segmento e semirreta não são a mesma pergunta
+
+`core.Geo` responde as perguntas que envolvem **dois** objetos — onde duas retas se cruzam, se um
+segmento passa por dentro de um círculo. Ficam fora de `Vec2` de propósito: `Vec2` é um valor, e
+enfiar isso nele faria o tipo mais usado do programa crescer sem parar.
+
+A distinção que mais causa erro silencioso está no nome de cada função:
+
+| | responde | usa quando |
+|---|---|---|
+| **reta** | sempre, se não forem paralelas | a linha não tem começo nem fim |
+| **semirreta** | só à frente da origem | trajetória: a bola vai **para lá**, não para trás |
+| **segmento** | só dentro do trecho | um lugar onde dá para estar: a linha do gol, entre os postes |
+
+Perguntar "onde essas duas **retas** se cruzam" sempre devolve um ponto — inclusive quando a bola
+está se afastando ou passa longe do poste. Um goleiro que acredite nessa resposta corre para fora
+do gol. Por isso `getVec2MiraNoNossoGol()` é **semirreta contra segmento**: só existe resposta
+quando a bola realmente vem, e quando ela entra entre os postes.
+
+Toda função que pode não ter resposta devolve `null`, e nunca um ponto inventado. "São paralelas"
+e "cruza fora do trecho" são respostas legítimas, e quem chama precisa distinguir isso de um ponto
+de verdade.
+
+**O tipo de retorno vai no nome**: `getVec2…` para ponto, `b…` para booleano, `d…` para double,
+como o resto do projeto já faz com `dGetScore` e `bCheckPreConditions`. Numa cadeia de contas
+geométricas o tipo do resultado é o que mais se erra, e ele aparecer no nome resolve antes de
+compilar.
+
+Em cima disso, o `Ambiente` oferece o que a estratégia realmente pergunta:
+`getVec2MiraNoNossoGol()`, `bBolaVemParaONossoGol()`, `getVec2PostoDoGoleiro(recuo)`,
+`bLinhaLivre(de, para, folga, ignorar…)` e `dFolgaContraEles(de, para)`. A folga soma o raio do
+robô ao da bola: a linha não precisa passar pelo centro do adversário para o passe morrer.
+
+As duas aparecem no campo, e podem ser desligadas em *Exibição*:
+
+* **Linha de mira**, vermelha e contínua, da bola até onde ela cruza a linha do nosso gol. Some
+  sozinha quando a bola muda de rumo. Contínua porque é o que está acontecendo agora — as zonas,
+  que são regra, vão tracejadas.
+* **Linha de chute**, tracejada, de quem está com a bola até o gol que ele ataca: **verde** quando
+  ninguém corta, **laranja** quando alguém corta. É a mesma conta que uma play usaria para decidir
+  chutar, e vê-la na tela é o que permite discordar dela olhando.
 
 ### Projeção e o fantasma
 

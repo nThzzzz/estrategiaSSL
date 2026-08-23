@@ -3,6 +3,7 @@ package estrategia;
 import model.Robo;
 import ajuste.Parametro;
 import core.Caixa;
+import core.Geo;
 import core.Vec2;
 import jogo.EstadoDeJogo;
 import model.Cor;
@@ -99,4 +100,80 @@ public record Ambiente(Quadro quadro, EstadoDeJogo jogo, Cor nossaCor, double ma
 
     /** True se este robo nosso pode entrar na area: so o goleiro declarado pode. */
     public boolean podeEntrarNaArea(int id) { return id == jogo.goleiro(); }
+
+    // ------------------------------------------------------------ mira e linha
+
+    /** Os dois postes do gol indicado, do de {@code -y} para o de {@code +y}. */
+    public Vec2[] getVec2Postes(int lado) {
+        double x = lado * geometria().meioComprimento();
+        double meia = geometria().golLargura() / 2.0;
+        return new Vec2[]{new Vec2(x, -meia), new Vec2(x, meia)};
+    }
+
+    /**
+     * Onde a bola cruza a linha do NOSSO gol, se ela estiver indo para la.
+     *
+     * <p>Semirreta e nao reta: uma bola se afastando tambem cruza a reta do gol,
+     * so que atras dela, e um goleiro que acredite nisso se posiciona para
+     * defender uma bola que ja passou. E segmento e nao reta do outro lado: fora
+     * dos postes a bola nao entra, e nao ha o que defender.
+     *
+     * @return o ponto entre os postes, ou {@code null} se ela nao vem, se esta
+     *         parada ou se passa por fora
+     */
+    public Vec2 getVec2MiraNoNossoGol() {
+        EstadoBola b = bola();
+        if (b.perdida() || b.rapidez() < 1e-6) return null;
+        Vec2[] postes = getVec2Postes(jogo.nossoLado());
+        return Geo.getVec2SemirretaComSegmento(b.posicao(), b.velocidade(), postes[0], postes[1]);
+    }
+
+    /** True quando a trajetoria corrente da bola termina dentro do nosso gol. */
+    public boolean bBolaVemParaONossoGol() { return getVec2MiraNoNossoGol() != null; }
+
+    /**
+     * Onde o goleiro deve ficar para cobrir a bola, no trecho que ele patrulha.
+     *
+     * <p>Na reta bola -> centro do gol, recuado {@code recuo} da linha, e PRESO
+     * ao trecho entre os postes: sair dele para cobrir um angulo impossivel e
+     * como nao ter goleiro, porque o gol fica inteiro aberto do outro lado.
+     */
+    public Vec2 getVec2PostoDoGoleiro(double recuo) {
+        Vec2 centro = nossoGol();
+        Vec2 alvo = bola().perdida() ? centro : bola().posicao();
+        Vec2 dentro = new Vec2(centro.x() - jogo.nossoLado() * recuo, centro.y());
+
+        Vec2[] postes = getVec2Postes(jogo.nossoLado());
+        Vec2 p1 = new Vec2(dentro.x(), postes[0].y());
+        Vec2 p2 = new Vec2(dentro.x(), postes[1].y());
+
+        Vec2 cruzamento = Geo.getVec2InterseccaoRetaComSegmento(alvo, centro, p1, p2);
+        return cruzamento != null ? cruzamento : Geo.getVec2NoSegmento(dentro, p1, p2);
+    }
+
+    /**
+     * True se nenhum robo em campo corta o trecho, fora quem esta nas pontas.
+     *
+     * <p>A folga soma o raio do robo ao raio da bola: a linha nao precisa passar
+     * pelo centro do adversario para o passe morrer, passar perto ja basta.
+     *
+     * @param ignorar centros a desconsiderar -- tipicamente quem passa e quem recebe
+     */
+    public boolean bLinhaLivre(Vec2 de, Vec2 para, double folga, Vec2... ignorar) {
+        for (EstadoRobo r : quadro.robos()) {
+            boolean pular = false;
+            for (Vec2 i : ignorar) {
+                if (i != null && i.distancia(r.posicao()) < 1e-6) { pular = true; break; }
+            }
+            if (pular) continue;
+            if (Geo.bSegmentoCortaCirculo(de, para, r.posicao(), folga)) return false;
+        }
+        return true;
+    }
+
+    /** A menor folga que o trecho tem contra os robos DELES. */
+    public double dFolgaContraEles(Vec2 de, Vec2 para) {
+        return Geo.dFolgaDoSegmento(de, para,
+                deles().stream().map(EstadoRobo::posicao).toList());
+    }
 }

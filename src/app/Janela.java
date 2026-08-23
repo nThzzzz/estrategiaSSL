@@ -64,6 +64,7 @@ public final class Janela {
         // dos dois esta no quadro da visao, e sem eles o campo nao sabe onde fica
         // a area proibida.
         this.campo.setContextoDeDefesa(cliente::estadoDeJogo, cliente::getMargemDaArea);
+        this.campo.setNossaCor(cliente::getEquipe);
         this.painelRobos = new PainelRobos(cliente, this::selecionar);
         this.painelRede = new PainelRede(cliente, campo);
     }

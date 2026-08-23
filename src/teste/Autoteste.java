@@ -1,5 +1,6 @@
 package teste;
 
+import core.Geo;
 import java.util.List;
 import java.nio.file.Path;
 import java.nio.file.Files;
@@ -86,6 +87,13 @@ public final class Autoteste {
         arbitroChegaPelaRede();
         trocaDeModoParaOMesmoModoNaoApagaOComando();
         arbitroLocalDeclaraOGoleiroPorCor();
+
+        // --- geometria ---
+        retasCruzamOndeADiagonalManda();
+        segmentoSoCruzaDentroDoTrecho();
+        semirretaNaoOlhaParaTras();
+        pontoNoSegmentoPrendeNasPontas();
+        segmentoCortaCirculoPelaFolga();
 
         // --- ajuste ---
         ajusteTrocaSoOQueOArquivoCita();
@@ -435,6 +443,94 @@ public final class Autoteste {
                         && a.estado(Cor.AZUL).acao() == Acao.STOP);
     }
 
+
+    // -------------------------------------------------------------- geometria
+
+    private static void retasCruzamOndeADiagonalManda() {
+        Vec2 p = Geo.getVec2InterseccaoDeRetas(
+                new Vec2(0, 0), new Vec2(10, 10),
+                new Vec2(0, 10), new Vec2(10, 0));
+        verdadeiro("geo: duas diagonais se cruzam no meio",
+                p != null && Math.abs(p.x() - 5) < 1e-9 && Math.abs(p.y() - 5) < 1e-9);
+
+        verdadeiro("geo: retas paralelas nao devolvem ponto inventado",
+                Geo.getVec2InterseccaoDeRetas(new Vec2(0, 0), new Vec2(10, 0),
+                        new Vec2(0, 5), new Vec2(10, 5)) == null);
+    }
+
+    /**
+     * A diferenca que mais causa erro silencioso: reta responde sempre, segmento
+     * so responde dentro do trecho.
+     */
+    private static void segmentoSoCruzaDentroDoTrecho() {
+        Vec2 a1 = new Vec2(0, 0), a2 = new Vec2(10, 0);
+        Vec2 b1 = new Vec2(5, 1), b2 = new Vec2(5, 9); // passa ACIMA do trecho a
+
+        verdadeiro("geo: como reta, as duas se cruzam",
+                Geo.getVec2InterseccaoDeRetas(a1, a2, b1, b2) != null);
+        verdadeiro("geo: como segmento, nao se cruzam",
+                Geo.getVec2InterseccaoDeSegmentos(a1, a2, b1, b2) == null);
+
+        Vec2 dentro = Geo.getVec2InterseccaoRetaComSegmento(
+                new Vec2(0, 5), new Vec2(10, 5), b1, b2);
+        verdadeiro("geo: reta contra segmento acha o ponto dentro do trecho",
+                dentro != null && Math.abs(dentro.y() - 5) < 1e-9);
+
+        verdadeiro("geo: e recusa quando o cruzamento cai fora do trecho",
+                Geo.getVec2InterseccaoRetaComSegmento(
+                        new Vec2(0, 20), new Vec2(10, 20), b1, b2) == null);
+    }
+
+    /**
+     * O caso do goleiro: bola se afastando tambem cruza a reta do gol, atras dela.
+     *
+     * <p>Sem a distincao, ele se posiciona para defender uma bola que ja passou.
+     */
+    private static void semirretaNaoOlhaParaTras() {
+        Vec2 poste1 = new Vec2(4500, -500), poste2 = new Vec2(4500, 500);
+
+        Vec2 vindo = Geo.getVec2SemirretaComSegmento(
+                new Vec2(2000, 0), new Vec2(1000, 0), poste1, poste2);
+        verdadeiro("geo: bola indo ao gol cruza a linha entre os postes",
+                vindo != null && Math.abs(vindo.x() - 4500) < 1e-9);
+
+        verdadeiro("geo: bola se afastando nao cruza nada a frente",
+                Geo.getVec2SemirretaComSegmento(
+                        new Vec2(2000, 0), new Vec2(-1000, 0), poste1, poste2) == null);
+
+        verdadeiro("geo: bola indo por fora do poste tambem nao",
+                Geo.getVec2SemirretaComSegmento(
+                        new Vec2(2000, 0), new Vec2(1000, 900), poste1, poste2) == null);
+    }
+
+    private static void pontoNoSegmentoPrendeNasPontas() {
+        Vec2 a = new Vec2(0, 0), b = new Vec2(10, 0);
+
+        Vec2 meio = Geo.getVec2NoSegmento(new Vec2(5, 7), a, b);
+        aproximado("geo: projecao no meio do trecho", meio.x(), 5, 1e-9);
+
+        Vec2 antes = Geo.getVec2NoSegmento(new Vec2(-30, 4), a, b);
+        aproximado("geo: fora do trecho, prende na ponta", antes.x(), 0, 1e-9);
+
+        aproximado("geo: a reta infinita nao prende",
+                Geo.getVec2NaReta(new Vec2(-30, 4), a, b).x(), -30, 1e-9);
+    }
+
+    /** A pergunta do passe: passar PERTO do robo ja mata a linha. */
+    private static void segmentoCortaCirculoPelaFolga() {
+        Vec2 de = new Vec2(0, 0), para = new Vec2(1000, 0);
+        Vec2 quase = new Vec2(500, 120);
+
+        verdadeiro("geo: robo a 120 mm nao corta uma folga de 100",
+                !Geo.bSegmentoCortaCirculo(de, para, quase, 100));
+        verdadeiro("geo: mas corta uma folga de 130",
+                Geo.bSegmentoCortaCirculo(de, para, quase, 130));
+
+        aproximado("geo: a folga do trecho e a menor distancia de todos",
+                Geo.dFolgaDoSegmento(de, para,
+                        List.of(new Vec2(500, 400), quase, new Vec2(900, 900))),
+                120, 1e-9);
+    }
 
     // ------------------------------------------------------------------ ajuste
 

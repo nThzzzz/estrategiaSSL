@@ -1,5 +1,6 @@
 package view;
 
+import core.Geo;
 import ajuste.Parametro;
 import core.Caixa;
 import core.Vec2;
@@ -73,6 +74,9 @@ public final class Campo extends JPanel {
      */
     private static final double VEL_MINIMA_FANTASMA = 150;
 
+    /** Abaixo disto a bola nao esta indo a lugar nenhum, e a mira nao aparece. */
+    private static final double VEL_MINIMA_DE_MIRA = 200;
+
     /** Traco da zona proibida: 120 mm de risco, 90 de vao. */
     private static final BasicStroke TRACO_DA_ZONA = new BasicStroke(
             22f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10f,
@@ -95,6 +99,15 @@ public final class Campo extends JPanel {
     private Supplier<EstadoDeJogo> fonteDeJogo;
     private DoubleSupplier margemDaArea;
 
+    /**
+     * De que cor jogamos.
+     *
+     * <p>O {@link Quadro} nao carrega isso -- ele so tem azuis e amarelos -- e sem
+     * saber a linha de chute apontaria para o gol errado quando quem esta com a
+     * bola e o adversario.
+     */
+    private Supplier<Cor> nossaCor = () -> Cor.AZUL;
+
     private double zoom = 1.0;
     private double panX = 0, panY = 0;
     private int mouseTelaX = -1, mouseTelaY = -1;
@@ -104,6 +117,7 @@ public final class Campo extends JPanel {
 
     private boolean mostrarTextura = true;
     private boolean mostrarAreaProibida = true;
+    private boolean mostrarLinhas = true;
     private boolean mostrarVetores = true;
     private boolean mostrarSensor = true;
     private boolean mostrarIncerteza = true;
@@ -131,8 +145,12 @@ public final class Campo extends JPanel {
         this.margemDaArea = margem;
     }
 
+    /** De que cor jogamos, para a linha de chute saber qual gol e o alvo. */
+    public void setNossaCor(Supplier<Cor> cor) { this.nossaCor = cor; }
+
     public void setMostrarTextura(boolean b) { mostrarTextura = b; }
     public void setMostrarAreaProibida(boolean b) { mostrarAreaProibida = b; }
+    public void setMostrarLinhas(boolean b) { mostrarLinhas = b; }
     public void setMostrarVetores(boolean b) { mostrarVetores = b; }
     public void setMostrarSensor(boolean b)  { mostrarSensor = b; }
     public void setMostrarIncerteza(boolean b) { mostrarIncerteza = b; }
@@ -141,6 +159,7 @@ public final class Campo extends JPanel {
 
     public boolean isMostrarTextura()      { return mostrarTextura; }
     public boolean isMostrarAreaProibida() { return mostrarAreaProibida; }
+    public boolean isMostrarLinhas()       { return mostrarLinhas; }
     public boolean isMostrarVetores()    { return mostrarVetores; }
     public boolean isMostrarSensor()     { return mostrarSensor; }
     public boolean isMostrarIncerteza()  { return mostrarIncerteza; }
@@ -239,6 +258,7 @@ public final class Campo extends JPanel {
         if (mostrarFantasma) for (EstadoRobo r : q.robos()) desenharFantasma(gm, r, avanco);
         for (EstadoRobo r : q.robos()) desenharRobo(gm, r, q.geometria(), avanco);
         desenharBola(gm, q.bola(), q.geometria(), avanco);
+        if (mostrarLinhas) desenharLinhas(gm, q, avanco);
         gm.dispose();
 
         desenharIdentificadores(g2, at, q, avanco);
@@ -364,6 +384,76 @@ public final class Campo extends JPanel {
         g.setColor(Paleta.ZONA_DO_GOLEIRO);
         g.setStroke(TRACO_DO_GOLEIRO);
         g.draw(retangulo(goleiro));
+    }
+
+    /**
+     * As duas linhas que dizem para onde a bola vai.
+     *
+     * <p>A de MIRA sai da bola e termina onde a trajetoria dela cruza a linha do
+     * nosso gol -- so aparece quando a bola realmente vem para ca, porque e
+     * semirreta contra segmento e nao reta contra reta. Vermelha e continua: as
+     * zonas sao regra e vao tracejadas, esta e previsao do que esta acontecendo
+     * agora.
+     *
+     * <p>A de CHUTE sai de quem esta com a bola e vai ao gol adversario, verde
+     * quando ninguem corta e laranja quando alguem corta. E a mesma conta que uma
+     * play usaria para decidir chutar; ve-la na tela e o que permite discordar
+     * dela olhando.
+     *
+     * <p>As duas usam a posicao PREVISTA, como o resto do desenho, senao ficariam
+     * atrasadas em relacao aos robos ao lado delas.
+     */
+    private void desenharLinhas(Graphics2D g, Quadro q, double avanco) {
+        if (fonteDeJogo == null) return;
+        Geometria geo = q.geometria();
+        int nosso = fonteDeJogo.get().nossoLado();
+
+        desenharMiraNoGol(g, q, geo, nosso, avanco);
+        desenharLinhaDeChute(g, q, geo, nosso, avanco);
+    }
+
+    private void desenharMiraNoGol(Graphics2D g, Quadro q, Geometria geo,
+                                   int nosso, double avanco) {
+        EstadoBola b = q.bola();
+        if (b.perdida() || b.rapidez() < VEL_MINIMA_DE_MIRA) return;
+
+        double x = nosso * geo.meioComprimento();
+        double meia = geo.golLargura() / 2.0;
+        Vec2 de = prever(b.posicao(), b.velocidade(), avanco);
+        Vec2 alvo = Geo.getVec2SemirretaComSegmento(de, b.velocidade(),
+                new Vec2(x, -meia), new Vec2(x, meia));
+        if (alvo == null) return;
+
+        g.setColor(Paleta.LINHA_DE_MIRA);
+        g.setStroke(new BasicStroke(14f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        g.draw(new Line2D.Double(de.x(), de.y(), alvo.x(), alvo.y()));
+        double r = 45;
+        g.fill(new Ellipse2D.Double(alvo.x() - r, alvo.y() - r, r * 2, r * 2));
+    }
+
+    private void desenharLinhaDeChute(Graphics2D g, Quadro q, Geometria geo,
+                                      int nosso, double avanco) {
+        EstadoRobo dono = null;
+        for (EstadoRobo r : q.robos()) if (r.bolaNoSensor()) { dono = r; break; }
+        if (dono == null) return;
+
+        Vec2 de = prever(dono.posicao(), dono.velocidade(), avanco);
+        // O gol atacado por quem esta com a bola, e nao sempre o deles: com o
+        // adversario na posse a linha que interessa e a que ameaca a gente.
+        int ladoDoAlvo = dono.cor() == nossaCor.get() ? -nosso : nosso;
+        Vec2 alvo = geo.centroGol(ladoDoAlvo);
+
+        boolean livre = true;
+        for (EstadoRobo r : q.robos()) {
+            if (r == dono) continue;
+            if (Geo.bSegmentoCortaCirculo(de, alvo, prever(r.posicao(), r.velocidade(), avanco),
+                    Robo.RAIO + geo.raioBola())) { livre = false; break; }
+        }
+
+        g.setColor(livre ? Paleta.LINHA_LIVRE : Paleta.LINHA_BLOQUEADA);
+        g.setStroke(new BasicStroke(10f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER,
+                10f, new float[]{90f, 70f}, 0f));
+        g.draw(new Line2D.Double(de.x(), de.y(), alvo.x(), alvo.y()));
     }
 
     private static Rectangle2D.Double retangulo(Caixa c) {

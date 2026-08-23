@@ -245,8 +245,10 @@ public final class DialogoConfiguracao extends JDialog {
     private JComponent exibicao() {
         JPanel p = secao("O que aparece no campo");
         p.add(caixa("textura do gramado", campo::isMostrarTextura, campo::setMostrarTextura));
-        p.add(caixa("area proibida da defesa",
+        p.add(caixa("zonas da defesa",
                 campo::isMostrarAreaProibida, campo::setMostrarAreaProibida));
+        p.add(caixa("linha de mira e de chute",
+                campo::isMostrarLinhas, campo::setMostrarLinhas));
         p.add(caixa("vetores de velocidade", campo::isMostrarVetores, campo::setMostrarVetores));
         p.add(caixa("area do sensor de bola", campo::isMostrarSensor, campo::setMostrarSensor));
         p.add(caixa("incerteza do Kalman", campo::isMostrarIncerteza, campo::setMostrarIncerteza));
