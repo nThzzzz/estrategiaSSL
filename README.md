@@ -383,6 +383,17 @@ de deixar a estratégia surda.
 **Centro.** Zoom no scroll, arrasto com o botão direito, clique seleciona robô. Vetores de
 velocidade, área do sensor, anel de incerteza e a previsão do desenho podem ser desligados.
 
+O gol é desenhado como estrutura **aberta** — dois postes e o fundo — e não mais como o bloco
+chapado atrás da linha de fundo. O bloco dava a entender que o gol é maciço, e desde que o
+simulador passou a tratar as paredes do gol como física de verdade isso ficou errado de dois
+jeitos: a bola entra e fica lá dentro, e parada dentro do gol ela sumia atrás do bloco.
+
+O contorno é uma **linha**, e não uma parede com espessura. `SSL_GeometryFieldSize` manda
+largura e profundidade do gol, e nada mais: espessura de parede não existe no protocolo.
+Desenhá-la com os 20 mm do regulamento seria chumbar no cliente um número que não veio da rede,
+o mesmo erro de chumbar 9000 × 6000 e quebrar em Divisão A. A espessura usada é a das outras
+linhas do campo, e essa vem no pacote.
+
 A previsão existe porque aqui a cena não é integrada no mesmo instante em que se pinta, como
 acontece na janela do simulador: ela chega em amostras discretas pela rede. A tela repinta a 60
 Hz e a visão chega a 60 Hz, mas as duas cadências não estão em fase, então alguns repaints

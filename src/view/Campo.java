@@ -229,12 +229,44 @@ public final class Campo extends JPanel {
         g.draw(new Rectangle2D.Double(-meioX, -al / 2, ad, al));
         g.draw(new Rectangle2D.Double(meioX - ad, -al / 2, ad, al));
 
-        double gl = geo.golLargura();
-        double gp = geo.golProfundidade();
-        g.setColor(Paleta.AZUL);
-        g.fill(new Rectangle2D.Double(-meioX - gp, -gl / 2, gp, gl));
-        g.setColor(Paleta.AMARELO);
-        g.fill(new Rectangle2D.Double(meioX, -gl / 2, gp, gl));
+        desenharGol(g, geo, -1, Paleta.AZUL);
+        desenharGol(g, geo, 1, Paleta.AMARELO);
+    }
+
+    /**
+     * Um gol, ate onde a visao permite desenhar.
+     *
+     * <p>Antes era um retangulo chapado atras da linha de fundo, o que fazia o gol
+     * parecer macico. Ele nao e: e uma estrutura aberta pela boca, e a bola que
+     * entra fica dentro dela -- no simuladorSSL isso agora e fisica de verdade, e
+     * uma bola parada dentro do gol ficava escondida atras do bloco chapado.
+     *
+     * <p>O contorno e uma LINHA, e nao uma parede com espessura, e isso e
+     * deliberado. {@code SSL_GeometryFieldSize} manda largura e profundidade do
+     * gol, e nada mais: espessura de parede nao existe no protocolo. Desenha-la
+     * com os 20 mm do regulamento seria chumbar no cliente um numero que nao veio
+     * da rede, o mesmo erro de chumbar 9000 x 6000 e quebrar em Divisao A. A
+     * espessura usada aqui e a das outras linhas do campo, e essa vem no pacote.
+     */
+    private void desenharGol(Graphics2D g, Geometria geo, int lado, Color cor) {
+        double meiaBoca = geo.golLargura() / 2;
+        double boca = lado * geo.meioComprimento();
+        double fundo = lado * (geo.meioComprimento() + geo.golProfundidade());
+
+        g.setColor(new Color(cor.getRed(), cor.getGreen(), cor.getBlue(), 45));
+        g.fill(new Rectangle2D.Double(Math.min(boca, fundo), -meiaBoca,
+                geo.golProfundidade(), meiaBoca * 2));
+
+        Path2D.Double contorno = new Path2D.Double();
+        contorno.moveTo(boca, meiaBoca);
+        contorno.lineTo(fundo, meiaBoca);
+        contorno.lineTo(fundo, -meiaBoca);
+        contorno.lineTo(boca, -meiaBoca);
+
+        g.setColor(cor);
+        g.setStroke(new BasicStroke((float) geo.espessuraLinha(),
+                BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER));
+        g.draw(contorno);
     }
 
     /**
