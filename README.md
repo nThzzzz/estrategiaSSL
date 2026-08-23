@@ -268,6 +268,37 @@ quando ele entrar.
 então a reta é uma aproximação honesta por um segundo. A bola desacelera contra o carpete,
 quica e muda de dono, e prever isso direito é um problema por si.
 
+### A área de defesa é do goleiro, e só dele
+
+Entrar na própria área de defesa sendo robô de linha é pênalti, e é a regra que mais custa caro
+por descuido. Por isso ela mora no mesmo lugar que os limites do árbitro — o `Executor`, no fim
+do tique — e não em cada play.
+
+O retângulo é a área que a **visão informou** (`penalty_area_depth`/`width`) mais uma **folga de
+segurança** ajustável, que é a única parte local: com folga zero ele é exatamente o que as linhas
+desenham no chão, que é o limite que a regra usa. O padrão é 45 mm, meio raio de robô — a regra
+mede pelo ponto do robô que entra, então encostar a casca na linha já é falta. A folga cresce os
+quatro lados, e por vir de cima da geometria da rede continua certa em Divisão A.
+
+Quem pode entrar é o **goleiro declarado**, e só ele. O número vem do `Referee.TeamInfo`, do
+Game Controller ou do árbitro de teste — é declaração de equipe, não escolha da estratégia.
+
+**Cortar seco o comando não bastaria.** O robô desacelera a `ACEL_MAX`, então a 3 m/s ele ainda
+percorreria 1,5 m depois do comando ir a zero, e entraria na área assim mesmo. O que se limita é
+a velocidade de **aproximação**, ao maior valor que ainda deixa parar antes da linha —
+`v = √(2·a·d)`, o mesmo perfil de frenagem que `AndarPara` usa para chegar num ponto. De longe
+não corta nada; chegando perto, freia na taxa certa; já dentro, sobra só a componente de saída.
+
+Só a componente **normal** é tocada; a tangencial passa inteira. Uma defesa que trava ao encostar
+na área é pior que uma que a contorna.
+
+O retângulo é desenhado no campo em laranja tracejado, e não em branco: as linhas brancas são o
+que a visão mediu, e este retângulo é decisão nossa. A conta do desenho e a do corte saem da
+mesma `Geometria.areaDefesa` — ver na tela uma borda diferente da que está sendo obedecida seria
+pior que não ver borda nenhuma. Aparece só do **nosso** lado: a área deles também é proibida pela
+regra, mas a estratégia ainda não a trata, e desenhar uma restrição que não está em vigor
+prometeria o que o código não cumpre.
+
 ### Os limites do árbitro ficam fora das plays
 
 `HALT` não deixa sair comando, e fora de jogo corrido a velocidade satura enquanto chute e
@@ -384,10 +415,23 @@ da estratégia — e os **comandos de árbitro**, que são os botões que mais s
 
 Antes era o contrário. Os comandos moravam num diálogo atrás de um botão *Simular...*, a duas
 aberturas de distância de um STOP, enquanto nomes de equipe e caixas de exibição — coisas que se
-mexem uma vez por bancada — ocupavam a maior parte da coluna. Estes últimos foram para
-*Configuração avançada...*, e as portas continuam atrás de *Configurar...*, no mesmo desenho do
-simulador. Tudo é trocável com a janela aberta, porque numa bancada troca-se de porta o tempo
-todo.
+mexem uma vez por bancada — ocupavam a maior parte da coluna.
+
+Tudo que se **configura** foi para *Configuração avançada...*, em três abas: **Equipe** (cor,
+nomes, lado de ataque, goleiro e a folga da área), **Rede** (as sete portas e endereços) e
+**Exibição**. Em abas porque as três seções numa coluna só passariam de 700 px de altura, e
+ninguém rola um diálogo de configuração para achar um campo de porta. Tudo continua trocável com
+a janela aberta, porque numa bancada troca-se de porta o tempo todo.
+
+Dentro da aba **Equipe** há uma divisão que importa: cor e nomes esperam o *Aplicar*, porque
+trocar de cor **reabre os sockets** — a porta de destino dos comandos depende dela. Lado, goleiro
+e folga valem no clique, porque não custam nada. Um campo que parece ter sido aplicado e não foi
+é o pior dos dois mundos.
+
+Lado de ataque e goleiro são **declarações de árbitro**, não comandos: viajam dentro de toda
+mensagem `Referee`, e por isso trocá-los reemite o comando corrente em vez de inventar um STOP e
+interromper o jogo por causa de uma configuração. Com o Game Controller no ar quem declara os
+dois é ele, e os dois controles ficam desabilitados.
 
 Em modo REDE os botões de árbitro ficam **desabilitados**, e não apenas inertes: num diálogo que
 alguém acabou de escolher abrir bastava uma linha de aviso, mas numa coluna sempre visível
@@ -405,11 +449,16 @@ velocidade, área do sensor, anel de incerteza e a previsão do desenho podem se
 O gramado é desenhado com as **faixas do corte**, como um campo de futebol de verdade. Não é
 enfeite: esta é uma tela de leitura — é nela que se percebe o filtro mentindo — e um retângulo
 verde uniforme não dá referência nenhuma de posição. Com o corte marcado, um robô que andou meia
-faixa e um que andou três se distinguem de relance, sem ler número. São doze faixas ao longo do
-comprimento, **contadas e não medidas em milímetros**, para o campo de Divisão A aparecer com o
-mesmo desenho do de Divisão B; sendo par, a divisória do meio cai na linha central. A média
-exata dos dois tons é o verde chapado do simulador, então as duas janelas lado a lado continuam
-lendo como o mesmo campo.
+faixa e um que andou três se distinguem de relance, sem ler número.
+
+A largura da faixa é a **profundidade da área de defesa**, e as faixas são contadas a partir de
+cada linha de fundo para dentro. Duas consequências, e as duas são o motivo da escolha: a
+primeira faixa de cada lado coincide exatamente com a área, que é a régua que mais interessa em
+campo; e o desenho fica **espelhado**, igual visto de qualquer um dos dois gols. A faixa do meio
+é o que sobra depois das inteiras — 1000 mm em Divisão B, 1200 em Divisão A — e é simétrica em
+torno da linha central nos dois casos, que é o que sustenta o espelho. A média exata dos dois
+tons é o verde chapado do simulador, então as duas janelas lado a lado continuam lendo como o
+mesmo campo.
 
 As duas colunas têm **largura arrastável**, e o campo absorve a diferença — inclusive
 recolhendo uma coluna inteira pelas setinhas do divisor, quando a bancada aperta. Redimensionar

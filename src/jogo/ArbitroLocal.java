@@ -21,6 +21,18 @@ public final class ArbitroLocal {
     private boolean azulNoLadoPositivo = true;
     private String nomeAzul = "Azul";
     private String nomeAmarelo = "Amarelo";
+    private int goleiroAzul = 0, goleiroAmarelo = 0;
+
+    /**
+     * Ultimo comando pedido, para reemitir.
+     *
+     * <p>Goleiro e lado do campo nao sao comandos: sao declaracoes que viajam
+     * DENTRO de toda mensagem de arbitro. Trocar um deles so chega em quem
+     * escuta na proxima mensagem, e sem guardar o comando corrente a unica forma
+     * de reemitir seria inventar um STOP -- o que interromperia o jogo por causa
+     * de uma mudanca de configuracao.
+     */
+    private Referee.Command ultimo = Referee.Command.HALT;
 
     public void setNomes(String azul, String amarelo) {
         this.nomeAzul = azul;
@@ -29,6 +41,18 @@ public final class ArbitroLocal {
 
     public void setAzulNoLadoPositivo(boolean b) { this.azulNoLadoPositivo = b; }
     public boolean isAzulNoLadoPositivo()        { return azulNoLadoPositivo; }
+
+    /** Numero do goleiro declarado por uma das equipes. */
+    public void setGoleiro(model.Cor cor, int id) {
+        if (cor == model.Cor.AZUL) goleiroAzul = id; else goleiroAmarelo = id;
+    }
+
+    public int goleiro(model.Cor cor) {
+        return cor == model.Cor.AZUL ? goleiroAzul : goleiroAmarelo;
+    }
+
+    /** Repete o ultimo comando, para uma declaracao trocada entrar em vigor. */
+    public Referee reemitir() { return comando(ultimo); }
 
     public void marcarGol(model.Cor cor) {
         if (cor == model.Cor.AZUL) golsAzul++; else golsAmarelo++;
@@ -44,6 +68,7 @@ public final class ArbitroLocal {
      * STOP de antes continua valendo".
      */
     public Referee comando(Referee.Command comando) {
+        this.ultimo = comando;
         long agora = System.currentTimeMillis() * 1000; // o protocolo usa microssegundos
         return Referee.newBuilder()
                 .setPacketTimestamp(agora)
@@ -53,13 +78,13 @@ public final class ArbitroLocal {
                 .setCommandCounter(++contador)
                 .setCommandTimestamp(agora)
                 .setBlueTeamOnPositiveHalf(azulNoLadoPositivo)
-                .setBlue(time(nomeAzul, golsAzul))
-                .setYellow(time(nomeAmarelo, golsAmarelo))
+                .setBlue(time(nomeAzul, golsAzul, goleiroAzul))
+                .setYellow(time(nomeAmarelo, golsAmarelo, goleiroAmarelo))
                 .build();
     }
 
     /** Todos os campos de {@code TeamInfo} sao required no proto2; nenhum pode faltar. */
-    private static Referee.TeamInfo time(String nome, int gols) {
+    private static Referee.TeamInfo time(String nome, int gols, int goleiro) {
         return Referee.TeamInfo.newBuilder()
                 .setName(nome)
                 .setScore(gols)
@@ -67,7 +92,7 @@ public final class ArbitroLocal {
                 .setYellowCards(0)
                 .setTimeouts(4)
                 .setTimeoutTime(300_000_000)
-                .setGoalkeeper(0)
+                .setGoalkeeper(goleiro)
                 .build();
     }
 }

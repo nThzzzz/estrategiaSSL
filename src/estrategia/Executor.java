@@ -1,7 +1,10 @@
 package estrategia;
 
+import core.Caixa;
+import core.Vec2;
 import jogo.EstadoDeJogo;
 import model.Comando;
+import model.Robo;
 import mundo.EstadoRobo;
 
 import java.util.ArrayList;
@@ -28,6 +31,10 @@ import java.util.Map;
  * disso e falta. Aplicando no fim do tique, depois de todo mundo ter opinado,
  * nenhuma play consegue violar a regra nem por engano -- e quem escreve uma play
  * nova nao precisa lembrar.
+ *
+ * <p>Pelo mesmo motivo mora aqui a area de defesa: so o goleiro declarado entra
+ * nela, e isso e regra, nao preferencia. Uma play de defesa que empurrasse um
+ * zagueiro para dentro da area por descuido daria penalti.
  */
 public final class Executor {
 
@@ -54,6 +61,9 @@ public final class Executor {
         Map<Integer, Comando> saida = new LinkedHashMap<>();
         for (Jogador j : disponiveis) {
             Comando podado = cAplicarLimites(j.comando(), _ambiente.jogo());
+            if (!_ambiente.podeEntrarNaArea(j.id())) {
+                podado = cManterForaDaArea(podado, j.estado(), _ambiente.nossaAreaProibida());
+            }
             // O que o arbitro corta e o que mais confunde quem depura: o robo
             // pediu e nao saiu, e sem esta linha some sem deixar rastro.
             if (j.comando().temChute() && !podado.temChute()) {
@@ -102,6 +112,54 @@ public final class Executor {
 
         return new Comando(c.velTangencial() * fator, c.velNormal() * fator,
                 c.velAngular(), 0, 0, false);
+    }
+
+    /**
+     * Corta a parte do comando que levaria o robo para dentro da area de defesa.
+     *
+     * <p>Zerar a componente de entrada quando o robo ja esta encostando nao
+     * bastaria: ele desacelera a {@code ACEL_MAX}, entao a 3 m/s ainda entraria
+     * 1,5 m depois do comando ir a zero. O que se limita e a velocidade de
+     * APROXIMACAO, ao maior valor que ainda deixa o robo parar antes da linha --
+     * {@code v = sqrt(2*a*d)}, o mesmo perfil de frenagem que {@code AndarPara}
+     * usa para chegar num ponto. De longe nao corta nada; chegando perto, freia na
+     * taxa certa.
+     *
+     * <p>A caixa e dilatada pelo raio do robo porque a regra mede pelo ponto do
+     * robo que entra, e nao pelo centro dele.
+     *
+     * <p>Com o robo JA dentro -- empurrado por outro, ou porque o goleiro mudou --
+     * a distancia e zero e sobra so a componente de saida: ele nao consegue
+     * afundar mais, e sai pela face mais proxima.
+     *
+     * <p>So a componente normal e tocada. A tangencial passa inteira, entao o robo
+     * continua deslizando ao longo da borda em vez de travar: uma defesa que para
+     * de andar ao encostar na area e pior que uma que a contorna.
+     */
+    static Comando cManterForaDaArea(Comando c, EstadoRobo r, Caixa area) {
+        if (r == null) return c;
+
+        Caixa proibida = area.dilatada(Robo.RAIO);
+        Vec2 posicao = r.posicao();
+
+        // Normal apontando para FORA da area, e distancia ate ela.
+        boolean dentro = proibida.contem(posicao);
+        Vec2 normal = dentro
+                ? proibida.saidaMaisCurta(posicao)
+                : posicao.menos(proibida.pontoMaisProximo(posicao)).normalizado();
+        if (normal.norma() < 1e-9) return c;
+
+        double distancia = dentro ? 0 : proibida.distancia(posicao);
+        double tetoDeEntrada = Math.sqrt(2 * Robo.ACEL_MAX * distancia);
+
+        Vec2 global = new Vec2(c.velTangencial(), c.velNormal()).paraGlobal(r.theta());
+        double entrada = -global.escalar(normal); // positivo quando vai para dentro
+        if (entrada <= tetoDeEntrada) return c;
+
+        Vec2 corrigida = global.mais(normal.escala(entrada - tetoDeEntrada));
+        Vec2 local = corrigida.paraLocal(r.theta());
+        return new Comando(local.x(), local.y(), c.velAngular(),
+                c.velChute(), c.anguloChute(), c.dribbler());
     }
 
     /** Jogadores conhecidos, mesmo os que sumiram da visao. */

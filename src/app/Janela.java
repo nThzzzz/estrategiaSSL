@@ -60,6 +60,10 @@ public final class Janela {
     private Janela(Cliente cliente) {
         this.cliente = cliente;
         this.campo = new Campo(cliente::quadro);
+        // Qual metade defendemos vem do arbitro e a folga e escolha nossa: nenhum
+        // dos dois esta no quadro da visao, e sem eles o campo nao sabe onde fica
+        // a area proibida.
+        this.campo.setContextoDeDefesa(cliente::estadoDeJogo, cliente::getMargemDaArea);
         this.painelRobos = new PainelRobos(cliente, this::selecionar);
         this.painelRede = new PainelRede(cliente, campo);
     }

@@ -1,5 +1,6 @@
 package teste;
 
+import core.Caixa;
 import core.Vec2;
 import estrategia.Ambiente;
 import estrategia.Coach;
@@ -60,6 +61,11 @@ public final class AutotesteEstrategia {
         prioridadeDecideQuemEntraPrimeiro();
         histereseEvitaTrocaTrocaDePapel();
         arbitroPodaOComando();
+        areaDeDefesaSoAceitaOGoleiro();
+        areaDeDefesaFreiaEmVezDeCortarSeco();
+        roboDentroDaAreaSoPodeSair();
+        deslizarPelaBordaDaAreaNaoECortado();
+        folgaEmpurraOLimiteDaArea();
 
         // --- projecao ---
         roboProjetadoSegueEmLinhaReta();
@@ -299,6 +305,102 @@ public final class AutotesteEstrategia {
         Map<Integer, Comando> halt = exec.vTick(ambiente(0.2, Command.HALT, 1));
         verdadeiro("arbitro: em HALT nao sai nada",
                 halt.get(0).equals(Comando.PARADO));
+    }
+
+    // ------------------------------------------------------------ area de defesa
+
+    /**
+     * A regra que mais custa caro: robo de linha dentro da area e penalti.
+     *
+     * <p>O mesmo robo, no mesmo lugar, com o mesmo comando -- muda so quem esta
+     * declarado goleiro. E assim que o {@code Executor} decide, e por isso o teste
+     * troca a declaracao em vez de trocar de robo.
+     */
+    private static void areaDeDefesaSoAceitaOGoleiro() {
+        Vec2 perto = new Vec2(3000, 0); // a caminho da nossa area, que comeca em 3500
+
+        Comando doGoleiro = umRoboIndoParaAArea(perto, 0).get(0);
+        Comando deLinha = umRoboIndoParaAArea(perto, 5).get(0);
+
+        aproximado("area: o goleiro declarado entra sem corte",
+                doGoleiro.velTangencial(), Robo.VEL_MAX, 1e-6);
+        verdadeiro("area: quem nao e goleiro tem a entrada cortada",
+                deLinha.velTangencial() < doGoleiro.velTangencial());
+    }
+
+    /**
+     * Cortar seco nao bastaria: o robo desacelera a ACEL_MAX e entraria assim mesmo.
+     *
+     * <p>A 3 m/s ele ainda percorre 1,5 m depois do comando ir a zero. O que se
+     * limita e a velocidade de aproximacao, ao maior valor que ainda deixa parar
+     * antes da linha -- o mesmo perfil de frenagem de {@code AndarPara}.
+     */
+    private static void areaDeDefesaFreiaEmVezDeCortarSeco() {
+        double x = 3000;
+        // A caixa proibida e a area mais a folga, mais o raio do robo: a regra
+        // mede pelo ponto do robo que entra, nao pelo centro.
+        double borda = Geometria.DIVISAO_B.areaDefesa(1, Ambiente.MARGEM_PADRAO).xMin()
+                - Robo.RAIO;
+        double esperado = Math.sqrt(2 * Robo.ACEL_MAX * (borda - x));
+
+        Comando c = umRoboIndoParaAArea(new Vec2(x, 0), 5).get(0);
+        aproximado(String.format("area: a entrada satura na frenagem (%.0f mm/s)", esperado),
+                c.velTangencial(), esperado, 1);
+    }
+
+    /** Empurrado para dentro, ou goleiro que deixou de ser: so resta sair. */
+    private static void roboDentroDaAreaSoPodeSair() {
+        Vec2 dentro = new Vec2(4000, 0); // area vai de 3500 a 4500
+
+        Comando entrando = umRoboIndoParaAArea(dentro, 5).get(0);
+        aproximado("area: dentro dela, a componente de entrada zera",
+                entrando.velTangencial(), 0, 1e-6);
+
+        Comando saindo = umRoboAndando(dentro, -Robo.VEL_MAX, 0, 5).get(0);
+        aproximado("area: mas a de saida passa inteira",
+                saindo.velTangencial(), -Robo.VEL_MAX, 1e-6);
+    }
+
+    /**
+     * So a componente normal e tocada; a tangencial passa.
+     *
+     * <p>Uma defesa que trava ao encostar na area e pior que uma que a contorna.
+     */
+    private static void deslizarPelaBordaDaAreaNaoECortado() {
+        Comando c = umRoboAndando(new Vec2(3000, 0), 0, Robo.VEL_MAX, 5).get(0);
+        aproximado("area: andar ao longo da borda nao e cortado",
+                c.velNormal(), Robo.VEL_MAX, 1e-6);
+    }
+
+    /** A folga e a unica parte local do retangulo, e ela cresce os quatro lados. */
+    private static void folgaEmpurraOLimiteDaArea() {
+        Geometria g = Geometria.DIVISAO_B;
+        Caixa semFolga = g.areaDefesa(1, 0);
+        Caixa comFolga = g.areaDefesa(1, 200);
+
+        aproximado("area: sem folga, a boca fica na linha que a visao informou",
+                semFolga.xMin(), g.meioComprimento() - g.areaDefesaProfundidade(), 1e-6);
+        aproximado("area: a folga empurra a boca para fora",
+                comFolga.xMin(), semFolga.xMin() - 200, 1e-6);
+        aproximado("area: e alarga a lateral na mesma medida",
+                comFolga.yMax(), semFolga.yMax() + 200, 1e-6);
+    }
+
+    /** Um robo so, indo para frente no maximo, com o goleiro declarado que se pedir. */
+    private static Map<Integer, Comando> umRoboIndoParaAArea(Vec2 posicao, int goleiro) {
+        return umRoboAndando(posicao, Robo.VEL_MAX, 0, goleiro);
+    }
+
+    private static Map<Integer, Comando> umRoboAndando(Vec2 posicao, double vx, double vy,
+                                                       int goleiro) {
+        SkillQueAnda skill = new SkillQueAnda(vx, vy);
+        PlayContada play = new PlayContada(new RoleContada(new TacticContada(skill)));
+        CoachManual coach = new CoachManual(play);
+        Executor exec = new Executor(coach);
+        coach.bSetPlay(play.id());
+
+        EstadoRobo r = new EstadoRobo(0, Cor.AZUL, posicao, 0, Vec2.ZERO, 0, false, 0, 5);
+        return exec.vTick(montar(0.0, Command.FORCE_START, List.of(r), goleiro));
     }
 
     // ------------------------------------------------------------------ projecao
@@ -582,12 +684,25 @@ public final class AutotesteEstrategia {
     }
 
     private static Ambiente montar(double tempo, Command comando, List<EstadoRobo> robos) {
+        return montar(tempo, comando, robos, 0);
+    }
+
+    /**
+     * Ambiente com o goleiro declarado.
+     *
+     * <p>Jogamos de azul e o azul fica no lado positivo, entao defendemos +x: a
+     * nossa area vai de 3500 a 4500 em x.
+     */
+    private static Ambiente montar(double tempo, Command comando, List<EstadoRobo> robos,
+                                   int goleiro) {
         Quadro q = new Quadro(0, tempo, System.nanoTime(), Geometria.DIVISAO_B,
                 new EstadoBola(Vec2.ZERO, 21.5, Vec2.ZERO, 0, 5), robos);
 
         Arbitro a = new Arbitro();
         a.setModoLocal(true);
-        a.doPainel(new ArbitroLocal().comando(comando));
+        ArbitroLocal gc = new ArbitroLocal();
+        gc.setGoleiro(Cor.AZUL, goleiro);
+        a.doPainel(gc.comando(comando));
         return new Ambiente(q, a.estado(Cor.AZUL), Cor.AZUL);
     }
 
@@ -719,6 +834,15 @@ public final class AutotesteEstrategia {
         @Override public void vInitialize() { }
         @Override protected void vRun() { }
         @Override public void vCheckTacticFinished() { }
+    }
+
+    /** Anda com uma velocidade local fixa, sem chutar nem dribblar. */
+    private static final class SkillQueAnda extends Skill {
+        private final double vx, vy;
+        SkillQueAnda(double vx, double vy) { this.vx = vx; this.vy = vy; }
+        @Override public String strName() { return "anda reto"; }
+        @Override public void vInitialize() { }
+        @Override protected void vRun() { jogador.vMover(vx, vy); }
     }
 
     private static final class SkillQueChutaSeTiver extends Skill {

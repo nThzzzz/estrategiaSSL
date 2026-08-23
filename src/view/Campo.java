@@ -1,6 +1,8 @@
 package view;
 
+import core.Caixa;
 import core.Vec2;
+import jogo.EstadoDeJogo;
 import model.Cor;
 import model.Geometria;
 import model.Robo;
@@ -27,6 +29,7 @@ import java.awt.geom.Path2D;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.geom.RoundRectangle2D;
+import java.util.function.DoubleSupplier;
 import java.util.function.Supplier;
 
 /**
@@ -69,17 +72,22 @@ public final class Campo extends JPanel {
      */
     private static final double VEL_MINIMA_FANTASMA = 150;
 
-    /**
-     * Faixas de corte ao longo do comprimento do campo.
-     *
-     * <p>Par, para a divisoria do meio cair na linha central. Doze deixa cada
-     * faixa em 750 mm na Divisao B, um pouco menos que a distancia entre dois
-     * robos parados lado a lado -- perto o bastante para servir de regua, longe o
-     * bastante para nao virar listra fina.
-     */
-    private static final int FAIXAS_DO_CORTE = 12;
+    /** Traco do retangulo de seguranca: 120 mm de risco, 90 de vao. */
+    private static final BasicStroke TRACO_DA_AREA = new BasicStroke(
+            18f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10f,
+            new float[]{120f, 90f}, 0f);
 
     private final Supplier<Quadro> fonte;
+
+    /**
+     * Contexto de defesa: qual lado e o nosso e qual a folga sobre a area.
+     *
+     * <p>Vem de fora porque nao esta no {@link Quadro}: qual metade defendemos e
+     * do arbitro, e a folga e escolha nossa. Sem contexto ligado o retangulo
+     * simplesmente nao aparece, e o campo continua desenhavel sozinho.
+     */
+    private Supplier<EstadoDeJogo> fonteDeJogo;
+    private DoubleSupplier margemDaArea;
 
     private double zoom = 1.0;
     private double panX = 0, panY = 0;
@@ -89,6 +97,7 @@ public final class Campo extends JPanel {
     private int idSelecionado = -1;
 
     private boolean mostrarTextura = true;
+    private boolean mostrarAreaProibida = true;
     private boolean mostrarVetores = true;
     private boolean mostrarSensor = true;
     private boolean mostrarIncerteza = true;
@@ -110,14 +119,22 @@ public final class Campo extends JPanel {
     public void enquadrar() { zoom = 1.0; panX = 0; panY = 0; }
     public void setMouseTela(int x, int y) { mouseTelaX = x; mouseTelaY = y; }
 
+    /** Liga o campo ao estado de jogo e a folga, para desenhar a area proibida. */
+    public void setContextoDeDefesa(Supplier<EstadoDeJogo> jogo, DoubleSupplier margem) {
+        this.fonteDeJogo = jogo;
+        this.margemDaArea = margem;
+    }
+
     public void setMostrarTextura(boolean b) { mostrarTextura = b; }
+    public void setMostrarAreaProibida(boolean b) { mostrarAreaProibida = b; }
     public void setMostrarVetores(boolean b) { mostrarVetores = b; }
     public void setMostrarSensor(boolean b)  { mostrarSensor = b; }
     public void setMostrarIncerteza(boolean b) { mostrarIncerteza = b; }
     public void setPreverAteODesenho(boolean b) { preverAteODesenho = b; }
     public void setMostrarFantasma(boolean b) { mostrarFantasma = b; }
 
-    public boolean isMostrarTextura()    { return mostrarTextura; }
+    public boolean isMostrarTextura()      { return mostrarTextura; }
+    public boolean isMostrarAreaProibida() { return mostrarAreaProibida; }
     public boolean isMostrarVetores()    { return mostrarVetores; }
     public boolean isMostrarSensor()     { return mostrarSensor; }
     public boolean isMostrarIncerteza()  { return mostrarIncerteza; }
@@ -249,34 +266,41 @@ public final class Campo extends JPanel {
 
         desenharGol(g, geo, -1, Paleta.AZUL);
         desenharGol(g, geo, 1, Paleta.AMARELO);
+        desenharAreaProibida(g, geo);
     }
 
     /**
      * O gramado: verde chapado ou faixas de corte, conforme a exibicao.
      *
-     * <p>As faixas nao sao enfeite gratuito. O campo da estrategia e uma tela de
-     * leitura -- e nela que se acompanha se o filtro esta mentindo -- e um retangulo
-     * verde uniforme nao da referencia nenhuma de POSICAO. Com o corte marcado, um
-     * robo que anda meia faixa e um robo que anda tres faixas se distinguem de
-     * relance, sem ler numero.
+     * <p>As faixas nao sao enfeite. O campo da estrategia e uma tela de leitura --
+     * e nela que se acompanha se o filtro esta mentindo -- e um retangulo verde
+     * uniforme nao da referencia nenhuma de POSICAO. Com o corte marcado, um robo
+     * que andou meia faixa e um que andou tres se distinguem de relance, sem ler
+     * numero.
      *
-     * <p>Sao {@link #FAIXAS_DO_CORTE} faixas ao longo do comprimento, contadas e nao
-     * medidas em milimetros: assim o campo de Divisao A aparece com o mesmo desenho
-     * do de Divisao B, e nao com o dobro de faixas. Sendo par, a divisoria do meio
-     * cai exatamente na linha central, como num campo cortado de verdade.
+     * <p>A largura da faixa e a PROFUNDIDADE DA AREA DE DEFESA, e as faixas sao
+     * contadas a partir de cada linha de fundo para dentro. Duas consequencias, e
+     * as duas sao o motivo da escolha: a primeira faixa de cada lado coincide
+     * exatamente com a area, que e a regua que mais interessa em campo; e o
+     * desenho fica ESPELHADO, igual visto de qualquer um dos dois gols, como num
+     * campo cortado de verdade. Antes eram doze faixas de tamanho arbitrario,
+     * iguais nos dois lados por acaso e alinhadas com nada.
      *
-     * <p>O contraste e baixo de proposito, e as faixas ficam so DENTRO das linhas: a
-     * faixa externa segue lisa, porque ali nao ha campo -- ha area de escape.
+     * <p>A faixa do meio e o que sobra depois das inteiras, e por isso pode ser
+     * mais larga ou mais estreita que as outras: em Divisao B sobram 1000 mm e ela
+     * fica igual as demais, em Divisao A sobram 1200. Ela e simetrica em torno da
+     * linha central nos dois casos, que e o que sustenta o espelho.
      *
-     * <p>A base e pintada inteira de escuro e so as faixas claras vao por cima. Duas
-     * pinturas lado a lado deixariam um fio de costura entre elas pelo antialias, e
-     * do jeito que esta o que aparece na emenda e o proprio tom escuro.
+     * <p>A base e pintada inteira de escuro e so as faixas claras vao por cima.
+     * Duas pinturas lado a lado deixariam um fio de costura entre elas pelo
+     * antialias; assim, o que aparece na emenda e o proprio tom escuro.
      */
     private void desenharGramado(Graphics2D g, Geometria geo) {
         double meioX = geo.meioComprimento();
         double meioY = geo.meiaLargura();
+        double faixa = geo.areaDefesaProfundidade();
 
-        if (!mostrarTextura) {
+        if (!mostrarTextura || faixa <= 0) {
             g.setColor(Paleta.GRAMA);
             g.fill(new Rectangle2D.Double(-meioX, -meioY, geo.comprimento(), geo.largura()));
             return;
@@ -286,10 +310,44 @@ public final class Campo extends JPanel {
         g.fill(new Rectangle2D.Double(-meioX, -meioY, geo.comprimento(), geo.largura()));
 
         g.setColor(Paleta.GRAMA_CLARA);
-        double faixa = geo.comprimento() / FAIXAS_DO_CORTE;
-        for (int i = 0; i < FAIXAS_DO_CORTE; i += 2) {
+        int inteiras = (int) (meioX / faixa);
+        for (int i = 0; i < inteiras; i += 2) {
+            g.fill(new Rectangle2D.Double(meioX - (i + 1) * faixa, -meioY, faixa, geo.largura()));
             g.fill(new Rectangle2D.Double(-meioX + i * faixa, -meioY, faixa, geo.largura()));
         }
+
+        // A faixa central so e clara quando o indice dela e par, como as outras.
+        double sobra = meioX - inteiras * faixa;
+        if (sobra > 0 && inteiras % 2 == 0) {
+            g.fill(new Rectangle2D.Double(-sobra, -meioY, sobra * 2, geo.largura()));
+        }
+    }
+
+    /**
+     * O retangulo onde so o goleiro pode entrar.
+     *
+     * <p>E a area de defesa que a visao informou mais a folga de seguranca que
+     * escolhemos, e e exatamente a mesma conta que o {@code Executor} usa para
+     * cortar comando -- as duas saem de {@code Geometria.areaDefesa}. Ver na tela
+     * uma borda diferente da que esta sendo obedecida seria pior que nao ver
+     * borda nenhuma.
+     *
+     * <p>Aparece so do NOSSO lado. A area deles tambem e proibida pela regra, mas
+     * a estrategia ainda nao a trata, e desenhar uma restricao que nao esta em
+     * vigor prometeria o que o codigo nao cumpre.
+     */
+    private void desenharAreaProibida(Graphics2D g, Geometria geo) {
+        if (!mostrarAreaProibida || fonteDeJogo == null || margemDaArea == null) return;
+
+        Caixa area = geo.areaDefesa(fonteDeJogo.get().nossoLado(), margemDaArea.getAsDouble());
+        Rectangle2D.Double r = new Rectangle2D.Double(
+                area.xMin(), area.yMin(), area.extensaoX(), area.extensaoY());
+
+        g.setColor(Paleta.AREA_PROIBIDA_FRACA);
+        g.fill(r);
+        g.setColor(Paleta.AREA_PROIBIDA);
+        g.setStroke(TRACO_DA_AREA);
+        g.draw(r);
     }
 
     /**

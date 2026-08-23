@@ -81,6 +81,7 @@ public final class Autoteste {
         modoLocalEModoRedeSeExcluem();
         arbitroChegaPelaRede();
         trocaDeModoParaOMesmoModoNaoApagaOComando();
+        arbitroLocalDeclaraOGoleiroPorCor();
         rotuloUsaOVocabularioDoProtocolo();
 
         // --- protocolo ---
@@ -394,6 +395,34 @@ public final class Autoteste {
         a.setModoLocal(false); // troca de verdade: dai sim descarta
         verdadeiro("arbitro: trocar de fonte descarta o comando da anterior",
                 a.estado(Cor.AZUL).semArbitro());
+    }
+
+    /**
+     * Goleiro e declaracao de EQUIPE, e viaja dentro de toda mensagem de arbitro.
+     *
+     * <p>E por isso que trocar de goleiro precisa reemitir: nao existe comando
+     * "trocar goleiro" no protocolo, o numero simplesmente vai junto do proximo
+     * {@code Referee}. Reemitir e o que evita ter de inventar um STOP e
+     * interromper o jogo por causa de uma mudanca de configuracao.
+     */
+    private static void arbitroLocalDeclaraOGoleiroPorCor() {
+        Arbitro a = new Arbitro();
+        a.setModoLocal(true);
+        ArbitroLocal gc = new ArbitroLocal();
+        gc.setGoleiro(Cor.AZUL, 3);
+        gc.setGoleiro(Cor.AMARELO, 7);
+        a.doPainel(gc.comando(Command.STOP));
+
+        verdadeiro("arbitro: o goleiro azul e o nosso jogando de azul",
+                a.estado(Cor.AZUL).goleiro() == 3);
+        verdadeiro("arbitro: e o amarelo e o nosso jogando de amarelo",
+                a.estado(Cor.AMARELO).goleiro() == 7);
+
+        gc.setGoleiro(Cor.AZUL, 4);
+        a.doPainel(gc.reemitir());
+        verdadeiro("arbitro: reemitir leva o goleiro novo sem trocar o comando",
+                a.estado(Cor.AZUL).goleiro() == 4
+                        && a.estado(Cor.AZUL).acao() == Acao.STOP);
     }
 
     private static void haltEStopImpoemLimites() {

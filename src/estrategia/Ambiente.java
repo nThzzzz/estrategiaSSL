@@ -1,5 +1,6 @@
 package estrategia;
 
+import core.Caixa;
 import core.Vec2;
 import jogo.EstadoDeJogo;
 import model.Cor;
@@ -26,8 +27,26 @@ import java.util.List;
  * <p>O tempo aqui e o {@code t_capture} da visao, e nao o relogio de parede. Com
  * o simulador rodando acelerado sao coisas bem diferentes, e e o tempo simulado
  * que faz o timeout de uma play significar a mesma coisa nas duas velocidades.
+ *
+ * @param margemDaArea folga somada a area de defesa para formar a zona onde so o
+ *        goleiro entra, em mm. E o unico numero daqui que NAO vem da visao nem do
+ *        arbitro: e escolha nossa, e por isso e ajustavel na interface
  */
-public record Ambiente(Quadro quadro, EstadoDeJogo jogo, Cor nossaCor) {
+public record Ambiente(Quadro quadro, EstadoDeJogo jogo, Cor nossaCor, double margemDaArea) {
+
+    /**
+     * Folga padrao sobre a area de defesa, em mm.
+     *
+     * <p>Meio raio de robo. A regra mede pelo ponto do robo que entra, entao
+     * encostar a casca na linha ja e falta; parar com alguma folga e o que
+     * transforma "quase certo" em "certo", sem entregar meio campo de graca.
+     */
+    public static final double MARGEM_PADRAO = 45;
+
+    /** Sem margem declarada, vale a padrao. */
+    public Ambiente(Quadro quadro, EstadoDeJogo jogo, Cor nossaCor) {
+        this(quadro, jogo, nossaCor, MARGEM_PADRAO);
+    }
 
     public Geometria geometria() { return quadro.geometria(); }
     public EstadoBola bola()     { return quadro.bola(); }
@@ -61,4 +80,19 @@ public record Ambiente(Quadro quadro, EstadoDeJogo jogo, Cor nossaCor) {
 
     /** True se o ponto esta na metade que defendemos. */
     public boolean noNossoCampo(Vec2 p) { return p.x() * jogo.nossoLado() > 0; }
+
+    /**
+     * O retangulo da nossa area de defesa, ja com a folga de seguranca.
+     *
+     * <p>E zona proibida para todo robo nosso que nao seja o goleiro -- a regra
+     * da SSL e essa, e quem a aplica e o {@link Executor}, no fim do tique, pelo
+     * mesmo motivo que os limites do arbitro moram la: basta uma play esquecer
+     * para o time cometer falta.
+     */
+    public Caixa nossaAreaProibida() {
+        return geometria().areaDefesa(jogo.nossoLado(), margemDaArea);
+    }
+
+    /** True se este robo nosso pode entrar na area: so o goleiro declarado pode. */
+    public boolean podeEntrarNaArea(int id) { return id == jogo.goleiro(); }
 }

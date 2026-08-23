@@ -1,6 +1,7 @@
 package app;
 
 import model.Cor;
+import rede.ConfigRede;
 import view.Campo;
 import view.Paleta;
 
@@ -15,60 +16,105 @@ import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JSpinner;
+import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
+import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 import javax.swing.border.TitledBorder;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.GridLayout;
 import java.awt.Window;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
 /**
- * Configuracao avancada: quem somos e o que aparece no campo.
+ * Configuracao avancada: quem somos, para onde falamos e o que aparece no campo.
  *
- * <p>Estava tudo na coluna da esquerda, e a coluna nao dava conta: cinco caixas
- * de exibicao mais tres campos de equipe ocupavam a maior parte dela para
- * ajustes que se mexem uma vez por bancada, enquanto os comandos de arbitro --
- * que se apertam o tempo todo -- nao tinham onde caber. Mesmo desenho ja usado
- * pelo {@link DialogoRede}: o que se olha fica na coluna, o que se configura
- * fica atras de um botao.
+ * <p>Estava tudo espalhado -- equipe e exibicao na coluna da esquerda, portas num
+ * dialogo proprio -- e a coluna nao dava conta. O criterio agora e um so: o que se
+ * OLHA durante uma bancada fica na coluna, o que se CONFIGURA fica aqui. Portas,
+ * nomes, cor, lado, goleiro e caixas de exibicao se mexem uma vez por bancada.
+ *
+ * <p>Em abas e nao numa coluna unica porque as tres secoes juntas passariam de 700
+ * px de altura, e ninguem rola um dialogo de configuracao para achar um campo de
+ * porta.
  *
  * <p>Modeless de proposito. Ajustar exibicao com o campo congelado atras de um
  * dialogo modal seria ajustar as cegas -- cada caixa marcada aparece no campo no
  * mesmo instante, e e assim que se decide se ela ajuda ou atrapalha.
  *
- * <p>As caixas nascem lendo o estado REAL do {@link Campo}, e nao um {@code
- * true} escrito aqui. Como o dialogo abre e fecha quantas vezes se quiser,
- * marcar tudo de novo a cada abertura faria a segunda abertura desfazer o que a
- * primeira ajustou.
+ * <h2>O que vale na hora e o que espera o Aplicar</h2>
+ *
+ * <p>Cor e nomes esperam, porque trocar de cor REABRE os sockets: a porta de
+ * destino dos comandos depende dela. Lado, goleiro, folga da area e exibicao valem
+ * no clique, porque nao custam nada. A separacao visual entre os dois blocos existe
+ * para isso -- um campo que parece ter sido aplicado e nao foi e o pior dos dois
+ * mundos.
  */
 public final class DialogoConfiguracao extends JDialog {
 
     private final Cliente cliente;
     private final Campo campo;
 
+    // --- equipe ---
     private final JComboBox<String> nossaCor = new JComboBox<>(new String[]{"Azul", "Amarelo"});
     private final JTextField nomeAzul = new JTextField(12);
     private final JTextField nomeAmarelo = new JTextField(12);
+
+    // --- jogo, valem na hora ---
+    /**
+     * Para que metade atacamos.
+     *
+     * <p>Rotulado por DIRECAO NA TELA e nao por cor do gol. As cores dos gols no
+     * desenho sao convencao nossa -- o protocolo de visao nao diz de quem e cada
+     * gol -- e as equipes trocam de lado no intervalo, entao "gol amarelo"
+     * mentiria metade da partida. "+x, para a direita" e verdade sempre.
+     */
+    private final JComboBox<String> ladoDeAtaque =
+            new JComboBox<>(new String[]{"+x, para a direita", "-x, para a esquerda"});
+    private final JSpinner goleiro = new JSpinner(new SpinnerNumberModel(0, 0, 15, 1));
+    private final JSpinner margem = new JSpinner(new SpinnerNumberModel(45, 0, 600, 5));
+    private final JLabel avisoDoArbitro = new JLabel(" ");
+
+    /** Controles que so tem efeito com o arbitro local no comando. */
+    private final List<JComponent> soComArbitroLocal = new ArrayList<>();
+
+    // --- rede ---
+    private final JTextField grupo = new JTextField(14);
+    private final JTextField portaVisao = new JTextField(6);
+    private final JTextField grupoArbitro = new JTextField(14);
+    private final JTextField portaArbitro = new JTextField(6);
+    private final JTextField host = new JTextField(14);
+    private final JTextField portaAzul = new JTextField(6);
+    private final JTextField portaAmarelo = new JTextField(6);
+    private final JLabel mensagemDaRede = new JLabel(" ");
+
+    /** Ligado enquanto os controles estao sendo alinhados ao estado real. */
+    private boolean sincronizando;
 
     private DialogoConfiguracao(Window dono, Cliente cliente, Campo campo) {
         super(dono, "Configuracao avancada", ModalityType.MODELESS);
         this.cliente = cliente;
         this.campo = campo;
 
-        JPanel corpo = new JPanel();
-        corpo.setLayout(new BoxLayout(corpo, BoxLayout.Y_AXIS));
-        corpo.setBackground(Paleta.PAINEL);
-        corpo.setBorder(BorderFactory.createEmptyBorder(10, 12, 4, 12));
-        corpo.add(equipe());
-        corpo.add(Box.createVerticalStrut(10));
-        corpo.add(exibicao());
+        JTabbedPane abas = new JTabbedPane();
+        abas.setBackground(Paleta.PAINEL);
+        abas.addTab("Equipe", aba(equipe(), jogo()));
+        abas.addTab("Rede", aba(rede()));
+        abas.addTab("Exibicao", aba(exibicao()));
 
         JButton fechar = new JButton("Fechar");
         fechar.addActionListener(e -> dispose());
@@ -77,12 +123,24 @@ public final class DialogoConfiguracao extends JDialog {
         rodape.add(fechar);
 
         setLayout(new BorderLayout());
-        add(corpo, BorderLayout.CENTER);
+        add(abas, BorderLayout.CENTER);
         add(rodape, BorderLayout.SOUTH);
 
-        carregar();
+        sincronizar();
+        instalarOuvintes();
+
+        // Cor, lado e goleiro podem mudar por fora -- pelos botoes do arbitro na
+        // coluna, ou pelo Game Controller. Um dialogo aberto que mente sobre isso
+        // e pior que um dialogo fechado.
+        Timer relogio = new Timer(200, e -> sincronizar());
+        relogio.start();
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosed(WindowEvent e) { relogio.stop(); }
+        });
+
         pack();
-        setMinimumSize(new Dimension(320, getHeight()));
+        setMinimumSize(new Dimension(420, getHeight()));
         setLocationRelativeTo(dono);
     }
 
@@ -94,7 +152,7 @@ public final class DialogoConfiguracao extends JDialog {
     // ------------------------------------------------------------- secoes
 
     private JComponent equipe() {
-        JPanel p = secao("Equipe");
+        JPanel p = secao("Quem somos (precisa de Aplicar)");
         p.add(linha("jogamos de", nossaCor));
         p.add(linha("nome azul", nomeAzul));
         p.add(linha("nome amarelo", nomeAmarelo));
@@ -104,16 +162,83 @@ public final class DialogoConfiguracao extends JDialog {
         aplicar.setAlignmentX(Component.LEFT_ALIGNMENT);
         aplicar.addActionListener(e -> aplicarEquipe());
         p.add(aplicar);
+        p.add(dica("Trocar de cor reabre os sockets, porque a porta de destino dos "
+                + "comandos depende dela."));
+        return p;
+    }
+
+    private JComponent jogo() {
+        JPanel p = secao("Jogo e defesa (vale na hora)");
+        p.add(linha("atacamos para", ladoDeAtaque));
+        p.add(linha("goleiro", goleiro));
+        p.add(linha("folga da area", margem));
+
+        soComArbitroLocal.add(ladoDeAtaque);
+        soComArbitroLocal.add(goleiro);
+
+        avisoDoArbitro.setFont(avisoDoArbitro.getFont().deriveFont(10f));
+        avisoDoArbitro.setAlignmentX(Component.LEFT_ALIGNMENT);
+        p.add(avisoDoArbitro);
+        p.add(dica("A folga e somada a area que a visao informou, em mm. So o goleiro "
+                + "entra no retangulo; para os outros o comando de entrada e cortado."));
+        return p;
+    }
+
+    private JComponent rede() {
+        JPanel p = secao("Portas e enderecos");
+
+        JPanel campos = new JPanel(new GridLayout(0, 2, 8, 6));
+        campos.setBackground(Paleta.PAINEL);
+        campos.setAlignmentX(Component.LEFT_ALIGNMENT);
+        campoDeRede(campos, "Grupo multicast da visao", grupo);
+        campoDeRede(campos, "Porta da visao", portaVisao);
+        campoDeRede(campos, "Grupo do arbitro (GC)", grupoArbitro);
+        campoDeRede(campos, "Porta do arbitro", portaArbitro);
+        campoDeRede(campos, "Host do simulador", host);
+        campoDeRede(campos, "Porta RobotControl azul", portaAzul);
+        campoDeRede(campos, "Porta RobotControl amarelo", portaAmarelo);
+        campos.setMaximumSize(new Dimension(Integer.MAX_VALUE,
+                campos.getPreferredSize().height));
+        p.add(campos);
+
+        mensagemDaRede.setFont(mensagemDaRede.getFont().deriveFont(10f));
+        mensagemDaRede.setAlignmentX(Component.LEFT_ALIGNMENT);
+        p.add(Box.createVerticalStrut(6));
+        p.add(mensagemDaRede);
+        p.add(Box.createVerticalStrut(6));
+
+        JButton restaurar = new JButton("Restaurar padrao");
+        restaurar.addActionListener(e -> {
+            preencherRede(ConfigRede.padrao());
+            dizerDaRede("valores padrao carregados, clique em Aplicar", Paleta.TEXTO);
+        });
+        JButton aplicar = new JButton("Aplicar");
+        aplicar.addActionListener(e -> aplicarRede());
+
+        JPanel botoes = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        botoes.setBackground(Paleta.PAINEL);
+        botoes.setAlignmentX(Component.LEFT_ALIGNMENT);
+        botoes.add(aplicar);
+        botoes.add(restaurar);
+        botoes.setMaximumSize(new Dimension(Integer.MAX_VALUE,
+                botoes.getPreferredSize().height));
+        p.add(botoes);
+        p.add(dica("Aplicar reabre os sockets; a visao pisca por um instante. Porta "
+                + "ocupada por outro processo so aparece aqui, e nesse caso a "
+                + "configuracao anterior e restaurada."));
         return p;
     }
 
     private JComponent exibicao() {
-        JPanel p = secao("Exibicao");
+        JPanel p = secao("O que aparece no campo");
         p.add(caixa("textura do gramado", campo::isMostrarTextura, campo::setMostrarTextura));
+        p.add(caixa("area proibida da defesa",
+                campo::isMostrarAreaProibida, campo::setMostrarAreaProibida));
         p.add(caixa("vetores de velocidade", campo::isMostrarVetores, campo::setMostrarVetores));
         p.add(caixa("area do sensor de bola", campo::isMostrarSensor, campo::setMostrarSensor));
         p.add(caixa("incerteza do Kalman", campo::isMostrarIncerteza, campo::setMostrarIncerteza));
-        p.add(caixa("prever ate o desenho", campo::isPreverAteODesenho, campo::setPreverAteODesenho));
+        p.add(caixa("prever ate o desenho",
+                campo::isPreverAteODesenho, campo::setPreverAteODesenho));
         p.add(caixa("fantasma de 1 s", campo::isMostrarFantasma, campo::setMostrarFantasma));
         p.add(Box.createVerticalStrut(6));
 
@@ -126,10 +251,62 @@ public final class DialogoConfiguracao extends JDialog {
 
     // -------------------------------------------------------------- acoes
 
-    private void carregar() {
-        nossaCor.setSelectedIndex(cliente.getEquipe() == Cor.AZUL ? 0 : 1);
-        nomeAzul.setText(cliente.getNomeAzul());
-        nomeAmarelo.setText(cliente.getNomeAmarelo());
+    private void instalarOuvintes() {
+        ladoDeAtaque.addActionListener(e -> {
+            if (sincronizando) return;
+            // O protocolo fala do AZUL; o seletor fala de NOS. Atacar +x e defender
+            // -x, entao o azul fica no lado positivo quando somos amarelos.
+            boolean atacamosPositivo = ladoDeAtaque.getSelectedIndex() == 0;
+            boolean somosAzul = cliente.getEquipe() == Cor.AZUL;
+            cliente.getArbitroLocal().setAzulNoLadoPositivo(somosAzul != atacamosPositivo);
+            cliente.reemitirArbitro();
+            campo.repaint();
+        });
+
+        goleiro.addChangeListener(e -> {
+            if (sincronizando) return;
+            cliente.getArbitroLocal().setGoleiro(cliente.getEquipe(), (Integer) goleiro.getValue());
+            cliente.reemitirArbitro();
+        });
+
+        margem.addChangeListener(e -> {
+            if (sincronizando) return;
+            cliente.setMargemDaArea((Integer) margem.getValue());
+            campo.repaint();
+        });
+    }
+
+    /** Alinha os controles com o estado real, sem que espelhar vire comando. */
+    private void sincronizar() {
+        sincronizando = true;
+        try {
+            nossaCor.setSelectedIndex(cliente.getEquipe() == Cor.AZUL ? 0 : 1);
+            if (!nomeAzul.isFocusOwner()) nomeAzul.setText(cliente.getNomeAzul());
+            if (!nomeAmarelo.isFocusOwner()) nomeAmarelo.setText(cliente.getNomeAmarelo());
+
+            boolean atacamosPositivo = !cliente.estadoDeJogo().defendemosLadoPositivo();
+            ladoDeAtaque.setSelectedIndex(atacamosPositivo ? 0 : 1);
+
+            int declarado = cliente.estadoDeJogo().goleiro();
+            if (declarado >= 0 && declarado <= 15) goleiro.setValue(declarado);
+            margem.setValue((int) Math.round(cliente.getMargemDaArea()));
+
+            boolean local = cliente.getArbitro().isModoLocal();
+            for (JComponent c : soComArbitroLocal) c.setEnabled(local);
+            avisoDoArbitro.setForeground(local ? Paleta.APAGADO : Paleta.ALERTA);
+            avisoDoArbitro.setText(local
+                    ? "lado e goleiro vao na proxima mensagem do arbitro de teste"
+                    : "em modo REDE quem declara lado e goleiro e o Game Controller");
+
+            if (!grupo.isFocusOwner() && !portaVisao.isFocusOwner()
+                    && !grupoArbitro.isFocusOwner() && !portaArbitro.isFocusOwner()
+                    && !host.isFocusOwner() && !portaAzul.isFocusOwner()
+                    && !portaAmarelo.isFocusOwner()) {
+                preencherRede(cliente.getConfig());
+            }
+        } finally {
+            sincronizando = false;
+        }
     }
 
     /**
@@ -148,10 +325,84 @@ public final class DialogoConfiguracao extends JDialog {
             JOptionPane.showMessageDialog(this, e.getMessage(),
                     "Equipe", JOptionPane.WARNING_MESSAGE);
         }
-        carregar();
+        sincronizar();
+    }
+
+    /**
+     * Troca as portas com a estrategia rodando.
+     *
+     * <p>A validacao acontece em duas camadas. {@link ConfigRede#problema()} rejeita
+     * o que da para saber sem tocar no sistema -- endereco fora da faixa multicast,
+     * porta fora da faixa, azul e amarelo na mesma porta. Ja "a porta esta ocupada
+     * por outro processo" so aparece na hora do bind, e chega aqui como excecao de
+     * {@link Cliente#reconfigurar}, que ja restaurou a configuracao anterior antes
+     * de lancar.
+     */
+    private void aplicarRede() {
+        ConfigRede nova;
+        try {
+            nova = new ConfigRede(grupo.getText().trim(),
+                    inteiro(portaVisao, "porta da visao"),
+                    grupoArbitro.getText().trim(),
+                    inteiro(portaArbitro, "porta do arbitro"),
+                    host.getText().trim(),
+                    inteiro(portaAzul, "porta RobotControl azul"),
+                    inteiro(portaAmarelo, "porta RobotControl amarelo"));
+        } catch (IllegalArgumentException e) {
+            dizerDaRede(e.getMessage(), Paleta.ERRO);
+            return;
+        }
+
+        try {
+            // A cor da equipe nao se mexe aqui: ela decide para qual porta
+            // mandamos, mas e escolha de quem somos, nao de configuracao de rede.
+            cliente.reconfigurar(nova, cliente.getEquipe());
+            dizerDaRede("aplicado: escutando " + nova.grupoVisao() + ":" + nova.portaVisao()
+                    + ", mandando em " + cliente.destinoDeComandos(), Paleta.OK);
+        } catch (IOException e) {
+            dizerDaRede(e.getMessage(), Paleta.ERRO);
+            preencherRede(cliente.getConfig()); // mostra o que ficou valendo de fato
+        }
+    }
+
+    private static int inteiro(JTextField campo, String nome) {
+        try {
+            return Integer.parseInt(campo.getText().trim());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException(nome + ": \"" + campo.getText().trim()
+                    + "\" nao e um numero");
+        }
+    }
+
+    private void preencherRede(ConfigRede c) {
+        grupo.setText(c.grupoVisao());
+        portaVisao.setText(String.valueOf(c.portaVisao()));
+        grupoArbitro.setText(c.grupoArbitro());
+        portaArbitro.setText(String.valueOf(c.portaArbitro()));
+        host.setText(c.hostComandos());
+        portaAzul.setText(String.valueOf(c.portaAzul()));
+        portaAmarelo.setText(String.valueOf(c.portaAmarelo()));
+    }
+
+    private void dizerDaRede(String texto, Color cor) {
+        mensagemDaRede.setForeground(cor);
+        mensagemDaRede.setText("<html><body style='width:340px'>" + texto + "</body></html>");
     }
 
     // -------------------------------------------------------------- estilo
+
+    private static JComponent aba(JComponent... secoes) {
+        JPanel p = new JPanel();
+        p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
+        p.setBackground(Paleta.PAINEL);
+        p.setBorder(BorderFactory.createEmptyBorder(10, 12, 10, 12));
+        for (int i = 0; i < secoes.length; i++) {
+            if (i > 0) p.add(Box.createVerticalStrut(10));
+            p.add(secoes[i]);
+        }
+        p.add(Box.createVerticalGlue());
+        return p;
+    }
 
     private static JPanel secao(String titulo) {
         JPanel p = new JPanel();
@@ -187,12 +438,29 @@ public final class DialogoConfiguracao extends JDialog {
         JLabel l = new JLabel(nome);
         l.setForeground(Paleta.APAGADO);
         l.setFont(l.getFont().deriveFont(11f));
-        l.setPreferredSize(new Dimension(92, 22));
-        l.setMaximumSize(new Dimension(92, 22));
+        l.setPreferredSize(new Dimension(100, 22));
+        l.setMaximumSize(new Dimension(100, 22));
 
         controle.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
         p.add(l);
         p.add(controle);
         return p;
+    }
+
+    private static void campoDeRede(JPanel painel, String rotulo, JTextField campo) {
+        JLabel l = new JLabel(rotulo);
+        l.setForeground(Paleta.TEXTO);
+        l.setFont(l.getFont().deriveFont(Font.PLAIN, 11f));
+        painel.add(l);
+        painel.add(campo);
+    }
+
+    private static JComponent dica(String texto) {
+        JLabel l = new JLabel("<html><body style='width:340px'>" + texto + "</body></html>");
+        l.setForeground(new Color(120, 120, 130));
+        l.setFont(l.getFont().deriveFont(10f));
+        l.setAlignmentX(Component.LEFT_ALIGNMENT);
+        l.setBorder(BorderFactory.createEmptyBorder(6, 0, 0, 0));
+        return l;
     }
 }

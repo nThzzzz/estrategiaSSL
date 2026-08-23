@@ -44,6 +44,16 @@ public final class Cliente implements AutoCloseable {
     private final ArbitroLocal arbitroLocal = new ArbitroLocal();
     private final Executor executor = new Executor(new Bancada());
 
+    /**
+     * Folga somada a area de defesa para formar a zona onde so o goleiro entra.
+     *
+     * <p>Mora aqui porque tem dois leitores que nao se conhecem: a estrategia, que
+     * a recebe no {@link Ambiente} e corta comando por causa dela, e o campo, que
+     * a desenha. Volatil porque quem escreve e a Swing e quem le e a thread de
+     * decisao.
+     */
+    private volatile double margemDaArea = Ambiente.MARGEM_PADRAO;
+
     private boolean bEstrategiaLigada;
     private long frameDaUltimaDecisao = -1;
 
@@ -60,6 +70,10 @@ public final class Cliente implements AutoCloseable {
     public Cliente(ConfigRede config, Cor equipe) {
         this.config = config;
         this.equipe = equipe;
+        // O arbitro de teste tambem carrega os nomes, e eles ganham dos locais na
+        // hora de exibir. Sem alinhar aqui, a barra de cima mostrava "Azul" e
+        // "Amarelo" ate alguem abrir a configuracao e clicar em Aplicar.
+        setNomes(nomeAzul, nomeAmarelo);
     }
 
     // ------------------------------------------------------------- estado
@@ -89,6 +103,21 @@ public final class Cliente implements AutoCloseable {
     public void simularArbitro(Referee.Command comando) {
         arbitro.doPainel(arbitroLocal.comando(comando));
     }
+
+    /**
+     * Repete o ultimo comando de teste, para uma declaracao trocada entrar em vigor.
+     *
+     * <p>Goleiro e lado do campo viajam DENTRO de toda mensagem de arbitro, e nao
+     * sao comandos: trocar um deles so chega em quem escuta na proxima mensagem.
+     * Reemitir o comando corrente evita ter de inventar um STOP e interromper o
+     * jogo por causa de uma mudanca de configuracao.
+     */
+    public void reemitirArbitro() {
+        arbitro.doPainel(arbitroLocal.reemitir());
+    }
+
+    public double getMargemDaArea()          { return margemDaArea; }
+    public void setMargemDaArea(double mm)   { this.margemDaArea = Math.max(0, mm); }
 
     /**
      * Nome que o arbitro da para a equipe, com o nome local como reserva.
@@ -216,7 +245,7 @@ public final class Cliente implements AutoCloseable {
         if (q.frame() == frameDaUltimaDecisao) return;
         frameDaUltimaDecisao = q.frame();
 
-        enviar(executor.vTick(new Ambiente(q, estadoDeJogo(), equipe)));
+        enviar(executor.vTick(new Ambiente(q, estadoDeJogo(), equipe, margemDaArea)));
     }
 
     /** Manda um ciclo de comandos para a nossa equipe. */

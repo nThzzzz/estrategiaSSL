@@ -24,8 +24,8 @@ import java.awt.Font;
  * arbitro e estado da estrategia sao coisas que se le a todo instante; os
  * comandos de arbitro sao os que mais se apertam. Ja portas, nomes de equipe e
  * caixas de exibicao se mexem uma vez por bancada e nao merecem espaco
- * permanente -- ficam atras de "Configurar..." ({@link DialogoRede}) e de
- * "Configuracao avancada..." ({@link DialogoConfiguracao}).
+ * permanente -- ficam todos atras de "Configuracao avancada..."
+ * ({@link DialogoConfiguracao}), portas inclusive.
  *
  * <p>Antes era o contrario: equipe e exibicao ocupavam a maior parte da coluna e
  * os comandos de arbitro estavam escondidos num dialogo, a duas aberturas de
@@ -73,8 +73,6 @@ public final class PainelRede extends PainelRolavel {
         add(Box.createVerticalStrut(6));
         add(rotulo("comandos", Paleta.APAGADO));
         add(envio);
-        add(Box.createVerticalStrut(10));
-        add(botao("Configurar...", () -> DialogoRede.abrir(campo, cliente)));
 
         add(Box.createVerticalStrut(18));
         add(titulo("Arbitro"));

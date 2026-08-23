@@ -1,5 +1,6 @@
 package model;
 
+import core.Caixa;
 import core.Vec2;
 import proto.vision.MessagesRobocupSslGeometry.SSL_GeometryFieldSize;
 
@@ -65,6 +66,27 @@ public record Geometria(
 
     /** Centro do gol de um dos lados; {@code sinal} e -1 ou +1 em x. */
     public Vec2 centroGol(int sinal) { return new Vec2(sinal * meioComprimento(), 0); }
+
+    /**
+     * A area de defesa de um dos lados, opcionalmente crescida de uma margem.
+     *
+     * <p>As dimensoes vem do {@code SSL_GeometryFieldSize}: nao ha numero
+     * chumbado aqui, e por isso ela continua certa em Divisao A. A {@code margem}
+     * e a unica parte local -- e uma folga de seguranca escolhida por nos, nao uma
+     * medida do campo.
+     *
+     * <p>Com {@code margem} zero, o retangulo e exatamente o que as linhas
+     * desenham no chao, que e o limite que a regra usa para decidir falta.
+     */
+    public Caixa areaDefesa(int sinal, double margem) {
+        double fundo = sinal * meioComprimento();
+        double boca = fundo - sinal * areaDefesaProfundidade;
+        return Caixa.de(fundo, -areaDefesaLargura / 2.0, boca, areaDefesaLargura / 2.0)
+                .dilatada(margem);
+    }
+
+    /** A area de defesa como as linhas a desenham, sem folga nenhuma. */
+    public Caixa areaDefesa(int sinal) { return areaDefesa(sinal, 0); }
 
     /** Nome curto da divisao, deduzido do comprimento -- so para exibir. */
     public String divisao() {

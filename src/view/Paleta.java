@@ -42,6 +42,17 @@ public final class Paleta {
     public static final Color BOLA_ALTA = new Color(255, 190, 90);
     public static final Color CORPO   = new Color(38, 38, 42);
 
+    /**
+     * Area de defesa como zona proibida: so o goleiro entra.
+     *
+     * <p>Laranja tracejado, e nao branco: as linhas brancas do campo sao o que a
+     * visao mediu, e este retangulo e uma decisao nossa -- a area oficial mais uma
+     * folga de seguranca que escolhemos. Desenhar os dois com o mesmo traco faria
+     * parecer que a folga tambem esta pintada no chao.
+     */
+    public static final Color AREA_PROIBIDA       = new Color(255, 180, 70, 150);
+    public static final Color AREA_PROIBIDA_FRACA = new Color(255, 180, 70, 26);
+
     /** Verde do sensor de bola: o mesmo tom que o simulador usa para posse. */
     public static final Color SENSOR      = new Color(120, 255, 120);
     public static final Color SENSOR_FRACO = new Color(120, 255, 120, 40);

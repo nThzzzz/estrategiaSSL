@@ -38,15 +38,11 @@ public final class Arbitro {
      * <p>O estado corrente e descartado na troca, e nao mantido: herdar o comando
      * da fonte anterior faria a estrategia agir por uma ordem que a fonte atual
      * nunca deu.
-     */
-    /**
-     * Troca a fonte do arbitro, descartando o que a fonte anterior tinha dito.
      *
-     * <p>Descartar e o certo numa troca de verdade: o ultimo comando do Game
-     * Controller nao vale mais depois de passar para o arbitro local, e vice
-     * versa. Mas so numa troca de VERDADE -- chamar com o modo que ja esta
-     * valendo apagava o comando corrente, e quem reencostava nisso era a
-     * interface, ao sincronizar o seletor com o estado real.
+     * <p>Mas so numa troca de VERDADE. Chamar com o modo que ja esta valendo
+     * apagava o comando corrente, e quem reencostava nisso era a interface, ao
+     * alinhar o seletor com o estado real: o painel exibia "nenhum comando ainda"
+     * logo depois de um STOP que ele mesmo tinha mandado.
      */
     public void setModoLocal(boolean local) {
         if (local == modoLocal) return;
