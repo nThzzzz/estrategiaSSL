@@ -1,7 +1,9 @@
 package estrategia.tactics;
 
 import core.Vec2;
+import estrategia.Habilidade;
 import estrategia.Tactic;
+import estrategia.Tatica;
 import estrategia.skills.AndarPara;
 import estrategia.skills.OlharPara;
 
@@ -19,7 +21,6 @@ import estrategia.skills.OlharPara;
  */
 public final class ConduzirAoGol extends Tactic {
 
-    private static final int SKILL_ANDAR = 1;
 
     /** Teto de velocidade com a bola presa, em mm/s. */
     public static final double VEL_CONDUCAO = 1200;
@@ -48,11 +49,20 @@ public final class ConduzirAoGol extends Tactic {
     private final AndarPara andar = new AndarPara();
     private final OlharPara olhar = new OlharPara();
 
+    /**
+     * O id vem de {@link Tatica}, e nao de quem registra a tatica.
+     *
+     * <p>O construtor que recebe {@code int} continua existindo so enquanto os
+     * papeis ainda numeram por conta propria; ele pode sair assim que o ultimo
+     * deles passar a usar este.
+     */
+    public ConduzirAoGol() { this(Tatica.CONDUZIR_AO_GOL.id()); }
+
     public ConduzirAoGol(int _id) {
         super(_id);
         andar.vSetVelMax(VEL_CONDUCAO);
         andar.vSetTolerancia(120);
-        bAddSkill(SKILL_ANDAR, andar);
+        bAddSkill(Habilidade.ANDAR_PARA, andar);
     }
 
     @Override

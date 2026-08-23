@@ -289,6 +289,35 @@ Três consequências, e as três são o que faz o mecanismo funcionar de verdade
   episódio de aprendizado com um resultado que não diz nada sobre a jogada — e perder um `MAXIMA`
   no meio da jogada aborta a play, porque continuar seria rodar uma defesa sem goleiro.
 
+### Os ids são globais
+
+Cada camada guarda as de baixo num mapa indexado por `int`: a Role tem um mapa de táticas, a
+Tactic um de skills, o Coach um de plays. Esses números eram **locais** — cada arquivo declarava
+o seu `private static final int TATICA_BUSCAR = 1`. Funcionava com um papel só e quebrava do jeito
+mais chato assim que aparecia o segundo: o mesmo `BuscarBola` era 1 num papel e 2 em outro, e nada
+impedia dois papéis de discordarem. O número acabava sendo propriedade de **quem registrou**, e
+não da coisa registrada.
+
+Agora há um enum público por família — `Jogada`, `Papel`, `Tatica`, `Habilidade` — e o número é
+propriedade da coisa. `BuscarBola` é `Tatica.BUSCAR_BOLA` em qualquer papel, para sempre, e um
+papel novo não inventa numeração: escolhe da lista.
+
+```java
+private final BuscarBola buscar = new BuscarBola();          // sabe o próprio id
+bAddTactic(Tatica.BUSCAR_BOLA, buscar);
+bSetTactic(Tatica.CHUTAR_AO_GOL);
+```
+
+**Nunca renumere.** O id vai para o log e, no caso das plays, para a nota persistida: trocar um
+número faz o histórico passar a falar de outra coisa sem que nada acuse, e faz uma play herdar o
+aprendizado de outra. Item que sai de uso deixa o número dele queimado.
+
+Uma ressalva sobre `Papel`: `bAddRole` indexa pelo id do papel, então dois papéis com o mesmo
+número na mesma play fariam o segundo ser recusado em silêncio. Uma jogada com **dois zagueiros**
+precisa de duas entradas no enum (`ZAGUEIRO_ESQUERDO`, `ZAGUEIRO_DIREITO`), e não da mesma usada
+duas vezes. Não confunda o id com a `Prioridade`: o id diz *qual* papel é, a prioridade diz o
+quanto ele importa naquela jogada — e é por isso que um mora no enum global e a outra na play.
+
 ### Projeção e o fantasma
 
 Onde o robô **vai** estar, a partir de onde está e para onde vai. É navegação estimada, a mesma

@@ -11,9 +11,9 @@ import java.util.Map;
  * trocar de skill; a skill nao sabe que existe uma proxima.
  *
  * <p>Uma tatica de cada vez esta ativa ({@link #currentSkill}), e a troca passa
- * por {@link #bSetSkill(int)}. Rodar duas skills no mesmo tique escreveria duas
- * vezes no mesmo {@link Jogador}, e a segunda venceria sem que ninguem tivesse
- * decidido isso.
+ * por {@link #bSetSkill(Habilidade)}. Rodar duas skills no mesmo tique escreveria
+ * duas vezes no mesmo {@link Jogador}, e a segunda venceria sem que ninguem
+ * tivesse decidido isso.
  */
 public abstract class Tactic {
 
@@ -30,6 +30,9 @@ public abstract class Tactic {
 
     protected Tactic(int _id) { this.iID = _id; }
 
+    /** O caminho normal: o id vem da lista global de {@link Tatica}. */
+    protected Tactic(Tatica _id) { this(_id.id()); }
+
     // ------------------------------------------------- a implementar
 
     public abstract String strName();
@@ -40,7 +43,7 @@ public abstract class Tactic {
      * A logica da tatica em um tique.
      *
      * <p>E aqui que se decide qual skill vale agora, tipicamente olhando
-     * {@code currentSkill.bIsFinished()} e chamando {@link #bSetSkill(int)}. O
+     * {@code currentSkill.bIsFinished()} e chamando {@link #bSetSkill(Habilidade)}. O
      * executor ja roda a skill corrente depois; nao chame {@code vRunSkill}
      * daqui.
      */
@@ -91,6 +94,14 @@ public abstract class Tactic {
     }
 
     // ------------------------------------------------- skills
+
+    /** Registra a skill sob o id global dela. Ids repetidos sao recusados. */
+    public boolean bAddSkill(Habilidade _id, Skill _skill) {
+        return bAddSkill(_id.id(), _skill);
+    }
+
+    /** Troca a skill corrente pela do id global indicado. */
+    public boolean bSetSkill(Habilidade _id) { return bSetSkill(_id.id()); }
 
     /** Registra uma skill. Ids repetidos sao recusados. */
     public boolean bAddSkill(int _id, Skill _skill) {

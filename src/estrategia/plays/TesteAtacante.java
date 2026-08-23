@@ -1,5 +1,7 @@
 package estrategia.plays;
 
+import estrategia.Jogada;
+import estrategia.Papel;
 import estrategia.Play;
 import estrategia.roles.Atacante;
 
@@ -18,13 +20,11 @@ import estrategia.roles.Atacante;
  */
 public final class TesteAtacante extends Play {
 
-    private static final int ROLE_ATACANTE = 1;
-
     private double dScore = 1.0;
 
-    public TesteAtacante(int _id) {
-        super(_id);
-        bAddRole(new Atacante(ROLE_ATACANTE), Prioridade.MAXIMA);
+    public TesteAtacante() {
+        super(Jogada.TESTE_ATACANTE);
+        bAddRole(new Atacante(Papel.ATACANTE), Prioridade.MAXIMA);
         vSetTempoLimite(30);
     }
 

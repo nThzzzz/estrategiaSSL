@@ -46,6 +46,9 @@ public abstract class Role {
 
     protected Role(int _id) { this.iID = _id; }
 
+    /** O caminho normal: o id vem da lista global de {@link Papel}. */
+    protected Role(Papel _id) { this(_id.id()); }
+
     // ------------------------------------------------- a implementar
 
     public abstract String strName();
@@ -56,7 +59,7 @@ public abstract class Role {
      * A logica do papel em um tique.
      *
      * <p>E aqui que se escolhe a tatica que vale agora, com
-     * {@link #bSetTactic(int)}. O executor roda a tatica corrente em seguida.
+     * {@link #bSetTactic(Tatica)}. O executor roda a tatica corrente em seguida.
      */
     protected abstract void vRun();
 
@@ -110,6 +113,14 @@ public abstract class Role {
     }
 
     // ------------------------------------------------- taticas
+
+    /** Registra a tatica sob o id global dela. */
+    public boolean bAddTactic(Tatica _id, Tactic _tactic) {
+        return bAddTactic(_id.id(), _tactic);
+    }
+
+    /** Troca a tatica corrente pela do id global indicado. */
+    public boolean bSetTactic(Tatica _id) { return bSetTactic(_id.id()); }
 
     public boolean bAddTactic(int _id, Tactic _tactic) {
         if (_tactic == null || robotTactics.containsKey(_id)) return false;

@@ -1,7 +1,9 @@
 package estrategia.tactics;
 
 import core.Vec2;
+import estrategia.Habilidade;
 import estrategia.Tactic;
+import estrategia.Tatica;
 import estrategia.skills.AndarPara;
 import estrategia.skills.OlharPara;
 import model.Robo;
@@ -26,17 +28,25 @@ import model.Robo;
  */
 public final class BuscarBola extends Tactic {
 
-    private static final int SKILL_ANDAR = 1;
 
     private final AndarPara andar = new AndarPara();
     private final OlharPara olhar = new OlharPara();
+
+    /**
+     * O id vem de {@link Tatica}, e nao de quem registra a tatica.
+     *
+     * <p>O construtor que recebe {@code int} continua existindo so enquanto os
+     * papeis ainda numeram por conta propria; ele pode sair assim que o ultimo
+     * deles passar a usar este.
+     */
+    public BuscarBola() { this(Tatica.BUSCAR_BOLA.id()); }
 
     public BuscarBola(int _id) {
         super(_id);
         // Tolerancia menor que a folga do sensor. Ver vRun: parar com a folga
         // padrao deixa o robo a um palmo da bola, sem nunca captura-la.
         andar.vSetTolerancia(30);
-        bAddSkill(SKILL_ANDAR, andar);
+        bAddSkill(Habilidade.ANDAR_PARA, andar);
     }
 
     @Override

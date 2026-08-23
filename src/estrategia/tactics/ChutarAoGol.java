@@ -1,6 +1,8 @@
 package estrategia.tactics;
 
+import estrategia.Habilidade;
 import estrategia.Tactic;
+import estrategia.Tatica;
 import estrategia.skills.Chutar;
 import estrategia.skills.OlharPara;
 
@@ -17,8 +19,6 @@ import estrategia.skills.OlharPara;
  */
 public final class ChutarAoGol extends Tactic {
 
-    private static final int SKILL_OLHAR = 1;
-    private static final int SKILL_CHUTAR = 2;
 
     /** Erro de mira aceito antes de acionar o chutador. */
     public static final double TOLERANCIA_DE_MIRA = Math.toRadians(2);
@@ -56,11 +56,20 @@ public final class ChutarAoGol extends Tactic {
     /** Instante em que a bola entrou no sensor, ou NaN se ela nao esta la. */
     private double dPosseDesde = Double.NaN;
 
+    /**
+     * O id vem de {@link Tatica}, e nao de quem registra a tatica.
+     *
+     * <p>O construtor que recebe {@code int} continua existindo so enquanto os
+     * papeis ainda numeram por conta propria; ele pode sair assim que o ultimo
+     * deles passar a usar este.
+     */
+    public ChutarAoGol() { this(Tatica.CHUTAR_AO_GOL.id()); }
+
     public ChutarAoGol(int _id) {
         super(_id);
         olhar.vSetTolerancia(TOLERANCIA_DE_MIRA);
-        bAddSkill(SKILL_OLHAR, olhar);
-        bAddSkill(SKILL_CHUTAR, chutar);
+        bAddSkill(Habilidade.OLHAR_PARA, olhar);
+        bAddSkill(Habilidade.CHUTAR, chutar);
     }
 
     /** Velocidade do chute, em mm/s. */
@@ -71,7 +80,7 @@ public final class ChutarAoGol extends Tactic {
 
     @Override
     public void vInitialize() {
-        bSetSkill(SKILL_OLHAR);
+        bSetSkill(Habilidade.OLHAR_PARA);
         dPosseDesde = Double.NaN;
     }
 
@@ -89,7 +98,7 @@ public final class ChutarAoGol extends Tactic {
         boolean assentada = !Double.isNaN(dPosseDesde)
                 && ambiente.tempo() - dPosseDesde >= POSSE_MINIMA;
 
-        bSetSkill(mirado && assentada ? SKILL_CHUTAR : SKILL_OLHAR);
+        bSetSkill(mirado && assentada ? Habilidade.CHUTAR : Habilidade.OLHAR_PARA);
     }
 
     /** Segundos com a bola no sensor, ou zero. Util para o log. */

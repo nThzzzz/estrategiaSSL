@@ -911,9 +911,11 @@ public final class AutotesteEstrategia {
     }
 
     /** Papel e prioridade juntos, so para os testes montarem play numa linha. */
-    private record Papel(Role role, Play.Prioridade prioridade) {}
+    private record PapelDaPlay(Role role, Play.Prioridade prioridade) {}
 
-    private static Papel papel(Role r, Play.Prioridade p) { return new Papel(r, p); }
+    private static PapelDaPlay papel(Role r, Play.Prioridade p) {
+        return new PapelDaPlay(r, p);
+    }
 
     /** Papel cujo custo e a distancia ate um ponto -- o criterio mais comum. */
     private static final class RoleComCusto extends Role {
@@ -968,9 +970,9 @@ public final class AutotesteEstrategia {
 
     /** Como a PlayComRoles, mas deixando o fim padrao valer: acaba com as roles. */
     private static final class PlayQueTermina extends Play {
-        PlayQueTermina(Papel... papeis) {
+        PlayQueTermina(PapelDaPlay... papeis) {
             super(1);
-            for (Papel x : papeis) bAddRole(x.role(), x.prioridade());
+            for (PapelDaPlay x : papeis) bAddRole(x.role(), x.prioridade());
         }
         @Override public String strName() { return "play que termina"; }
         @Override public void vInitialize() { }
@@ -982,9 +984,9 @@ public final class AutotesteEstrategia {
     }
 
     private static final class PlayComRoles extends Play {
-        PlayComRoles(Papel... papeis) {
+        PlayComRoles(PapelDaPlay... papeis) {
             super(1);
-            for (Papel x : papeis) bAddRole(x.role(), x.prioridade());
+            for (PapelDaPlay x : papeis) bAddRole(x.role(), x.prioridade());
         }
         @Override public String strName() { return "play com roles"; }
         @Override public void vInitialize() { }

@@ -138,6 +138,9 @@ public abstract class Play {
 
     protected Play(int _id) { this.iID = _id; }
 
+    /** O caminho normal: o id vem da lista global de {@link Jogada}. */
+    protected Play(Jogada _id) { this(_id.id()); }
+
     // ------------------------------------------------- a implementar
 
     public abstract String strName();

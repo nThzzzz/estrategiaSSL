@@ -14,11 +14,9 @@ import estrategia.plays.TesteAtacante;
  */
 public final class Bancada extends Coach {
 
-    public static final int PLAY_TESTE = 1;
-
     public Bancada() {
         super(1, Modo.AUTOMATICO);
-        bAddPlay(new TesteAtacante(PLAY_TESTE));
+        bAddPlay(new TesteAtacante());
     }
 
     @Override

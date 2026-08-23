@@ -2,7 +2,9 @@ package estrategia.roles;
 
 import estrategia.Ambiente;
 import estrategia.Jogador;
+import estrategia.Papel;
 import estrategia.Role;
+import estrategia.Tatica;
 import estrategia.tactics.BuscarBola;
 import estrategia.tactics.ChutarAoGol;
 import estrategia.tactics.ConduzirAoGol;
@@ -23,36 +25,33 @@ import estrategia.tactics.ConduzirAoGol;
  */
 public final class Atacante extends Role {
 
-    private static final int TATICA_BUSCAR = 1;
-    private static final int TATICA_CONDUZIR = 2;
-    private static final int TATICA_CHUTAR = 3;
+    private final BuscarBola buscar = new BuscarBola();
+    private final ConduzirAoGol conduzir = new ConduzirAoGol();
+    private final ChutarAoGol chutar = new ChutarAoGol();
 
-    private final BuscarBola buscar = new BuscarBola(TATICA_BUSCAR);
-    private final ConduzirAoGol conduzir = new ConduzirAoGol(TATICA_CONDUZIR);
-    private final ChutarAoGol chutar = new ChutarAoGol(TATICA_CHUTAR);
-
-    public Atacante(int _id) {
+    public Atacante(Papel _id) {
         super(_id);
-        bAddTactic(TATICA_BUSCAR, buscar);
-        bAddTactic(TATICA_CONDUZIR, conduzir);
-        bAddTactic(TATICA_CHUTAR, chutar);
+        bAddTactic(Tatica.BUSCAR_BOLA, buscar);
+        bAddTactic(Tatica.CONDUZIR_AO_GOL, conduzir);
+        bAddTactic(Tatica.CHUTAR_AO_GOL, chutar);
     }
 
     @Override
     public String strName() { return "Atacante"; }
 
     @Override
-    public void vInitialize() { bSetTactic(TATICA_BUSCAR); }
+    public void vInitialize() { bSetTactic(Tatica.BUSCAR_BOLA); }
 
     @Override
     protected void vRun() {
         if (!jogador.bComABola()) {
-            bSetTactic(TATICA_BUSCAR);
+            bSetTactic(Tatica.BUSCAR_BOLA);
             return;
         }
 
         double aoGol = jogador.estado().posicao().distancia(ambiente.golDeles());
-        bSetTactic(aoGol <= ConduzirAoGol.DISTANCIA_DE_CHUTE ? TATICA_CHUTAR : TATICA_CONDUZIR);
+        bSetTactic(aoGol <= ConduzirAoGol.DISTANCIA_DE_CHUTE
+                ? Tatica.CHUTAR_AO_GOL : Tatica.CONDUZIR_AO_GOL);
     }
 
     @Override

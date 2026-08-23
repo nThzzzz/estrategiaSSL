@@ -182,6 +182,9 @@ public abstract class Coach {
         return saida;
     }
 
+    /** Forca a play do id global indicado, ignorando nota e sorteio. */
+    public boolean bSetPlay(Jogada _id) { return bSetPlay(_id.id()); }
+
     /** Forca uma play, ignorando nota e sorteio. Usado no modo manual. */
     public boolean bSetPlay(int _id) {
         Play nova = assignedPlays.get(_id);
