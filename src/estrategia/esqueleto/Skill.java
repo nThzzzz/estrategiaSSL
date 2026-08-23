@@ -1,4 +1,7 @@
-package estrategia;
+package estrategia.esqueleto;
+
+import estrategia.Ambiente;
+import estrategia.Jogador;
 
 /**
  * Uma micro habilidade de UM robo: a menor unidade de comportamento.

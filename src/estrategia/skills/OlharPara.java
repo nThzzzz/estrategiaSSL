@@ -2,7 +2,7 @@ package estrategia.skills;
 
 import core.Angulo;
 import core.Vec2;
-import estrategia.Skill;
+import estrategia.esqueleto.Skill;
 import model.Robo;
 
 /**

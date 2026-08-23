@@ -1,5 +1,10 @@
 package estrategia;
 
+import estrategia.esqueleto.Coach;
+import estrategia.esqueleto.Play;
+import estrategia.esqueleto.Role;
+import estrategia.esqueleto.Skill;
+import estrategia.esqueleto.Tactic;
 import model.Comando;
 
 import java.util.ArrayDeque;

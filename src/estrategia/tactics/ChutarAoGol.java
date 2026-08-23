@@ -1,8 +1,8 @@
 package estrategia.tactics;
 
-import estrategia.Habilidade;
-import estrategia.Tactic;
-import estrategia.Tatica;
+import estrategia.ids.Habilidade;
+import estrategia.esqueleto.Tactic;
+import estrategia.ids.Tatica;
 import estrategia.skills.Chutar;
 import estrategia.skills.OlharPara;
 

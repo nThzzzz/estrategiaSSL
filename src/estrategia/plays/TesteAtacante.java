@@ -1,8 +1,8 @@
 package estrategia.plays;
 
-import estrategia.Jogada;
-import estrategia.Papel;
-import estrategia.Play;
+import estrategia.ids.Jogada;
+import estrategia.ids.Papel;
+import estrategia.esqueleto.Play;
 import estrategia.roles.Atacante;
 
 /**

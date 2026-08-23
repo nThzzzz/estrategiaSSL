@@ -1,4 +1,4 @@
-package estrategia;
+package estrategia.ids;
 
 /**
  * O identificador estavel de cada play.

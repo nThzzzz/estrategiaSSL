@@ -1,4 +1,9 @@
-package estrategia;
+package estrategia.esqueleto;
+
+import estrategia.Ambiente;
+import estrategia.Jogador;
+import estrategia.ids.Papel;
+import estrategia.ids.Tatica;
 
 import java.util.LinkedHashMap;
 import java.util.Map;

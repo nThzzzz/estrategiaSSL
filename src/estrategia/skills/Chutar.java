@@ -1,6 +1,6 @@
 package estrategia.skills;
 
-import estrategia.Skill;
+import estrategia.esqueleto.Skill;
 import model.Robo;
 
 /**

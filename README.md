@@ -62,13 +62,14 @@ model      →  core, proto         Geometria, Cor, Robo, Comando
 mundo      →  core, model         Quadro, EstadoRobo, EstadoBola
 jogo       →  core, model, proto  Arbitro, EstadoDeJogo, Acao, ArbitroLocal
 percepcao  →  + proto             Rastreador, Trilha, FiltroKalman1D, SensorDeBola, Ajuste
-estrategia →  mundo, jogo, model  Coach, Play, Role, Tactic, Skill, Ambiente, Jogador, Executor
+estrategia →  mundo, jogo, model  Ambiente, Jogador, Executor, Diario
+  ids      →  os números estáveis       Jogada, Papel, Tatica, Habilidade
+  esqueleto→  o que se estende          Coach, Play, Role, Tactic, Skill
   skills   →  as micro habilidades      AndarPara, OlharPara, Chutar
   tactics  →  conjuntos de skills       BuscarBola, ConduzirAoGol, ChutarAoGol
-  roles    →  papéis de um robô         Atacante
+  roles    →  papéis de um robô         Atacante, Goleiro
   plays    →  jogadas do time           TesteAtacante
   coaches  →  quem escolhe a play       Bancada
-             Diario                    o que esta acontecendo, por robo
 rede       →  + percepcao, jogo   ConfigRede, ReceptorDeVisao, ReceptorDeArbitro, EmissorDeComandos
 view       →  core, model, mundo  Campo, Paleta
 app        →  tudo                Cliente, Janela, BarraSuperior, PainelRede, PainelRobos
@@ -77,6 +78,13 @@ app        →  tudo                Cliente, Janela, BarraSuperior, PainelRede, 
 Note que `estrategia` não depende de `rede` nem de `view`. Quem decide o que os robôs
 fazem só conhece `Ambiente` e `Jogador`, e é isso que permite rodar mil partidas de treino
 sem abrir janela nem tocar em socket.
+
+Dentro de `estrategia` as pastas separam **coisas de naturezas diferentes**, que antes moravam
+juntas: `ids` são só números estáveis e não dependem de nada; `esqueleto` são as cinco classes
+abstratas que se estende para escrever uma jogada; as cinco pastas seguintes são as
+implementações concretas; e na raiz ficam o vocabulário que todas as camadas leem (`Ambiente`,
+`Jogador`) e o que roda tudo (`Executor`, `Diario`). Achar onde uma classe mora deixou de
+depender de lembrar o nome dela.
 
 Duas entradas e uma saída:
 

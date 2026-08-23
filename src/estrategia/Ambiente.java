@@ -15,10 +15,10 @@ import java.util.List;
  * Tudo que a estrategia pode ler, e nada alem disso.
  *
  * <p>Equivale ao {@code AmbienteCampo} do SSL-Strategy: e o objeto que atravessa
- * todas as camadas, de {@link Coach} a {@link Skill}. Junta as duas fontes de
- * verdade que existem -- o {@link Quadro} da visao e o {@link EstadoDeJogo} do
- * arbitro -- mais a cor que estamos jogando, que e o que transforma "azul" em
- * "nos".
+ * todas as camadas, de {@link estrategia.esqueleto.Coach} a
+ * {@link estrategia.esqueleto.Skill}. Junta as duas fontes de verdade que
+ * existem -- o {@link Quadro} da visao e o {@link EstadoDeJogo} do arbitro --
+ * mais a cor que estamos jogando, que e o que transforma "azul" em "nos".
  *
  * <p>E somente leitura de proposito. Nenhuma camada de estrategia deve alcancar
  * rede, Swing ou o {@code Cliente}: quem decide o que os robos fazem tem de poder

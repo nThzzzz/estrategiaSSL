@@ -1,5 +1,6 @@
 package estrategia;
 
+import estrategia.esqueleto.Coach;
 import core.Caixa;
 import core.Vec2;
 import jogo.EstadoDeJogo;

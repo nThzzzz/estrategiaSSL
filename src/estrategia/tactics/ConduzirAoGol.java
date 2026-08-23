@@ -1,9 +1,9 @@
 package estrategia.tactics;
 
 import core.Vec2;
-import estrategia.Habilidade;
-import estrategia.Tactic;
-import estrategia.Tatica;
+import estrategia.ids.Habilidade;
+import estrategia.esqueleto.Tactic;
+import estrategia.ids.Tatica;
 import estrategia.skills.AndarPara;
 import estrategia.skills.OlharPara;
 

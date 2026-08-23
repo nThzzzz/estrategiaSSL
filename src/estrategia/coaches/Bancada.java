@@ -1,6 +1,6 @@
 package estrategia.coaches;
 
-import estrategia.Coach;
+import estrategia.esqueleto.Coach;
 import estrategia.plays.TesteAtacante;
 
 /**

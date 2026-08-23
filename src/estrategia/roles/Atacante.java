@@ -2,9 +2,9 @@ package estrategia.roles;
 
 import estrategia.Ambiente;
 import estrategia.Jogador;
-import estrategia.Papel;
-import estrategia.Role;
-import estrategia.Tatica;
+import estrategia.ids.Papel;
+import estrategia.esqueleto.Role;
+import estrategia.ids.Tatica;
 import estrategia.tactics.BuscarBola;
 import estrategia.tactics.ChutarAoGol;
 import estrategia.tactics.ConduzirAoGol;
