@@ -3,9 +3,9 @@ import app.Cliente;
 import app.Janela;
 import model.Cor;
 import rede.ConfigRede;
+import view.Estilo;
 
 import javax.swing.SwingUtilities;
-import javax.swing.UIManager;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -61,11 +61,7 @@ public final class Main {
         Runtime.getRuntime().addShutdownHook(new Thread(cliente::close));
 
         SwingUtilities.invokeLater(() -> {
-            try {
-                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-            } catch (Exception ignorado) {
-                // Aparencia e detalhe: se o sistema nao der, segue com a padrao.
-            }
+            Estilo.instalar();
             Janela.abrir("Estrategia SSL", cliente);
         });
     }

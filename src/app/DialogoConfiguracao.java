@@ -4,6 +4,7 @@ import ajuste.Parametro;
 import model.Cor;
 import rede.ConfigRede;
 import view.Campo;
+import view.Estilo;
 import view.Paleta;
 
 import javax.swing.BorderFactory;
@@ -529,7 +530,7 @@ public final class DialogoConfiguracao extends JDialog {
                 BorderFactory.createTitledBorder(
                         BorderFactory.createLineBorder(Paleta.BORDA), titulo,
                         TitledBorder.LEFT, TitledBorder.TOP,
-                        new Font("SansSerif", Font.BOLD, 11), Paleta.APAGADO),
+                        Estilo.fonte(Font.BOLD, 11), Paleta.APAGADO),
                 BorderFactory.createEmptyBorder(6, 8, 8, 8)));
         return p;
     }

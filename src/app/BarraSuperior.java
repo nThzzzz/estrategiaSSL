@@ -4,6 +4,7 @@ import jogo.Acao;
 import jogo.EstadoDeJogo;
 import model.Cor;
 import mundo.Quadro;
+import view.Estilo;
 import view.Paleta;
 
 import javax.swing.JPanel;
@@ -85,7 +86,7 @@ public final class BarraSuperior extends JPanel {
         // longe do miolo, para os dois numeros nao se confundirem com o relogio.
         if (!jogo.semArbitro()) {
             int gols = nossa ? jogo.golsNossos() : jogo.golsDeles();
-            g.setFont(new Font("Monospaced", Font.BOLD, 30));
+            g.setFont(Estilo.fonte(Font.BOLD, 30));
             FontMetrics fm = g.getFontMetrics();
             String texto = String.valueOf(gols);
             int px = direita ? x + largura - 16 - fm.stringWidth(texto) : x + 16;
@@ -98,13 +99,13 @@ public final class BarraSuperior extends JPanel {
         int util = largura - margemPlacar - 16;
 
         g.setColor(tinta);
-        g.setFont(new Font("SansSerif", Font.BOLD, 19));
+        g.setFont(Estilo.fonte(Font.BOLD, 19));
         FontMetrics fm = g.getFontMetrics();
         String nome = encurtar(cliente.getNomeExibido(cor), fm, util);
         int nx = direita ? x + largura - 16 - margemPlacar - fm.stringWidth(nome) : base + 14;
         g.drawString(nome, nx, 40);
 
-        g.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        g.setFont(Estilo.fonte(Font.PLAIN, 11));
         FontMetrics fm2 = g.getFontMetrics();
         String sub = (nossa ? "nos  ·  " : "") + cor.tag() + "  ·  " + robos + " robos";
         int sx = direita ? x + largura - 16 - margemPlacar - fm2.stringWidth(sub) : base + 14;
@@ -117,7 +118,7 @@ public final class BarraSuperior extends JPanel {
         int meio = getWidth() / 2;
 
         String comando = jogo.descricao();
-        g.setFont(new Font("SansSerif", Font.BOLD, 17));
+        g.setFont(Estilo.fonte(Font.BOLD, 17));
         FontMetrics fmc = g.getFontMetrics();
         int largura = fmc.stringWidth(comando) + 28;
         Color fundo = corDaAcao(jogo);
@@ -132,7 +133,7 @@ public final class BarraSuperior extends JPanel {
         String relogio = jogo.tempoRestante() >= 0
                 ? formatar(jogo.tempoRestante())
                 : formatar(q.tempo());
-        g.setFont(new Font("Monospaced", Font.BOLD, 24));
+        g.setFont(Estilo.fonte(Font.BOLD, 24));
         FontMetrics fmr = g.getFontMetrics();
         g.setColor(cliente.recebendo() ? Paleta.TEXTO : Paleta.APAGADO);
         g.drawString(relogio, meio - fmr.stringWidth(relogio) / 2, 62);
@@ -152,7 +153,7 @@ public final class BarraSuperior extends JPanel {
             cor = Paleta.APAGADO;
         }
 
-        g.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        g.setFont(Estilo.fonte(Font.PLAIN, 11));
         FontMetrics fm2 = g.getFontMetrics();
         g.setColor(cor);
         estado = encurtar(estado, fm2, getWidth() - larguraBloco * 2 - 40);

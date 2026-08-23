@@ -28,6 +28,10 @@ import proto.vision.MessagesRobocupSslDetection.SSL_DetectionFrame;
 import proto.vision.MessagesRobocupSslDetection.SSL_DetectionRobot;
 import proto.vision.MessagesRobocupSslGeometry.SSL_GeometryFieldSize;
 import rede.ConfigRede;
+import view.Campo;
+
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseWheelEvent;
 import rede.EmissorDeComandos;
 import rede.ReceptorDeArbitro;
 
@@ -108,6 +112,9 @@ public final class Autoteste {
         visaoViraQuadro();
         geometriaVemDaRede();
         comandoSaiEmMetrosPorSegundo();
+        zoomAncoraNoCursor();
+        zoomNoBatenteNaoDesliza();
+        zoomIgnoraPicoDoTrackpad();
 
         System.out.printf("%n%d/%d verificacoes passaram%n", total - falhas, total);
         if (falhas > 0) System.exit(1);
@@ -116,6 +123,74 @@ public final class Autoteste {
     // ------------------------------------------------------------------ Kalman
 
     /** Alvo em velocidade constante: o filtro tem de achar a velocidade certa. */
+
+    // ------------------------------------------------------- zoom do campo
+
+    /**
+     * O ponto do mundo sob o cursor tem de ficar parado durante o zoom.
+     *
+     * <p>Antes o zoom ancorava no centro do painel, e quem olhava um canto via
+     * o canto fugir da tela a cada passo. E um caso de tela, mas e aritmetica
+     * pura -- da para verificar sem abrir janela, e sem isso a regressao volta
+     * sem ninguem notar, porque o sintoma parece "mao pesada no trackpad".
+     */
+    private static void zoomAncoraNoCursor() {
+        Campo campo = new Campo(Quadro::vazio);
+        campo.setSize(1000, 700);
+
+        int sx = 820, sy = 160; // longe do centro: era exatamente ali que fugia
+        Vec2 alvo = campo.telaParaMundo(sx, sy);
+
+        for (int i = 0; i < 15; i++) campo.aplicarZoom(1.1, sx, sy);
+        aproximado("zoom: o ponto sob o cursor fica parado ao aproximar",
+                campo.telaParaMundo(sx, sy).distancia(alvo), 0, 0.5);
+
+        for (int i = 0; i < 30; i++) campo.aplicarZoom(1 / 1.1, sx, sy);
+        aproximado("zoom: e continua parado ao afastar",
+                campo.telaParaMundo(sx, sy).distancia(alvo), 0, 0.5);
+    }
+
+    /**
+     * No batente o zoom nao acontece, e o pan nao pode andar mesmo assim.
+     *
+     * <p>E o que quebraria se a correcao do pan usasse o fator PEDIDO em vez do
+     * aplicado: a imagem deslizaria sob o cursor com o zoom ja parado, bem na
+     * hora em que se insiste no gesto.
+     */
+    private static void zoomNoBatenteNaoDesliza() {
+        Campo campo = new Campo(Quadro::vazio);
+        campo.setSize(1000, 700);
+
+        int sx = 300, sy = 520;
+        for (int i = 0; i < 60; i++) campo.aplicarZoom(1.1, sx, sy); // crava no teto
+        Vec2 noTeto = campo.telaParaMundo(sx, sy);
+
+        for (int i = 0; i < 20; i++) campo.aplicarZoom(1.1, sx, sy); // insiste
+        aproximado("zoom: insistir no batente nao desliza a imagem",
+                campo.telaParaMundo(sx, sy).distancia(noTeto), 0, 1e-6);
+    }
+
+    /**
+     * Um pico do trackpad nao pode valer mais que um entalhe de roda.
+     *
+     * <p>O 4,7 nao e inventado: foi medido no trackpad, no meio de uma rajada de
+     * 327 eventos cuja soma inteira era 2,1. Sem teto ele sozinho dava 58% de
+     * escala num quadro.
+     */
+    private static void zoomIgnoraPicoDoTrackpad() {
+        Campo campo = new Campo(Quadro::vazio);
+        aproximado("zoom: pico de 4,7 do trackpad vale um entalhe, nao 4,7",
+                Campo.fatorDeZoom(roda(campo, 4.7)), Campo.fatorDeZoom(roda(campo, 1.0)), 1e-9);
+        verdadeiro("zoom: entalhe normal de roda passa intacto",
+                Math.abs(Campo.fatorDeZoom(roda(campo, 1.0)) - 1 / 1.1) < 1e-9);
+    }
+
+    private static MouseWheelEvent roda(Campo campo, double precise) {
+        return new MouseWheelEvent(campo, MouseEvent.MOUSE_WHEEL, System.currentTimeMillis(),
+                0, 0, 0, 0, 0, 0, false, MouseWheelEvent.WHEEL_UNIT_SCROLL,
+                1, (int) precise, precise);
+    }
+
     private static void convergeParaVelocidadeConstante() {
         FiltroKalman1D f = new FiltroKalman1D(3000, 12, false);
         f.iniciar(0, 3000);

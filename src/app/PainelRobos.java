@@ -4,6 +4,7 @@ import core.Vec2;
 import model.Cor;
 import mundo.EstadoRobo;
 import mundo.Quadro;
+import view.Estilo;
 import view.Paleta;
 
 import javax.swing.JPanel;
@@ -136,7 +137,7 @@ public final class PainelRobos extends PainelRolavel {
 
         if (q.robos(cliente.getEquipe()).isEmpty()) {
             g2.setColor(Paleta.APAGADO);
-            g2.setFont(new Font("SansSerif", Font.PLAIN, 12));
+            g2.setFont(Estilo.fonte(Font.PLAIN, 12));
             g2.drawString(q.robos().isEmpty()
                     ? "nenhum robo na visao"
                     : "nenhum robo nosso na visao", 16, y + 6);
@@ -155,11 +156,11 @@ public final class PainelRobos extends PainelRolavel {
         g.setColor(Paleta.de(cor));
         g.fill(new RoundRectangle2D.Double(10, y + 8, 8, 14, 4, 4));
         g.setColor(Paleta.TEXTO);
-        g.setFont(new Font("SansSerif", Font.BOLD, 12));
+        g.setFont(Estilo.fonte(Font.BOLD, 12));
         g.drawString(cliente.getNome(cor), 26, y + 20);
 
         g.setColor(Paleta.APAGADO);
-        g.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        g.setFont(Estilo.fonte(Font.PLAIN, 11));
         String contagem = robos.size() + (robos.size() == 1 ? " robo" : " robos");
         FontMetrics fm = g.getFontMetrics();
         g.drawString(contagem, largura() - 14 - fm.stringWidth(contagem), y + 20);
@@ -193,12 +194,12 @@ public final class PainelRobos extends PainelRolavel {
         g.draw(new Line2D.Double(10, y + 4, largura() - 10, y + 4));
 
         g.setColor(Paleta.TEXTO);
-        g.setFont(new Font("SansSerif", Font.BOLD, 12));
+        g.setFont(Estilo.fonte(Font.BOLD, 12));
         g.drawString("Jogadas", 16, y + 24);
 
         if (jogadas.isEmpty()) {
             g.setColor(Paleta.APAGADO);
-            g.setFont(new Font("SansSerif", Font.PLAIN, 11));
+            g.setFont(Estilo.fonte(Font.PLAIN, 11));
             g.drawString(cliente.isEstrategiaLigada()
                     ? "nenhuma no repertorio" : "estrategia desligada", 16, y + 44);
             return y + 56;
@@ -213,7 +214,7 @@ public final class PainelRobos extends PainelRolavel {
 
             Color cor = j.atual() ? Paleta.OK : j.disponivel() ? Paleta.TEXTO : Paleta.APAGADO;
             g.setColor(cor);
-            g.setFont(new Font("SansSerif", j.atual() ? Font.BOLD : Font.PLAIN, 11));
+            g.setFont(Estilo.fonte(j.atual() ? Font.BOLD : Font.PLAIN, 11));
             FontMetrics fm = g.getFontMetrics();
 
             String nome = j.nome();
@@ -225,7 +226,7 @@ public final class PainelRobos extends PainelRolavel {
             // Sem pre-condicao a nota nao entra em sorteio nenhum, entao dizer
             // isso vale mais do que repetir o numero.
             String direita = j.disponivel() ? String.format("%.2f", j.nota()) : "fora";
-            g.setFont(new Font("Monospaced", j.atual() ? Font.BOLD : Font.PLAIN, 11));
+            g.setFont(Estilo.fonte(j.atual() ? Font.BOLD : Font.PLAIN, 11));
             FontMetrics fmd = g.getFontMetrics();
             g.drawString(direita, largura() - 18 - fmd.stringWidth(direita), linha + 15);
 
@@ -249,7 +250,7 @@ public final class PainelRobos extends PainelRolavel {
         g.setColor(Paleta.de(r.cor()));
         g.fill(new RoundRectangle2D.Double(16, y + 10, 30, 30, 8, 8));
         g.setColor(Paleta.textoSobre(r.cor()));
-        g.setFont(new Font("SansSerif", Font.BOLD, 15));
+        g.setFont(Estilo.fonte(Font.BOLD, 15));
         String id = String.valueOf(r.id());
         FontMetrics fmId = g.getFontMetrics();
         g.drawString(id, 31 - fmId.stringWidth(id) / 2, y + 31);
@@ -259,13 +260,13 @@ public final class PainelRobos extends PainelRolavel {
 
         // Velocidade, o numero que mais se olha durante um jogo.
         g.setColor(tinta);
-        g.setFont(new Font("Monospaced", Font.BOLD, 14));
+        g.setFont(Estilo.fonte(Font.BOLD, 14));
         g.drawString(String.format("%.2f m/s", r.rapidez() / 1000.0), 56, y + 23);
 
         // Direcao: seta desenhada no angulo real, mais o valor em graus. A seta
         // sozinha e ambigua em cima de 90 graus; o numero sozinho nao se le de
         // relance. Os dois juntos resolvem.
-        g.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        g.setFont(Estilo.fonte(Font.PLAIN, 11));
         g.setColor(cru ? Paleta.APAGADO : new Color(190, 190, 200));
         g.drawString(String.format("%+.0f°", Math.toDegrees(r.theta())), 76, y + 39);
         seta(g, 62, y + 35, r.theta(), cru);
@@ -278,7 +279,7 @@ public final class PainelRobos extends PainelRolavel {
 
         if (cru) {
             g.setColor(Paleta.ALERTA);
-            g.setFont(new Font("SansSerif", Font.PLAIN, 10));
+            g.setFont(Estilo.fonte(Font.PLAIN, 10));
             g.drawString(String.format("sem visao ha %.1fs", r.idade()), 56, y + 50);
         }
 
@@ -304,7 +305,7 @@ public final class PainelRobos extends PainelRolavel {
 
         if (!nosso || situacao == null) {
             g.setColor(Paleta.APAGADO);
-            g.setFont(new Font("SansSerif", Font.PLAIN, 10));
+            g.setFont(Estilo.fonte(Font.PLAIN, 10));
             g.drawString(nosso ? "fora da estrategia" : "adversario", 18, y + 72);
             return;
         }
@@ -318,11 +319,11 @@ public final class PainelRobos extends PainelRolavel {
 
     private void linhaDaCadeia(Graphics2D g, String rotulo, String valor,
                                boolean presente, int y) {
-        g.setFont(new Font("SansSerif", Font.PLAIN, 10));
+        g.setFont(Estilo.fonte(Font.PLAIN, 10));
         g.setColor(Paleta.APAGADO);
         g.drawString(rotulo, 18, y);
 
-        g.setFont(new Font("SansSerif", Font.BOLD, 11));
+        g.setFont(Estilo.fonte(Font.BOLD, 11));
         g.setColor(presente ? Paleta.OK : Paleta.ERRO);
         FontMetrics fm = g.getFontMetrics();
         String curto = valor;
@@ -358,7 +359,7 @@ public final class PainelRobos extends PainelRolavel {
         RoundRectangle2D selo =
                 new RoundRectangle2D.Double(x, y + 16, larguraDoSelo, altura, 10, 10);
 
-        g.setFont(new Font("SansSerif", Font.BOLD, 10));
+        g.setFont(Estilo.fonte(Font.BOLD, 10));
         FontMetrics fm = g.getFontMetrics();
 
         if (r.bolaNoSensor()) {

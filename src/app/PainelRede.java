@@ -165,7 +165,7 @@ public final class PainelRede extends PainelRolavel {
 
     private static JComponent rodape() {
         return new Dicas("Com a estrategia desligada nenhum comando sai, e os robos ficam "
-                + "parados, como no grSim.\n\nscroll aplica zoom, botao direito arrasta");
+                + "parados, como no grSim.\n\nscroll aplica zoom, arraste para mover o campo");
     }
 
     /**

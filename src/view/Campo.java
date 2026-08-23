@@ -22,6 +22,7 @@ import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.awt.event.MouseWheelEvent;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Area;
 import java.awt.geom.Ellipse2D;
@@ -134,7 +135,66 @@ public final class Campo extends JPanel {
 
     public Quadro quadro() { return fonte.get(); }
 
-    public void aplicarZoom(double fator) { zoom = Math.max(0.25, Math.min(zoom * fator, 8.0)); }
+    /**
+     * Maior peso que UM evento pode ter: um entalhe.
+     *
+     * <p>Uma roda de mouse com entalhe manda {@code preciseWheelRotation == 1}
+     * por clique, e um clique por gesto. O trackpad do mac nao: ele manda uma
+     * rajada -- medidos 327 eventos em 4 s, ~80 por segundo -- e o peso de cada
+     * um varia de 0,006 a 4,7. Sem teto, aquele 4,7 virava {@code 1.1^-4,7}, um
+     * salto de 58% da escala num quadro so, no meio de centenas de eventos que
+     * nao faziam nada visivel. Era esse contraste, e nao a sensibilidade media,
+     * que fazia o zoom parecer instavel: quase parado e de repente um pulo.
+     *
+     * <p>Cortar em um entalhe da o limite pela coisa certa -- nenhum evento vale
+     * mais do que um clique de roda valeria -- e por isso nao estraga a roda de
+     * mouse, onde o valor ja e 1 e o corte nunca age.
+     */
+    private static final double PASSO_MAX = 1.0;
+
+    /** Quanto a escala muda por entalhe. O mesmo de sempre para roda de mouse. */
+    private static final double POR_PASSO = 1.1;
+
+    /**
+     * Traduz um evento de roda ou trackpad no fator de zoom.
+     *
+     * <p>Usa {@code getPreciseWheelRotation}, e nao {@code getWheelRotation}: o
+     * inteiro devolve 0 para quase todo evento de trackpad -- medida na mesma
+     * rajada de 327 eventos: soma 3 -- o que deixava o zoom morto entre passos
+     * secos. O fracionario com teto responde ao gesto inteiro sem os saltos.
+     */
+    public static double fatorDeZoom(MouseWheelEvent e) {
+        double passos = Math.max(-PASSO_MAX, Math.min(e.getPreciseWheelRotation(), PASSO_MAX));
+        return Math.pow(POR_PASSO, -passos);
+    }
+
+    /** Batentes do zoom. Fora deles o campo vira um borrao ou some da tela. */
+    private static final double ZOOM_MIN = 0.25;
+    private static final double ZOOM_MAX = 8.0;
+
+    /**
+     * Amplia ou reduz mantendo fixo o ponto do mundo que esta sob o cursor.
+     *
+     * <p>Antes isto so multiplicava o zoom, e a transformada ancora em
+     * {@code getWidth()/2 + panX} -- o CENTRO do painel. Quem estivesse olhando
+     * um canto do campo via o canto fugir da tela ao aproximar, e tinha de
+     * arrastar de volta a cada passo. Ancorar no cursor e o que faz o gesto
+     * parecer que aproxima a cena, em vez de mover a camera por conta propria.
+     *
+     * <p>A correcao do pan sai do zoom REALMENTE aplicado, e nao do pedido: no
+     * batente o pedido nao acontece, e usar o pedido faria a imagem deslizar sob
+     * o cursor com o zoom ja parado -- que era o pior sintoma, porque acontece
+     * justamente quando se insiste no gesto.
+     */
+    public void aplicarZoom(double fator, int telaX, int telaY) {
+        double antes = zoom;
+        zoom = Math.max(ZOOM_MIN, Math.min(zoom * fator, ZOOM_MAX));
+
+        double k = zoom / antes;
+        if (k == 1.0) return;
+        panX = (telaX - getWidth() / 2.0) * (1 - k) + panX * k;
+        panY = (telaY - getHeight() / 2.0) * (1 - k) + panY * k;
+    }
     public void deslocar(double dx, double dy) { panX += dx; panY += dy; }
     public void enquadrar() { zoom = 1.0; panX = 0; panY = 0; }
     public void setMouseTela(int x, int y) { mouseTelaX = x; mouseTelaY = y; }
@@ -703,7 +763,7 @@ public final class Campo extends JPanel {
 
     /** Numeros em espaco de tela, para nao herdarem escala nem o espelho do eixo Y. */
     private void desenharIdentificadores(Graphics2D g, AffineTransform at, Quadro q, double avanco) {
-        g.setFont(new Font("SansSerif", Font.BOLD, 12));
+        g.setFont(Estilo.fonte(Font.BOLD, 12));
         FontMetrics fm = g.getFontMetrics();
         Point2D destino = new Point2D.Double();
 
@@ -722,7 +782,7 @@ public final class Campo extends JPanel {
         Vec2 p = telaParaMundo(mouseTelaX, mouseTelaY);
         String texto = String.format("x %.0f   y %.0f mm", p.x(), p.y());
 
-        g.setFont(new Font("Monospaced", Font.PLAIN, 12));
+        g.setFont(Estilo.fonte(Font.PLAIN, 12));
         FontMetrics fm = g.getFontMetrics();
         int w = fm.stringWidth(texto) + 12;
         int h = fm.getHeight() + 6;

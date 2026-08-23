@@ -1,6 +1,7 @@
 package app;
 
 import estrategia.Diario;
+import view.Estilo;
 import view.Paleta;
 
 import javax.swing.JFrame;
@@ -84,7 +85,7 @@ public final class JanelaLog extends JFrame {
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
             Graphics2D g2 = (Graphics2D) g.create();
-            g2.setFont(new Font("Monospaced", Font.PLAIN, 12));
+            g2.setFont(Estilo.fonte(Font.PLAIN, 12));
             FontMetrics fm = g2.getFontMetrics();
             int alturaLinha = fm.getHeight();
 

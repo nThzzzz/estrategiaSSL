@@ -21,8 +21,11 @@ java -cp "out/production/estrategiaSSL:lib/*" teste.Autoteste            # perce
 java -cp "out/production/estrategiaSSL:lib/*" teste.AutotesteEstrategia  # ciclo de vida da estratégia
 ```
 
-A única dependência é `protobuf-java`, versionada em `lib/` junto com o Java gerado dos
-`.proto` (em `src/proto/`), exatamente como no simulador. Um clone limpo compila offline.
+As dependências são três, todas versionadas em `lib/` junto com o Java gerado dos `.proto`
+(em `src/proto/`), exatamente como no simulador — um clone limpo compila offline:
+`protobuf-java`, e o `flatlaf` mais sua fonte JetBrains Mono, que são o que faz a janela ter a
+mesma cara em qualquer sistema (veja [Aparência](#aparência)). As três são jar único, sem
+dependência transitiva.
 
 Os dois projetos não podem dividir o mesmo classpath. Ambos têm `model.Geometria`, `model.Cor`
 e `rede.ConfigRede` com formatos diferentes, porque um descreve o mundo que simula e o outro o
@@ -632,9 +635,27 @@ A validação segue a mesma divisão do simulador. O que dá para saber sem toca
 "porta ocupada" só aparece no bind, e nesse caso a configuração anterior é restaurada em vez
 de deixar a estratégia surda.
 
-**Centro.** Zoom no scroll, arrasto com o botão direito, clique seleciona robô. Vetores de
+**Centro.** Zoom no scroll, arrasto move o campo, clique seleciona robô. Vetores de
 velocidade, área do sensor, anel de incerteza e a previsão do desenho podem ser desligados em
 *Configuração avançada...*.
+
+Arrastar com o **botão esquerdo** move o campo. Antes só o direito deslocava, e num trackpad de
+MacBook não há botão direito para segurar — clique de dois dedos não se sustenta enquanto um
+terceiro arrasta —, então o campo era, na prática, fixo para quem não usa mouse. O direito
+continua funcionando.
+
+O zoom ancora no **cursor**: o ponto do campo sob o ponteiro fica parado enquanto a escala muda.
+Antes ancorava no centro do painel, e quem olhava um canto via o canto fugir da tela a cada
+passo, tendo de arrastar de volta toda vez.
+
+Cada evento de scroll vale no máximo **um entalhe de roda**. O trackpad do mac não manda um
+evento por gesto como uma roda com entalhe: manda uma rajada — medidos 327 eventos em 4 s — em
+que o peso varia de 0,006 a 4,7. Sem teto, aquele 4,7 sozinho mudava a escala em 58% num quadro,
+no meio de centenas de eventos que não faziam nada visível. Era esse contraste, e não a
+sensibilidade média, que fazia o zoom parecer instável: quase parado e de repente um pulo.
+Cortar em um entalhe limita pela coisa certa e por isso não estraga a roda de mouse, onde o
+valor já é 1 e o corte nunca age. O `teste.Autoteste` prende as três coisas — âncora, batente e
+teto do pico.
 
 O gramado é desenhado com as **faixas do corte**, como um campo de futebol de verdade. Não é
 enfeite: esta é uma tela de leitura — é nela que se percebe o filtro mentindo — e um retângulo
@@ -687,3 +708,31 @@ visão continua listado, apagado, com há quanto tempo não é visto.
 O painel é desenhado em um componente só, e não montado com um `JPanel` por robô. A lista muda
 de tamanho a cada quadro, e recriar componentes Swing sessenta vezes por segundo custaria mais
 do que redesenhar tudo.
+
+### Aparência
+
+Antes, a janela pedia `UIManager.getSystemLookAndFeelClassName()` — o visual do sistema
+operacional. Aqua no macOS, WindowsLookAndFeel no Windows: o botão saía diferente em cada
+máquina porque era exatamente isso que a chamada mandava fazer. E o Aqua **ignora**
+`setBackground` em botão, então o painel escuro da `Paleta` ficava com botão claro do sistema
+no mac e obedecia no Windows. Estilizar componente a componente não resolveria, porque cada
+look-and-feel decide sozinho o que respeitar.
+
+Hoje `view.Estilo` instala o [FlatLaf](https://www.formdev.com/flatlaf/), que desenha tudo em
+Java sem delegar nada ao sistema — mesma janela nos três — e alimenta o L&F com as cores da
+`Paleta` que já existiam. O simulador faz o mesmo, com os mesmos valores: as duas janelas ficam
+lado a lado e um cinza diferente em cada uma faria parecer dois programas.
+
+A fonte é um segundo eixo, independente do L&F, e é a parte que passa despercebida:
+`new Font("SansSerif", ...)` não nomeia uma fonte, é um pedido que o JDK resolve para uma fonte
+**física** diferente em cada sistema. Larguras diferentes movem o texto que `Campo` e
+`BarraSuperior` desenham direto no `Graphics`, e nenhum look-and-feel conserta isso. A
+JetBrains Mono vai embarcada no jar, e todo `new Font` do código virou `Estilo.fonte(...)` —
+um só que sobrasse traria a divergência de volta.
+
+Ela é monoespaçada de propósito, num programa que é quase todo número medido: coordenada,
+velocidade e tempo não dançam de largura quando só o algarismo muda. O custo é que coluna
+passou a ser caractere na régua, sem a folga que uma proporcional dava de graça — foi o que
+alargou o campo de nome do simulador de 9 para 12 colunas, e a coluna de perguntas do diálogo
+de física de 290 para 335 px. Ao mexer em largura fixa perto de texto, meça com
+`getFontMetrics` em vez de estimar no olho.

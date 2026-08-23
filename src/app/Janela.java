@@ -14,6 +14,7 @@ import javax.swing.JSplitPane;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.Timer;
 import java.awt.BorderLayout;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -218,15 +219,27 @@ public final class Janela {
                 }
             }
 
+            /**
+             * Arrastar move o campo, com qualquer botao.
+             *
+             * <p>Antes so o direito deslocava. No trackpad do mac nao ha botao
+             * direito para segurar -- clique de dois dedos nao se sustenta
+             * enquanto um terceiro arrasta -- e o campo era, na pratica, fixo.
+             * Aqui nao ha o que conflitar: o esquerdo seleciona robo no CLIQUE,
+             * e o arrasto nao tinha uso nenhum.
+             */
             @Override
             public void mouseDragged(MouseEvent e) {
-                // Arrasto com o botao direito desloca o campo, igual ao simulador.
-                if ((e.getModifiersEx() & MouseEvent.BUTTON3_DOWN_MASK) != 0) {
-                    campo.deslocar(e.getX() - ultimoX, e.getY() - ultimoY);
-                }
+                campo.setCursor(Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR));
+                campo.deslocar(e.getX() - ultimoX, e.getY() - ultimoY);
                 ultimoX = e.getX();
                 ultimoY = e.getY();
                 campo.setMouseTela(e.getX(), e.getY());
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                campo.setCursor(Cursor.getDefaultCursor());
             }
 
             @Override
@@ -237,7 +250,7 @@ public final class Janela {
 
             @Override
             public void mouseWheelMoved(MouseWheelEvent e) {
-                campo.aplicarZoom(e.getWheelRotation() < 0 ? 1.1 : 1 / 1.1);
+                campo.aplicarZoom(Campo.fatorDeZoom(e), e.getX(), e.getY());
             }
         };
         campo.addMouseListener(mouse);
