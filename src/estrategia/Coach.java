@@ -41,6 +41,17 @@ public abstract class Coach {
     private final Random sorteio = new Random();
 
     protected Ambiente ambiente;
+
+    /**
+     * Quantos robos nossos a visao esta vendo no tique corrente.
+     *
+     * <p>Guardado em vez de recebido por parametro porque quem pergunta por
+     * {@link #playsDisponiveis()} nem sempre esta no tique: a interface lista o
+     * repertorio para exibir, e teria de inventar um numero para conseguir
+     * perguntar. Comeca em zero, entao antes do primeiro tique nenhuma play com
+     * papel essencial aparece como disponivel -- que e a verdade.
+     */
+    private int iRobosEmCampo;
     protected Play currentPlay;
 
     /**
@@ -88,6 +99,7 @@ public abstract class Coach {
      */
     public final void vRunCoach(Ambiente _ambiente, List<Jogador> _disponiveis) {
         this.ambiente = _ambiente;
+        this.iRobosEmCampo = _disponiveis.size();
 
         if (!bInitialized) {
             vInitialize();
@@ -146,16 +158,25 @@ public abstract class Coach {
     }
 
     /**
-     * Plays cujas pre-condicoes valem neste instante.
+     * Plays que podem comecar neste instante.
      *
-     * <p>Cada play recebe o mundo ANTES de ser perguntada. A pergunta "voce pode
-     * comecar agora?" so tem resposta com o mundo em maos, e a play ainda nao
-     * comecou -- logo ninguem mais teria entregado isso a ela.
+     * <p>Duas perguntas, e as duas precisam de contexto. Cada play recebe o mundo
+     * ANTES de ser perguntada pelas pre-condicoes: "voce pode comecar agora?" so
+     * tem resposta com o mundo em maos, e a play ainda nao comecou -- logo
+     * ninguem mais teria entregado isso a ela.
+     *
+     * <p>A segunda e quantos robos ha em campo. Uma play cujos papeis {@code VERY}
+     * nao cabem nos robos disponiveis fica de fora do sorteio, em vez de ser
+     * escolhida e abortar no primeiro tique: um episodio que morre antes de
+     * comecar gastaria uma rodada de aprendizado com um resultado que nao diz nada
+     * sobre a jogada. Os papeis {@code NORMAL} e {@code LESS} nao entram na conta,
+     * porque a play roda sem eles -- e essa a razao de existirem.
      */
     public List<Play> playsDisponiveis() {
         List<Play> saida = new ArrayList<>();
         for (Play p : assignedPlays.values()) {
             p.vSetAmbiente(ambiente);
+            if (p.iRobosMinimos() > iRobosEmCampo) continue;
             if (p.bCheckPreConditions()) saida.add(p);
         }
         return saida;

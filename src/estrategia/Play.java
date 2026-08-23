@@ -12,6 +12,12 @@ import java.util.Map;
  * <p>A Play define quais {@link Role} existem e quais robos as executam. Ela nao
  * comanda robo nenhum diretamente -- isso desce por Role, Tactic e Skill.
  *
+ * <p>Uma play declara os papeis da jogada IDEAL, e nao os que couberem hoje. Cada
+ * papel entra numa das tres categorias de {@link Role.Prioridade} -- {@code VERY},
+ * {@code NORMAL}, {@code LESS} -- e e ela que decide quem fica sem robo quando
+ * faltam robos. E o que permite escrever uma play pensando em seis e ela rodar
+ * com cinco: quem sobra e o ultimo {@code LESS}, e nao o goleiro.
+ *
  * <p>Uma play tem inicio e fim declarados, e e isso que permite ao {@link Coach}
  * aprender com ela:
  *
@@ -149,6 +155,11 @@ public abstract class Play {
         if (bCheckEndConditions())            { vAbortar(); return; }
 
         vOptimizeRoleAssignment(_disponiveis);
+        // Perder um papel VERY no meio da jogada -- robo que quebrou ou sumiu da
+        // visao -- e o mesmo que a jogada deixar de existir. Continuar sem ele
+        // seria rodar uma defesa sem goleiro.
+        if (!bPapeisEssenciaisAtribuidos()) { vAbortar(); return; }
+
         vRun();
 
         for (Role r : playRoles.values()) {
@@ -194,9 +205,19 @@ public abstract class Play {
 
     private void vAbortar() { status = Status.ABORTADA; }
 
+    /**
+     * True quando todo papel COM ROBO ja acabou.
+     *
+     * <p>Papel que ficou sem robo nao conta. Ele nunca roda, entao nunca termina,
+     * e exigi-lo faria uma play de seis papeis rodando com cinco robos ficar
+     * pendurada ate o tempo limite -- que e exatamente o caso que as categorias
+     * de {@link Role.Prioridade} existem para permitir.
+     */
     public boolean bRolesFinished() {
-        if (playRoles.isEmpty()) return false;
-        return playRoles.values().stream().allMatch(Role::bIsFinished);
+        List<Role> comRobo = playRoles.values().stream()
+                .filter(r -> r.player() != null).toList();
+        if (comRobo.isEmpty()) return false;
+        return comRobo.stream().allMatch(Role::bIsFinished);
     }
 
     /** True enquanto a play deve continuar rodando. */
@@ -229,18 +250,46 @@ public abstract class Play {
 
     public List<Role> roles() { return List.copyOf(playRoles.values()); }
 
+    /**
+     * Quantos robos esta play precisa para existir: um por papel {@code VERY}.
+     *
+     * <p>E o numero que o {@link Coach} compara com os robos em campo antes de
+     * sortear. Uma play que precisa de goleiro e batedor nao deve nem entrar no
+     * sorteio com um robo so -- comecar e abortar no primeiro tique gastaria um
+     * episodio de aprendizado com um resultado que nao diz nada sobre a jogada.
+     */
+    public int iRobosMinimos() {
+        return (int) playRoles.values().stream()
+                .filter(r -> r.prioridade().bEssencial()).count();
+    }
+
+    /** True quando todo papel {@code VERY} tem robo. */
+    public boolean bPapeisEssenciaisAtribuidos() {
+        return playRoles.values().stream()
+                .noneMatch(r -> r.prioridade().bEssencial() && r.player() == null);
+    }
+
     public void vResetAllRoles() {
         for (Role r : playRoles.values()) r.vResetRole();
     }
 
     /**
-     * Casa robos com papeis, do papel mais prioritario para o menos.
+     * Casa robos com papeis, da categoria mais alta para a mais baixa.
      *
-     * <p>Guloso, e nao otimo: para cada papel na ordem de prioridade, pega o robo
-     * de menor custo que ainda esta livre. Uma atribuicao otima (o hungaro, que o
-     * SSL-Strategy usa) troca alguns milimetros de custo total por bem mais
-     * codigo, e a diferenca so aparece em empates. O que importa de verdade e a
-     * histerese: sem ela os robos trocam de papel a cada quadro.
+     * <p>Guloso, e nao otimo: para cada papel na ordem de {@link Role.Prioridade},
+     * pega o robo de menor custo que ainda esta livre. Uma atribuicao otima (o
+     * hungaro, que o SSL-Strategy usa) troca alguns milimetros de custo total por
+     * bem mais codigo, e a diferenca so aparece em empates. O que importa de
+     * verdade e a histerese: sem ela os robos trocam de papel a cada quadro.
+     *
+     * <p>A ordenacao e ESTAVEL, entao papeis da mesma categoria disputam na ordem
+     * em que a play os declarou. E onde o desempate fica visivel para quem escreve
+     * a jogada.
+     *
+     * <p>Papel que nao acha robo -- porque acabaram, ou porque todo candidato tem
+     * custo infinito -- fica explicitamente VAZIO. Deixa-lo com o robo do quadro
+     * anterior faria o mesmo robo aparecer em dois papeis ao mesmo tempo, cada um
+     * escrevendo um comando por cima do outro.
      *
      * <p>Sobrescreva se a sua play precisar de outro criterio.
      */
@@ -261,17 +310,20 @@ public abstract class Play {
                 if (custo < melhorCusto) { melhorCusto = custo; melhor = j; }
             }
 
-            if (melhor != null && melhorCusto < Double.POSITIVE_INFINITY) {
-                livres.remove(melhor);
-                // Trocar de robo zera o papel: as taticas e skills guardam estado
-                // do robo anterior, e herda-lo faria o novo continuar de onde o
-                // outro parou, em outra posicao do campo.
-                if (melhor != atual) {
-                    role.vResetRole();
-                    role.vSetJogador(melhor);
-                } else {
-                    role.vSetJogador(atual);
-                }
+            if (melhor == null || melhorCusto == Double.POSITIVE_INFINITY) {
+                if (atual != null) role.vResetRole();
+                continue;
+            }
+
+            livres.remove(melhor);
+            // Trocar de robo zera o papel: as taticas e skills guardam estado
+            // do robo anterior, e herda-lo faria o novo continuar de onde o
+            // outro parou, em outra posicao do campo.
+            if (melhor != atual) {
+                role.vResetRole();
+                role.vSetJogador(melhor);
+            } else {
+                role.vSetJogador(atual);
             }
         }
     }
