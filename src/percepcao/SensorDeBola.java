@@ -1,5 +1,6 @@
 package percepcao;
 
+import ajuste.Parametro;
 import core.Vec2;
 import model.Robo;
 
@@ -31,8 +32,6 @@ public final class SensorDeBola {
 
     private SensorDeBola() {}
 
-    /** Folga alem do contato geometrico, cobrindo ruido de visao e a fresta do rolete. */
-    public static final double TOLERANCIA = 15.0; // mm
 
     /**
      * True se a bola estaria cortando o feixe da boca deste robo.
@@ -46,7 +45,7 @@ public final class SensorDeBola {
         Vec2 local = posBola.menos(posRobo).paraLocal(theta);
 
         double contato = Robo.DIST_FACE_FRONTAL + raioBola;
-        boolean naFrente = local.x() > 0 && local.x() <= contato + TOLERANCIA;
+        boolean naFrente = local.x() > 0 && local.x() <= contato + Parametro.TOLERANCIA_DO_SENSOR.valor();
         boolean dentroDaBoca = Math.abs(local.y()) <= Robo.MEIA_BOCA + raioBola * 0.5;
 
         return naFrente && dentroDaBoca;

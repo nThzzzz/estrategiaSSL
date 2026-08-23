@@ -57,7 +57,8 @@ como tal.
 Dependências em uma direção, sem ciclos, como no simulador:
 
 ```
-core       →  (nada)              Vec2, Angulo
+core       →  (nada)              Vec2, Angulo, Caixa
+ajuste     →  (nada)              Parametro, Json
 model      →  core, proto         Geometria, Cor, Robo, Comando
 mundo      →  core, model         Quadro, EstadoRobo, EstadoBola
 jogo       →  core, model, proto  Arbitro, EstadoDeJogo, Acao, ArbitroLocal
@@ -330,6 +331,51 @@ número na mesma play fariam o segundo ser recusado em silêncio. Uma jogada com
 precisa de duas entradas no enum (`ZAGUEIRO_ESQUERDO`, `ZAGUEIRO_DIREITO`), e não da mesma usada
 duas vezes. Não confunda o id com a `Prioridade`: o id diz *qual* papel é, a prioridade diz o
 quanto ele importa naquela jogada — e é por isso que um mora no enum global e a outra na play.
+
+### Os números que se ajusta
+
+Tolerâncias, distâncias e tetos de velocidade estavam espalhados como `static final` dentro da
+skill, da tática ou da play que os usava. Cada um no seu lugar parecia arrumado, e escondia dois
+problemas. Ajustar exigia **recompilar** — e numa bancada decidir se a tolerância de chegada deve
+ser 40 ou 25 mm é tentar seis valores em dois minutos, não editar, compilar e reabrir a janela
+seis vezes. E ninguém sabia quantos eram nem onde estavam: o que não dá para listar não dá para
+ajustar com método.
+
+Agora estão todos em `ajuste.Parametro`, e há três formas de mexer, da mais rápida para a mais
+duradoura:
+
+* **A aba *Ajustes*** da Configuração avançada. Vale no tique seguinte, sem recompilar e sem
+  reiniciar. Cada linha mostra o valor de fábrica ao lado — depois de meia hora mexendo, ninguém
+  lembra de onde partiu, e sem essa referência "restaurar" vira a única saída em vez de um passo
+  atrás.
+* **`ajustes.json`**, carregado do diretório atual na abertura, ou por `--ajustes <arquivo>`. É o
+  que faz o ajuste sobreviver ao fechar do programa. `--gerar-ajustes` imprime o modelo com os
+  valores atuais.
+* **O padrão no código**, que é o valor de fábrica.
+
+O arquivo diz o que **muda**; o que ele não cita fica no padrão. Nome desconhecido é **erro**, e
+não aviso: um parâmetro digitado errado que passa em silêncio faz procurar o problema no
+comportamento do robô, que é o lugar errado. A carga nunca é silenciosa — o programa imprime o
+que mudou, porque um valor diferente do de fábrica sem nada dizendo vira caça ao fantasma.
+
+O leitor de JSON é escrito à mão, pelo mesmo motivo que o resto compila offline: nada justifica
+uma segunda dependência para ler dezessete números. Aceita só `{"CHAVE": número}` — sem
+aninhamento, sem texto, sem lista. A única concessão é o comentário `//`, que JSON não tem: este
+arquivo é editado por gente, e um número sem a unidade ao lado é como se acaba escrevendo grau
+onde se esperava radiano.
+
+O que **não** entra no enum, e por quê:
+
+| fora | motivo |
+|---|---|
+| regra da liga (teto de 1,5 m/s no `STOP`, 500 mm da bola) | mudar não é ajustar, é jogar errado |
+| dimensão física (raio do robô, face do dribbler) | é medida, não escolha |
+| geometria do campo | vem da rede, e chumbar quebra em Divisão A |
+
+**Ângulo vai em graus**, e é a única unidade que foge do mm/rad/s do resto. Não é
+inconsistência: é a mesma regra que já vale para a rede — a conversão acontece na borda, e um
+arquivo de ajuste é uma borda. Quem digita "2" para tolerância de mira está pensando em dois
+graus, e `0.03490658503988659` num campo de texto não é um número que alguém revise.
 
 ### Projeção e o fantasma
 

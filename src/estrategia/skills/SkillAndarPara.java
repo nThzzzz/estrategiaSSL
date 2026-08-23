@@ -1,5 +1,6 @@
 package estrategia.skills;
 
+import ajuste.Parametro;
 import core.Vec2;
 import estrategia.esqueleto.Skill;
 import model.Robo;
@@ -27,11 +28,14 @@ import model.Robo;
  */
 public final class SkillAndarPara extends Skill {
 
-    /** Quanto da frenagem teorica realmente se pede. */
-    private static final double FATOR_DE_SEGURANCA = 0.8;
-
-    /** Distancia em que o destino e considerado alcancado, em mm. */
-    private double dTolerancia = 40;
+    /**
+     * Tolerancia pedida pela tatica, em mm; {@code null} usa
+     * {@link Parametro#TOLERANCIA_DE_CHEGADA}.
+     *
+     * <p>Guardar o valor do parametro num campo no construtor faria uma troca em
+     * tempo de execucao valer so para as skills criadas depois dela.
+     */
+    private Double dTolerancia;
 
     private Vec2 destino = Vec2.ZERO;
     private double dVelMax = Robo.VEL_MAX;
@@ -44,6 +48,11 @@ public final class SkillAndarPara extends Skill {
     public void vSetDestino(Vec2 _destino) { this.destino = _destino; }
 
     public void vSetTolerancia(double _mm) { this.dTolerancia = _mm; }
+
+    /** A tolerancia que vale agora: a pedida, ou a do ajuste global. */
+    private double dTolerancia() {
+        return dTolerancia != null ? dTolerancia : Parametro.TOLERANCIA_DE_CHEGADA.valor();
+    }
 
     /** Limita a velocidade desta skill, para conducao ou aproximacao delicada. */
     public void vSetVelMax(double _mmPorSegundo) { this.dVelMax = _mmPorSegundo; }
@@ -62,14 +71,14 @@ public final class SkillAndarPara extends Skill {
         Vec2 erro = destino.menos(posicao);
         double distancia = erro.norma();
 
-        if (distancia <= dTolerancia) {
+        if (distancia <= dTolerancia()) {
             jogador.vMover(0, 0);
             vFinalizar();
             return;
         }
 
         double velocidade = Math.min(dVelMax,
-                Math.sqrt(2 * Robo.ACEL_MAX * distancia) * FATOR_DE_SEGURANCA);
+                Math.sqrt(2 * Robo.ACEL_MAX * distancia) * Parametro.FRENAGEM_LINEAR.valor());
 
         // O comando vai no referencial do robo, que e onde o firmware o executa.
         Vec2 global = erro.comNorma(velocidade);
@@ -81,5 +90,6 @@ public final class SkillAndarPara extends Skill {
     public void vResetSkill() {
         super.vResetSkill();
         dVelMax = Robo.VEL_MAX;
+        dTolerancia = null;
     }
 }

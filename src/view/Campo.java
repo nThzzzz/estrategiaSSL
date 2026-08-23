@@ -1,5 +1,6 @@
 package view;
 
+import ajuste.Parametro;
 import core.Caixa;
 import core.Vec2;
 import jogo.EstadoDeJogo;
@@ -514,7 +515,7 @@ public final class Campo extends JPanel {
 
     /** A faixa a frente da boca; acesa quando o sensor esta cortado. */
     private void desenharAreaDoSensor(Graphics2D g, EstadoRobo r, Geometria geo) {
-        double profundidade = geo.raioBola() + SensorDeBola.TOLERANCIA;
+        double profundidade = geo.raioBola() + Parametro.TOLERANCIA_DO_SENSOR.valor();
         double meiaLargura = Robo.MEIA_BOCA + geo.raioBola() * 0.5;
 
         RoundRectangle2D faixa = new RoundRectangle2D.Double(

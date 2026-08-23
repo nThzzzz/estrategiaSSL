@@ -1,5 +1,6 @@
 package app;
 
+import ajuste.Parametro;
 import estrategia.Ambiente;
 import estrategia.Executor;
 import estrategia.coaches.CoachBancada;
@@ -43,16 +44,6 @@ public final class Cliente implements AutoCloseable {
     private final Arbitro arbitro = new Arbitro();
     private final ArbitroLocal arbitroLocal = new ArbitroLocal();
     private final Executor executor = new Executor(new CoachBancada());
-
-    /**
-     * Folga somada a area de defesa para formar a zona onde so o goleiro entra.
-     *
-     * <p>Mora aqui porque tem dois leitores que nao se conhecem: a estrategia, que
-     * a recebe no {@link Ambiente} e corta comando por causa dela, e o campo, que
-     * a desenha. Volatil porque quem escreve e a Swing e quem le e a thread de
-     * decisao.
-     */
-    private volatile double margemDaArea = Ambiente.MARGEM_PADRAO;
 
     private boolean bEstrategiaLigada;
     private long frameDaUltimaDecisao = -1;
@@ -116,8 +107,18 @@ public final class Cliente implements AutoCloseable {
         arbitro.doPainel(arbitroLocal.reemitir());
     }
 
-    public double getMargemDaArea()          { return margemDaArea; }
-    public void setMargemDaArea(double mm)   { this.margemDaArea = Math.max(0, mm); }
+    /**
+     * Folga somada a area de defesa para formar a zona onde so o goleiro entra.
+     *
+     * <p>Nao ha copia local: o dono do numero e {@link Parametro#MARGEM_DA_AREA},
+     * o mesmo que o arquivo de ajuste e a aba de parametros escrevem. Uma copia
+     * aqui faria a folga ter dois valores conforme quem perguntasse.
+     */
+    public double getMargemDaArea() { return Parametro.MARGEM_DA_AREA.valor(); }
+
+    public void setMargemDaArea(double mm) {
+        Parametro.MARGEM_DA_AREA.vSetValor(Math.max(0, mm));
+    }
 
     /**
      * Nome que o arbitro da para a equipe, com o nome local como reserva.
@@ -245,7 +246,7 @@ public final class Cliente implements AutoCloseable {
         if (q.frame() == frameDaUltimaDecisao) return;
         frameDaUltimaDecisao = q.frame();
 
-        enviar(executor.vTick(new Ambiente(q, estadoDeJogo(), equipe, margemDaArea)));
+        enviar(executor.vTick(new Ambiente(q, estadoDeJogo(), equipe, getMargemDaArea())));
     }
 
     /** Manda um ciclo de comandos para a nossa equipe. */

@@ -1,5 +1,6 @@
 package percepcao;
 
+import ajuste.Parametro;
 import core.Vec2;
 import model.Cor;
 import model.Geometria;
@@ -45,9 +46,6 @@ import java.util.Map;
  * quando houver quatro cameras de verdade para justificar.
  */
 public final class Rastreador {
-
-    /** Depois disso sem medida aceita, o objeto deixa de existir para a estrategia. */
-    public static final double ESQUECIMENTO = 1.5; // s
 
     private final Map<String, Trilha> robos = new HashMap<>();
     private final Trilha bola = new Trilha(Ajuste.bola(), false);
@@ -119,9 +117,9 @@ public final class Rastreador {
     // ----------------------------------------------------------------- retrato
 
     private Quadro montar() {
-        robos.values().removeIf(tr -> tr.idade(agora) > ESQUECIMENTO);
+        robos.values().removeIf(tr -> tr.idade(agora) > Parametro.ESQUECIMENTO_DA_TRILHA.valor());
 
-        EstadoBola eb = !bola.viva() || bola.idade(agora) > ESQUECIMENTO
+        EstadoBola eb = !bola.viva() || bola.idade(agora) > Parametro.ESQUECIMENTO_DA_TRILHA.valor()
                 ? EstadoBola.AUSENTE
                 : new EstadoBola(bola.posicao(), bola.getZ(), bola.velocidade(),
                                  bola.idade(agora), bola.incerteza());

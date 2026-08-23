@@ -1,5 +1,9 @@
 package teste;
 
+import java.util.List;
+import java.nio.file.Path;
+import java.nio.file.Files;
+import ajuste.Parametro;
 import core.Vec2;
 import model.Comando;
 import model.Cor;
@@ -82,6 +86,12 @@ public final class Autoteste {
         arbitroChegaPelaRede();
         trocaDeModoParaOMesmoModoNaoApagaOComando();
         arbitroLocalDeclaraOGoleiroPorCor();
+
+        // --- ajuste ---
+        ajusteTrocaSoOQueOArquivoCita();
+        ajusteRecusaNomeDesconhecido();
+        ajusteRecusaJsonQuebrado();
+        modeloDeAjusteVoltaASerLido();
         rotuloUsaOVocabularioDoProtocolo();
 
         // --- protocolo ---
@@ -423,6 +433,95 @@ public final class Autoteste {
         verdadeiro("arbitro: reemitir leva o goleiro novo sem trocar o comando",
                 a.estado(Cor.AZUL).goleiro() == 4
                         && a.estado(Cor.AZUL).acao() == Acao.STOP);
+    }
+
+
+    // ------------------------------------------------------------------ ajuste
+
+    /** O arquivo diz o que MUDA; o que ele nao cita fica no padrao. */
+    private static void ajusteTrocaSoOQueOArquivoCita() throws Exception {
+        Parametro.vRestaurarPadroes();
+        double intocado = Parametro.HISTERESE_DE_ATRIBUICAO.valor();
+
+        List<String> mudancas = carregar("""
+                {
+                  // comentario de linha e aceito: e onde mora a unidade
+                  "TOLERANCIA_DE_CHEGADA": 25,
+                  "VEL_CONDUCAO": 900
+                }
+                """);
+
+        aproximado("ajuste: o arquivo troca o que cita",
+                Parametro.TOLERANCIA_DE_CHEGADA.valor(), 25, 1e-9);
+        aproximado("ajuste: e o segundo tambem",
+                Parametro.VEL_CONDUCAO.valor(), 900, 1e-9);
+        aproximado("ajuste: o que ele nao cita fica como estava",
+                Parametro.HISTERESE_DE_ATRIBUICAO.valor(), intocado, 1e-9);
+        verdadeiro("ajuste: a carga devolve o que mudou", mudancas.size() == 2);
+
+        Parametro.vRestaurarPadroes();
+        aproximado("ajuste: restaurar volta ao valor de fabrica",
+                Parametro.TOLERANCIA_DE_CHEGADA.valor(),
+                Parametro.TOLERANCIA_DE_CHEGADA.padrao(), 1e-9);
+    }
+
+    /**
+     * Nome errado e ERRO, e nao aviso.
+     *
+     * <p>Um parametro digitado errado que passa em silencio faz procurar o
+     * problema no comportamento do robo, que e o lugar errado.
+     */
+    private static void ajusteRecusaNomeDesconhecido() {
+        Parametro.vRestaurarPadroes();
+        String erro = erroAoCarregar("{\"TOLERANCIA_DE_CHEGAD\": 25}");
+        verdadeiro("ajuste: nome desconhecido e recusado, e a mensagem diz qual",
+                erro != null && erro.contains("TOLERANCIA_DE_CHEGAD"));
+        aproximado("ajuste: e nada e aplicado pela metade",
+                Parametro.TOLERANCIA_DE_CHEGADA.valor(),
+                Parametro.TOLERANCIA_DE_CHEGADA.padrao(), 1e-9);
+    }
+
+    /** Erro de sintaxe tem de dizer a POSICAO, senao procura-se por minutos. */
+    private static void ajusteRecusaJsonQuebrado() {
+        String semDoisPontos = erroAoCarregar("{\"VEL_CONDUCAO\" 900}");
+        verdadeiro("ajuste: falta de ':' e apontada com a posicao",
+                semDoisPontos != null && semDoisPontos.contains("posicao"));
+
+        String naoNumero = erroAoCarregar("{\"VEL_CONDUCAO\": \"rapido\"}");
+        verdadeiro("ajuste: valor que nao e numero e recusado", naoNumero != null);
+    }
+
+    /** O modelo gerado tem de ser um arquivo valido -- senao nao serve de modelo. */
+    private static void modeloDeAjusteVoltaASerLido() throws Exception {
+        Parametro.vRestaurarPadroes();
+        Parametro.VEL_CONDUCAO.vSetValor(777);
+        String modelo = Parametro.paraJson();
+
+        Parametro.vRestaurarPadroes();
+        carregar(modelo);
+        aproximado("ajuste: o modelo gerado volta a ser lido, com os comentarios",
+                Parametro.VEL_CONDUCAO.valor(), 777, 1e-9);
+        Parametro.vRestaurarPadroes();
+    }
+
+    private static List<String> carregar(String json) throws Exception {
+        Path arquivo = Files.createTempFile("ajuste", ".json");
+        try {
+            Files.writeString(arquivo, json);
+            return Parametro.vCarregar(arquivo);
+        } finally {
+            Files.deleteIfExists(arquivo);
+        }
+    }
+
+    /** A mensagem do erro, ou null se por algum motivo passou. */
+    private static String erroAoCarregar(String json) {
+        try {
+            carregar(json);
+            return null;
+        } catch (Exception e) {
+            return e.getMessage();
+        }
     }
 
     private static void haltEStopImpoemLimites() {

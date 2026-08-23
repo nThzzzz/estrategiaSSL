@@ -1,5 +1,6 @@
 package estrategia.roles;
 
+import ajuste.Parametro;
 import estrategia.Ambiente;
 import estrategia.Jogador;
 import estrategia.ids.Papel;
@@ -50,7 +51,7 @@ public final class RoleAtacante extends Role {
         }
 
         double aoGol = jogador.estado().posicao().distancia(ambiente.golDeles());
-        bSetTactic(aoGol <= TacticConduzirAoGol.DISTANCIA_DE_CHUTE
+        bSetTactic(aoGol <= Parametro.DISTANCIA_DE_CHUTE.valor()
                 ? Tatica.CHUTAR_AO_GOL : Tatica.CONDUZIR_AO_GOL);
     }
 

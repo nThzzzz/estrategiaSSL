@@ -1,5 +1,6 @@
 package app;
 
+import ajuste.Parametro;
 import model.Cor;
 import rede.ConfigRede;
 import view.Campo;
@@ -17,7 +18,9 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JSpinner;
+import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
+import javax.swing.ScrollPaneConstants;
 import javax.swing.JTextField;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
@@ -35,8 +38,12 @@ import java.awt.Window;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
@@ -65,6 +72,9 @@ import java.util.function.Consumer;
  * mundos.
  */
 public final class DialogoConfiguracao extends JDialog {
+
+    /** Onde o botao Salvar grava, e de onde Carregar le. */
+    private static final String ARQUIVO_DE_AJUSTE = "ajustes.json";
 
     private final Cliente cliente;
     private final Campo campo;
@@ -102,6 +112,10 @@ public final class DialogoConfiguracao extends JDialog {
     private final JTextField portaAmarelo = new JTextField(6);
     private final JLabel mensagemDaRede = new JLabel(" ");
 
+    // --- ajustes ---
+    private final Map<Parametro, JTextField> camposDeAjuste = new EnumMap<>(Parametro.class);
+    private final JLabel mensagemDoAjuste = new JLabel(" ");
+
     /** Ligado enquanto os controles estao sendo alinhados ao estado real. */
     private boolean sincronizando;
 
@@ -115,6 +129,7 @@ public final class DialogoConfiguracao extends JDialog {
         abas.addTab("Equipe", aba(equipe(), jogo()));
         abas.addTab("Rede", aba(rede()));
         abas.addTab("Exibicao", aba(exibicao()));
+        abas.addTab("Ajustes", rolagem(aba(ajustes())));
 
         JButton fechar = new JButton("Fechar");
         fechar.addActionListener(e -> dispose());
@@ -249,6 +264,109 @@ public final class DialogoConfiguracao extends JDialog {
         return p;
     }
 
+    /**
+     * Um campo por {@link Parametro}, valendo no instante em que se confirma.
+     *
+     * <p>E o motivo de os parametros existirem: ajustar uma tolerancia numa
+     * bancada e tentar seis valores em dois minutos, e nao editar, recompilar e
+     * reabrir a janela seis vezes. Aqui nem o arquivo e preciso -- ele serve para
+     * o ajuste SOBREVIVER ao fechar do programa.
+     *
+     * <p>Cada linha mostra o valor de fabrica ao lado. Sem isso, depois de meia
+     * hora mexendo ninguem lembra de onde partiu, e "restaurar" vira a unica
+     * saida em vez de um passo atras.
+     */
+    private JComponent ajustes() {
+        JPanel p = secao("Tolerancias, distancias e tetos");
+
+        for (Parametro parametro : Parametro.values()) {
+            JTextField campo = new JTextField(8);
+            campo.setHorizontalAlignment(JTextField.RIGHT);
+            camposDeAjuste.put(parametro, campo);
+            campo.addActionListener(e -> vAplicarAjuste(parametro));
+            campo.addFocusListener(new java.awt.event.FocusAdapter() {
+                @Override
+                public void focusLost(java.awt.event.FocusEvent e) { vAplicarAjuste(parametro); }
+            });
+            p.add(linhaDeAjuste(parametro, campo));
+        }
+
+        mensagemDoAjuste.setFont(mensagemDoAjuste.getFont().deriveFont(10f));
+        mensagemDoAjuste.setAlignmentX(Component.LEFT_ALIGNMENT);
+        p.add(Box.createVerticalStrut(6));
+        p.add(mensagemDoAjuste);
+
+        JButton restaurar = new JButton("Restaurar padroes");
+        restaurar.addActionListener(e -> {
+            Parametro.vRestaurarPadroes();
+            sincronizar();
+            campo.repaint();
+            dizerDoAjuste("todos de volta ao valor de fabrica", Paleta.TEXTO);
+        });
+        JButton salvar = new JButton("Salvar em " + ARQUIVO_DE_AJUSTE);
+        salvar.addActionListener(e -> vSalvarAjustes());
+        JButton carregar = new JButton("Carregar");
+        carregar.addActionListener(e -> vCarregarAjustes());
+
+        JPanel botoes = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        botoes.setBackground(Paleta.PAINEL);
+        botoes.setAlignmentX(Component.LEFT_ALIGNMENT);
+        botoes.add(salvar);
+        botoes.add(carregar);
+        botoes.add(restaurar);
+        botoes.setMaximumSize(new Dimension(Integer.MAX_VALUE, botoes.getPreferredSize().height));
+        p.add(Box.createVerticalStrut(6));
+        p.add(botoes);
+        p.add(dica("O que vale agora e o que esta nos campos; o arquivo so serve para o "
+                + "ajuste sobreviver ao fechar do programa. Carregar le o arquivo e aplica "
+                + "so o que ele cita."));
+        return p;
+    }
+
+    private void vAplicarAjuste(Parametro parametro) {
+        if (sincronizando) return;
+        JTextField campo = camposDeAjuste.get(parametro);
+        String texto = campo.getText().trim().replace(',', '.');
+        try {
+            double novo = Double.parseDouble(texto);
+            if (novo == parametro.valor()) return;
+            parametro.vSetValor(novo);
+            dizerDoAjuste(parametro.name() + " = " + texto + " " + parametro.unidade(), Paleta.OK);
+            campo.repaint();
+            this.campo.repaint();
+        } catch (NumberFormatException e) {
+            dizerDoAjuste("\"" + texto + "\" nao e um numero", Paleta.ERRO);
+            sincronizar(); // devolve o que estava valendo
+        }
+    }
+
+    private void vSalvarAjustes() {
+        try {
+            Files.writeString(Path.of(ARQUIVO_DE_AJUSTE), Parametro.paraJson());
+            dizerDoAjuste("gravado em " + Path.of(ARQUIVO_DE_AJUSTE).toAbsolutePath(), Paleta.OK);
+        } catch (IOException e) {
+            dizerDoAjuste(e.getMessage(), Paleta.ERRO);
+        }
+    }
+
+    private void vCarregarAjustes() {
+        try {
+            List<String> mudancas = Parametro.vCarregar(Path.of(ARQUIVO_DE_AJUSTE));
+            sincronizar();
+            campo.repaint();
+            dizerDoAjuste(mudancas.isEmpty()
+                    ? "o arquivo nao muda nada"
+                    : mudancas.size() + " parametro(s) trocado(s)", Paleta.OK);
+        } catch (Exception e) {
+            dizerDoAjuste(e.getMessage(), Paleta.ERRO);
+        }
+    }
+
+    private void dizerDoAjuste(String texto, Color cor) {
+        mensagemDoAjuste.setForeground(cor);
+        mensagemDoAjuste.setText("<html><body style='width:340px'>" + texto + "</body></html>");
+    }
+
     // -------------------------------------------------------------- acoes
 
     private void instalarOuvintes() {
@@ -297,6 +415,11 @@ public final class DialogoConfiguracao extends JDialog {
             avisoDoArbitro.setText(local
                     ? "lado e goleiro vao na proxima mensagem do arbitro de teste"
                     : "em modo REDE quem declara lado e goleiro e o Game Controller");
+
+            for (Map.Entry<Parametro, JTextField> e : camposDeAjuste.entrySet()) {
+                if (e.getValue().isFocusOwner()) continue;
+                e.getValue().setText(curto(e.getKey().valor()));
+            }
 
             if (!grupo.isFocusOwner() && !portaVisao.isFocusOwner()
                     && !grupoArbitro.isFocusOwner() && !portaArbitro.isFocusOwner()
@@ -453,6 +576,50 @@ public final class DialogoConfiguracao extends JDialog {
         l.setFont(l.getFont().deriveFont(Font.PLAIN, 11f));
         painel.add(l);
         painel.add(campo);
+    }
+
+    /** Nome a esquerda, campo, unidade e o valor de fabrica em cinza. */
+    private static JPanel linhaDeAjuste(Parametro parametro, JTextField campo) {
+        JPanel p = new JPanel();
+        p.setLayout(new BoxLayout(p, BoxLayout.X_AXIS));
+        p.setBackground(Paleta.PAINEL);
+        p.setAlignmentX(Component.LEFT_ALIGNMENT);
+        p.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
+
+        JLabel nome = new JLabel(parametro.name().toLowerCase().replace('_', ' '));
+        nome.setForeground(Paleta.APAGADO);
+        nome.setFont(nome.getFont().deriveFont(11f));
+        nome.setPreferredSize(new Dimension(178, 22));
+        nome.setMaximumSize(new Dimension(178, 22));
+
+        campo.setMaximumSize(new Dimension(90, 22));
+
+        JLabel cauda = new JLabel("  " + parametro.unidade()
+                + "   (padrao " + curto(parametro.padrao()) + ")");
+        cauda.setForeground(new Color(120, 120, 130));
+        cauda.setFont(cauda.getFont().deriveFont(10f));
+
+        p.add(nome);
+        p.add(campo);
+        p.add(cauda);
+        return p;
+    }
+
+    /** Sem casa decimal quando o numero e inteiro; a coluna fica legivel. */
+    private static String curto(double v) {
+        return v == Math.rint(v) && !Double.isInfinite(v)
+                ? String.valueOf((long) v) : String.valueOf(v);
+    }
+
+    private static JScrollPane rolagem(JComponent conteudo) {
+        JScrollPane r = new JScrollPane(conteudo,
+                ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
+                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        r.setBorder(null);
+        r.getViewport().setBackground(Paleta.PAINEL);
+        r.getVerticalScrollBar().setUnitIncrement(16);
+        r.setPreferredSize(new Dimension(440, 430));
+        return r;
     }
 
     private static JComponent dica(String texto) {

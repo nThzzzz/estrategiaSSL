@@ -1,5 +1,6 @@
 package teste;
 
+import ajuste.Parametro;
 import core.Caixa;
 import core.Vec2;
 import estrategia.Ambiente;
@@ -348,7 +349,7 @@ public final class AutotesteEstrategia {
         double x = 3000;
         // A caixa proibida e a area mais a folga, mais o raio do robo: a regra
         // mede pelo ponto do robo que entra, nao pelo centro.
-        double borda = Geometria.DIVISAO_B.areaDefesa(1, Ambiente.MARGEM_PADRAO).xMin()
+        double borda = Geometria.DIVISAO_B.areaDefesa(1, Parametro.MARGEM_DA_AREA.valor()).xMin()
                 - Robo.RAIO;
         double esperado = Math.sqrt(2 * Robo.ACEL_MAX * (borda - x));
 
@@ -677,8 +678,10 @@ public final class AutotesteEstrategia {
      */
     private static void conducaoParaDentroDaZonaDeChute() {
         verdadeiro(String.format("taticas: conducao (%.0f) para dentro da zona de chute (%.0f)",
-                        TacticConduzirAoGol.DISTANCIA_DE_CONDUCAO, TacticConduzirAoGol.DISTANCIA_DE_CHUTE),
-                TacticConduzirAoGol.DISTANCIA_DE_CONDUCAO < TacticConduzirAoGol.DISTANCIA_DE_CHUTE - 100);
+                        Parametro.DISTANCIA_DE_CONDUCAO.valor(),
+                        Parametro.DISTANCIA_DE_CHUTE.valor()),
+                Parametro.DISTANCIA_DE_CONDUCAO.valor()
+                        < Parametro.DISTANCIA_DE_CHUTE.valor() - 100);
     }
 
     // ------------------------------------------------------------------- diario

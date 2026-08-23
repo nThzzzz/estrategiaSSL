@@ -1,5 +1,6 @@
 package estrategia.esqueleto;
 
+import ajuste.Parametro;
 import estrategia.Ambiente;
 import estrategia.Jogador;
 import estrategia.ids.Jogada;
@@ -109,18 +110,6 @@ public abstract class Play {
         ABORTADA
     }
 
-    /** Tempo limite padrao de uma jogada, em segundos de jogo. */
-    public static final double TEMPO_LIMITE_PADRAO = 120.0;
-
-    /**
-     * Vantagem que o robo ja atribuido a um papel leva na reatribuicao.
-     *
-     * <p>Sem histerese, dois robos a distancias parecidas de um papel ficam
-     * trocando de funcao a cada quadro, e nenhum dos dois chega a lugar nenhum.
-     * O valor multiplica o custo do candidato atual, entao 0,7 quer dizer "so
-     * troque se o outro for pelo menos 30% melhor".
-     */
-    public static final double HISTERESE_DE_ATRIBUICAO = 0.7;
 
     private final Map<Integer, Role> playRoles = new LinkedHashMap<>();
 
@@ -132,7 +121,7 @@ public abstract class Play {
     protected boolean bInitialized;
 
     protected int iID;
-    protected double dTempoLimite = TEMPO_LIMITE_PADRAO;
+    protected double dTempoLimite = Parametro.TEMPO_LIMITE_DA_PLAY.valor();
 
     /** Instante em que a play comecou, no relogio da visao. */
     private double dInicio = Double.NaN;
@@ -382,7 +371,7 @@ public abstract class Play {
 
             for (Jogador j : livres) {
                 double custo = role.dCusto(ambiente, j);
-                if (j == atual) custo *= HISTERESE_DE_ATRIBUICAO;
+                if (j == atual) custo *= Parametro.HISTERESE_DE_ATRIBUICAO.valor();
                 if (custo < melhorCusto) { melhorCusto = custo; melhor = j; }
             }
 

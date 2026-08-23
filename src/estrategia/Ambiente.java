@@ -1,5 +1,6 @@
 package estrategia;
 
+import ajuste.Parametro;
 import core.Caixa;
 import core.Vec2;
 import jogo.EstadoDeJogo;
@@ -34,18 +35,9 @@ import java.util.List;
  */
 public record Ambiente(Quadro quadro, EstadoDeJogo jogo, Cor nossaCor, double margemDaArea) {
 
-    /**
-     * Folga padrao sobre a area de defesa, em mm.
-     *
-     * <p>Meio raio de robo. A regra mede pelo ponto do robo que entra, entao
-     * encostar a casca na linha ja e falta; parar com alguma folga e o que
-     * transforma "quase certo" em "certo", sem entregar meio campo de graca.
-     */
-    public static final double MARGEM_PADRAO = 45;
-
-    /** Sem margem declarada, vale a padrao. */
+    /** Sem margem declarada, vale {@link Parametro#MARGEM_DA_AREA}. */
     public Ambiente(Quadro quadro, EstadoDeJogo jogo, Cor nossaCor) {
-        this(quadro, jogo, nossaCor, MARGEM_PADRAO);
+        this(quadro, jogo, nossaCor, Parametro.MARGEM_DA_AREA.valor());
     }
 
     public Geometria geometria() { return quadro.geometria(); }

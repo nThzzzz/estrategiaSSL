@@ -1,5 +1,6 @@
 package estrategia.tactics;
 
+import ajuste.Parametro;
 import core.Vec2;
 import estrategia.ids.Habilidade;
 import estrategia.esqueleto.Tactic;
@@ -43,9 +44,6 @@ public final class TacticBuscarBola extends Tactic {
 
     public TacticBuscarBola(int _id) {
         super(_id);
-        // Tolerancia menor que a folga do sensor. Ver vRun: parar com a folga
-        // padrao deixa o robo a um palmo da bola, sem nunca captura-la.
-        andar.vSetTolerancia(30);
         bAddSkill(Habilidade.ANDAR_PARA, andar);
     }
 
@@ -72,6 +70,11 @@ public final class TacticBuscarBola extends Tactic {
                 ? bola
                 : bola.mais(doGolParaABola.comNorma(recuo));
 
+        // A cada tique, e nao no construtor: assim um ajuste carregado com o
+        // programa rodando vale no proximo quadro. A tolerancia e menor que a
+        // folga do sensor -- parar com a folga padrao deixa o robo a um palmo da
+        // bola, sem nunca captura-la.
+        andar.vSetTolerancia(Parametro.TOLERANCIA_NA_BOLA.valor());
         andar.vSetDestino(destino);
         olhar.vSetAlvo(bola);
         jogador.vDribbler(true);

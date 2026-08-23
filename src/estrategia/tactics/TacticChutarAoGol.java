@@ -1,5 +1,6 @@
 package estrategia.tactics;
 
+import ajuste.Parametro;
 import estrategia.ids.Habilidade;
 import estrategia.esqueleto.Tactic;
 import estrategia.ids.Tatica;
@@ -20,36 +21,6 @@ import estrategia.skills.SkillOlharPara;
 public final class TacticChutarAoGol extends Tactic {
 
 
-    /** Erro de mira aceito antes de acionar o chutador. */
-    public static final double TOLERANCIA_DE_MIRA = Math.toRadians(2);
-
-    /**
-     * Quanto tempo a bola precisa ficar no sensor antes de valer o chute.
-     *
-     * <p>Sem esta espera o robo chuta no instante em que a bola ENCOSTA, e isso
-     * da errado de duas maneiras. Uma bola que so passa raspando pela boca aciona
-     * o sensor por um quadro e leva um chute para lugar nenhum. E mesmo quando a
-     * bola e nossa, ela chega a boca ainda quicando: chutar antes de o rolete
-     * assentar manda a bola para qualquer lado menos o mirado.
-     *
-     * <p>Contado no relogio da visao, entao vale igual com o simulador acelerado.
-     */
-    public static final double POSSE_MINIMA = 0.15; // s
-
-    /**
-     * Acima desta velocidade a bola nao e nossa, em mm/s.
-     *
-     * <p>Bola que a gente conduz anda junto com o robo, devagar. Bola a 6 m/s
-     * passando pela boca acabou de ser chutada -- inclusive por nos mesmos.
-     *
-     * <p>Sem esta condicao acontece um chute duplo: o chute sai, a play se
-     * conclui, o coach reinicia a mesma play no quadro seguinte, e o dribbler
-     * reengata na bola ANTES de ela escapar da boca. Ela e segurada de volta e
-     * chutada outra vez, 0,18 s depois da primeira. Nao da para ver isso sem log,
-     * porque na tela parece um chute so.
-     */
-    public static final double VEL_MAX_CONTROLE = 1500; // mm/s
-
     private final SkillOlharPara olhar = new SkillOlharPara();
     private final SkillChutar chutar = new SkillChutar();
 
@@ -67,7 +38,7 @@ public final class TacticChutarAoGol extends Tactic {
 
     public TacticChutarAoGol(int _id) {
         super(_id);
-        olhar.vSetTolerancia(TOLERANCIA_DE_MIRA);
+
         bAddSkill(Habilidade.OLHAR_PARA, olhar);
         bAddSkill(Habilidade.CHUTAR, chutar);
     }
@@ -86,17 +57,21 @@ public final class TacticChutarAoGol extends Tactic {
 
     @Override
     protected void vRun() {
+        // A cada tique, e nao no construtor: um ajuste carregado com o programa
+        // rodando vale no proximo quadro.
+        olhar.vSetTolerancia(Math.toRadians(Parametro.TOLERANCIA_DE_MIRA.valor()));
         olhar.vSetAlvo(ambiente.golDeles());
 
-        boolean controlavel = ambiente.bola().rapidez() < VEL_MAX_CONTROLE;
+        boolean controlavel = ambiente.bola().rapidez() < Parametro.VEL_MAX_CONTROLE.valor();
         jogador.vDribbler(controlavel);
 
         if (!jogador.bComABola() || !controlavel) dPosseDesde = Double.NaN;
         else if (Double.isNaN(dPosseDesde)) dPosseDesde = ambiente.tempo();
 
-        boolean mirado = Math.abs(olhar.dErro()) <= TOLERANCIA_DE_MIRA;
+        boolean mirado = Math.abs(olhar.dErro())
+                <= Math.toRadians(Parametro.TOLERANCIA_DE_MIRA.valor());
         boolean assentada = !Double.isNaN(dPosseDesde)
-                && ambiente.tempo() - dPosseDesde >= POSSE_MINIMA;
+                && ambiente.tempo() - dPosseDesde >= Parametro.POSSE_MINIMA.valor();
 
         bSetSkill(mirado && assentada ? Habilidade.CHUTAR : Habilidade.OLHAR_PARA);
     }

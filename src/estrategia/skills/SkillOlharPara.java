@@ -1,5 +1,6 @@
 package estrategia.skills;
 
+import ajuste.Parametro;
 import core.Angulo;
 import core.Vec2;
 import estrategia.esqueleto.Skill;
@@ -21,10 +22,11 @@ import model.Robo;
  */
 public final class SkillOlharPara extends Skill {
 
-    private static final double FATOR_DE_SEGURANCA = 0.8;
-
-    /** Erro angular aceito, em radianos. Cerca de 2 graus. */
-    private double dTolerancia = Math.toRadians(2);
+    /**
+     * Tolerancia pedida pela tatica, em radianos; {@code null} usa
+     * {@link Parametro#TOLERANCIA_DE_ANGULO}. Ver {@code SkillAndarPara}.
+     */
+    private Double dTolerancia;
 
     private Vec2 alvo = Vec2.ZERO;
 
@@ -35,6 +37,13 @@ public final class SkillOlharPara extends Skill {
     public void vSetAlvo(Vec2 _alvo) { this.alvo = _alvo; }
 
     public void vSetTolerancia(double _radianos) { this.dTolerancia = _radianos; }
+
+    /** A tolerancia que vale agora: a pedida, ou a do ajuste global. */
+    private double dTolerancia() {
+        return dTolerancia != null
+                ? dTolerancia
+                : Math.toRadians(Parametro.TOLERANCIA_DE_ANGULO.valor());
+    }
 
     /** Erro angular corrente, em radianos. Util para a tatica decidir se pode chutar. */
     public double dErro() {
@@ -53,14 +62,15 @@ public final class SkillOlharPara extends Skill {
     @Override
     protected void vRun() {
         double erro = dErro();
-        if (Math.abs(erro) <= dTolerancia) {
+        if (Math.abs(erro) <= dTolerancia()) {
             jogador.vGirar(0);
             vFinalizar();
             return;
         }
 
         double omega = Math.min(Robo.OMEGA_MAX,
-                Math.sqrt(2 * Robo.ACEL_ANGULAR_MAX * Math.abs(erro)) * FATOR_DE_SEGURANCA);
+                Math.sqrt(2 * Robo.ACEL_ANGULAR_MAX * Math.abs(erro))
+                        * Parametro.FRENAGEM_ANGULAR.valor());
         jogador.vGirar(Math.signum(erro) * omega);
     }
 }

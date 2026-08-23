@@ -1,5 +1,6 @@
 package estrategia.tactics;
 
+import ajuste.Parametro;
 import core.Vec2;
 import estrategia.ids.Habilidade;
 import estrategia.esqueleto.Tactic;
@@ -22,30 +23,6 @@ import estrategia.skills.SkillOlharPara;
 public final class TacticConduzirAoGol extends Tactic {
 
 
-    /** Teto de velocidade com a bola presa, em mm/s. */
-    public static final double VEL_CONDUCAO = 1200;
-
-    /**
-     * A que distancia do gol o atacante passa a mirar, em mm.
-     *
-     * <p>Ver {@link #DISTANCIA_DE_CONDUCAO}: os dois numeros nao podem ser
-     * iguais.
-     */
-    public static final double DISTANCIA_DE_CHUTE = 2500;
-
-    /**
-     * Ate onde a conducao leva a bola, em mm do gol.
-     *
-     * <p>Menor que {@link #DISTANCIA_DE_CHUTE} de proposito, e isso NAO e um
-     * ajuste fino: com os dois iguais, o robo para exatamente em cima do limiar
-     * que decide entre conduzir e chutar, e a tolerancia de chegada faz ele parar
-     * ora um pouco dentro, ora um pouco fora. Quando para fora, ele fica parado
-     * com a bola achando que ainda tem de conduzir, e a jogada morre ali. Com o
-     * destino 500 mm dentro da zona de chute, a troca acontece durante a
-     * aproximacao e o robo ja chega mirando.
-     */
-    public static final double DISTANCIA_DE_CONDUCAO = 2000;
-
     private final SkillAndarPara andar = new SkillAndarPara();
     private final SkillOlharPara olhar = new SkillOlharPara();
 
@@ -60,8 +37,8 @@ public final class TacticConduzirAoGol extends Tactic {
 
     public TacticConduzirAoGol(int _id) {
         super(_id);
-        andar.vSetVelMax(VEL_CONDUCAO);
-        andar.vSetTolerancia(120);
+        andar.vSetVelMax(Parametro.VEL_CONDUCAO.valor());
+        andar.vSetTolerancia(Parametro.TOLERANCIA_DE_CONDUCAO.valor());
         bAddSkill(Habilidade.ANDAR_PARA, andar);
     }
 
@@ -76,12 +53,12 @@ public final class TacticConduzirAoGol extends Tactic {
         Vec2 gol = ambiente.golDeles();
         Vec2 daBolaAoGol = gol.menos(jogador.estado().posicao());
 
-        Vec2 destino = daBolaAoGol.norma() <= DISTANCIA_DE_CONDUCAO
+        Vec2 destino = daBolaAoGol.norma() <= Parametro.DISTANCIA_DE_CONDUCAO.valor()
                 ? jogador.estado().posicao()
-                : gol.menos(daBolaAoGol.comNorma(DISTANCIA_DE_CONDUCAO));
+                : gol.menos(daBolaAoGol.comNorma(Parametro.DISTANCIA_DE_CONDUCAO.valor()));
 
         andar.vSetDestino(destino);
-        andar.vSetVelMax(VEL_CONDUCAO);
+        andar.vSetVelMax(Parametro.VEL_CONDUCAO.valor());
         olhar.vSetAlvo(gol);
         jogador.vDribbler(true);
 
@@ -94,7 +71,7 @@ public final class TacticConduzirAoGol extends Tactic {
         if (jogador == null || !jogador.bEmCampo()) return;
         boolean perdeuABola = !jogador.bComABola();
         boolean chegou = jogador.estado().posicao().distancia(ambiente.golDeles())
-                <= DISTANCIA_DE_CONDUCAO;
+                <= Parametro.DISTANCIA_DE_CONDUCAO.valor();
         if (perdeuABola || chegou) vFinalizar();
     }
 }

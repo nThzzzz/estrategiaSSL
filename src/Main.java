@@ -1,3 +1,4 @@
+import ajuste.Parametro;
 import app.Cliente;
 import app.Janela;
 import model.Cor;
@@ -5,6 +6,9 @@ import rede.ConfigRede;
 
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
 
 /**
  * Software de time da SSL: escuta a visao, mostra o campo, manda comando.
@@ -41,6 +45,10 @@ public final class Main {
             return;
         }
 
+        // Antes do Cliente: ele ja le parametro na construcao, e uma troca que
+        // chegasse depois nao valeria para o que ja foi montado.
+        if (!bCarregarAjustes(a.ajustes())) { System.exit(2); return; }
+
         Cliente cliente = new Cliente(a.rede(), a.equipe());
         try {
             cliente.conectar();
@@ -62,11 +70,46 @@ public final class Main {
         });
     }
 
-    record Argumentos(ConfigRede rede, Cor equipe) {
+    /** Arquivo de ajuste procurado quando ninguem passa {@code --ajustes}. */
+    private static final String AJUSTES_PADRAO = "ajustes.json";
+
+    /**
+     * Carrega o arquivo de ajuste, se houver, e diz o que mudou.
+     *
+     * <p>O arquivo padrao e procurado sem ninguem pedir, porque numa bancada se
+     * edita o arquivo e se roda de novo -- ter de lembrar de uma flag toda vez e
+     * como nao ter o arquivo. Mas a carga NUNCA e silenciosa: um valor diferente
+     * do de fabrica sem nada dizendo muda o comportamento do time e vira caca ao
+     * fantasma.
+     *
+     * @return false quando o arquivo existe e esta errado; ai e melhor parar do
+     *         que subir com metade dos ajustes
+     */
+    private static boolean bCarregarAjustes(Path pedido) {
+        Path arquivo = pedido != null ? pedido : Path.of(AJUSTES_PADRAO);
+        if (pedido == null && !Files.isReadable(arquivo)) return true;
+
+        try {
+            List<String> mudancas = Parametro.vCarregar(arquivo);
+            if (mudancas.isEmpty()) {
+                System.out.println("ajustes: " + arquivo + " nao muda nada");
+            } else {
+                System.out.println("ajustes: " + arquivo);
+                for (String m : mudancas) System.out.println("  " + m);
+            }
+            return true;
+        } catch (Exception e) {
+            System.err.println("ajustes: " + arquivo + ": " + e.getMessage());
+            return false;
+        }
+    }
+
+    record Argumentos(ConfigRede rede, Cor equipe, Path ajustes) {
 
         static Argumentos parse(String[] args) {
             ConfigRede rede = ConfigRede.padrao();
             Cor equipe = Cor.AZUL;
+            Path ajustes = null;
 
             for (int i = 0; i < args.length; i++) {
                 switch (args[i]) {
@@ -79,6 +122,11 @@ public final class Main {
                     case "--host"           -> rede = rede.comHost(args[++i]);
                     case "--porta-azul"     -> rede = rede.comPortaAzul(Integer.parseInt(args[++i]));
                     case "--porta-amarelo"  -> rede = rede.comPortaAmarelo(Integer.parseInt(args[++i]));
+                    case "--ajustes"        -> ajustes = Path.of(args[++i]);
+                    case "--gerar-ajustes"  -> {
+                        System.out.print(Parametro.paraJson());
+                        System.exit(0);
+                    }
                     case "--ajuda", "-h"    -> { ajuda(); System.exit(0); }
                     default -> throw new IllegalArgumentException(
                             "argumento desconhecido: " + args[i] + " (use --ajuda)");
@@ -87,7 +135,7 @@ public final class Main {
 
             String problema = rede.problema();
             if (problema != null) throw new IllegalArgumentException("rede: " + problema);
-            return new Argumentos(rede, equipe);
+            return new Argumentos(rede, equipe, ajustes);
         }
 
         static void ajuda() {
@@ -116,6 +164,15 @@ public final class Main {
 
                     Equipe
                       --azul | --amarelo    de que cor jogamos (padrao azul)
+
+                    Ajuste
+                      tolerancias, distancias e tetos de velocidade ficam em
+                      ajuste.Parametro e podem ser trocados por arquivo, sem
+                      recompilar. O que o arquivo nao cita fica no padrao.
+
+                      --gerar-ajustes       imprime o modelo com os valores atuais
+                      --ajustes <arquivo>   carrega este arquivo
+                                            (sem a flag, carrega ./ajustes.json se existir)
                     """);
         }
     }
