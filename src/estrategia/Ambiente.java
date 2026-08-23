@@ -1,5 +1,6 @@
 package estrategia;
 
+import model.Robo;
 import ajuste.Parametro;
 import core.Caixa;
 import core.Vec2;
@@ -82,7 +83,18 @@ public record Ambiente(Quadro quadro, EstadoDeJogo jogo, Cor nossaCor, double ma
      * para o time cometer falta.
      */
     public Caixa nossaAreaProibida() {
-        return geometria().areaDefesa(jogo.nossoLado(), margemDaArea);
+        return geometria().zonaProibida(jogo.nossoLado(), margemDaArea,
+                Parametro.ZONA_PROFUNDIDADE.valor(), Parametro.ZONA_LARGURA.valor());
+    }
+
+    /**
+     * Onde o goleiro pode ficar: a area de defesa mais um raio de robo.
+     *
+     * <p>Maior que a zona proibida de proposito, e e essa diferenca que faz um
+     * goleiro poder ficar EM CIMA da linha da area em vez de so atras dela.
+     */
+    public Caixa zonaDoGoleiro() {
+        return geometria().zonaDoGoleiro(jogo.nossoLado(), Robo.RAIO);
     }
 
     /** True se este robo nosso pode entrar na area: so o goleiro declarado pode. */

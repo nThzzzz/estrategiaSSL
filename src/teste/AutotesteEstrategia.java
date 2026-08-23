@@ -74,6 +74,9 @@ public final class AutotesteEstrategia {
         roboDentroDaAreaSoPodeSair();
         deslizarPelaBordaDaAreaNaoECortado();
         folgaEmpurraOLimiteDaArea();
+        zonaProibidaVaiAteAParede();
+        zonaDoGoleiroPassaDaLinhaDaArea();
+        medidaDigitadaMandaNaZona();
 
         // --- projecao ---
         roboProjetadoSegueEmLinhaReta();
@@ -394,6 +397,50 @@ public final class AutotesteEstrategia {
                 comFolga.xMin(), semFolga.xMin() - 200, 1e-6);
         aproximado("area: e alarga a lateral na mesma medida",
                 comFolga.yMax(), semFolga.yMax() + 200, 1e-6);
+    }
+
+    /**
+     * A zona proibida vai ate a PAREDE, e nao ate a linha de fundo.
+     *
+     * <p>O corredor atras do gol nao tem jogada nenhuma: robo que entra la errou
+     * o caminho, e volta atravessando a area.
+     */
+    private static void zonaProibidaVaiAteAParede() {
+        Geometria g = Geometria.DIVISAO_B;
+        Caixa zona = g.zonaProibida(1, Parametro.MARGEM_DA_AREA.valor(), 0, 0);
+
+        aproximado("zona: alcanca a parede fisica, e nao a linha de fundo",
+                zona.xMax(), g.limiteParedeX(), 1e-6);
+        aproximado("zona: avanca a area da visao mais a margem",
+                zona.xMin(),
+                g.meioComprimento() - g.areaDefesaProfundidade()
+                        - Parametro.MARGEM_DA_AREA.valor(), 1e-6);
+    }
+
+    /** O goleiro pode ficar EM CIMA da linha da area, e nao so atras dela. */
+    private static void zonaDoGoleiroPassaDaLinhaDaArea() {
+        Geometria g = Geometria.DIVISAO_B;
+        Caixa goleiro = g.zonaDoGoleiro(1, Robo.RAIO);
+        Caixa area = g.areaDefesa(1);
+
+        aproximado("zona do goleiro: sobra um raio de robo alem da linha da area",
+                area.xMin() - goleiro.xMin(), Robo.RAIO, 1e-6);
+        aproximado("zona do goleiro: e o mesmo raio na lateral",
+                goleiro.yMax() - area.yMax(), Robo.RAIO, 1e-6);
+    }
+
+    /** Medida digitada manda; zero devolve a conta para a visao. */
+    private static void medidaDigitadaMandaNaZona() {
+        Geometria g = Geometria.DIVISAO_B;
+
+        Caixa daVisao = g.zonaProibida(1, 45, 0, 0);
+        Caixa digitada = g.zonaProibida(1, 45, 1500, 3000);
+
+        aproximado("zona: profundidade digitada manda",
+                digitada.xMin(), g.meioComprimento() - 1500, 1e-6);
+        aproximado("zona: largura digitada manda", digitada.extensaoY(), 3000, 1e-6);
+        verdadeiro("zona: com zero, quem manda e a area que a visao informou",
+                Math.abs(daVisao.extensaoY() - (g.areaDefesaLargura() + 90)) < 1e-6);
     }
 
     /** Um robo so, indo para frente no maximo, com o goleiro declarado que se pedir. */

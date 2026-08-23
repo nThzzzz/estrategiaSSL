@@ -96,7 +96,6 @@ public final class DialogoConfiguracao extends JDialog {
     private final JComboBox<String> ladoDeAtaque =
             new JComboBox<>(new String[]{"+x, para a direita", "-x, para a esquerda"});
     private final JSpinner goleiro = new JSpinner(new SpinnerNumberModel(0, 0, 15, 1));
-    private final JSpinner margem = new JSpinner(new SpinnerNumberModel(45, 0, 600, 5));
     private final JLabel avisoDoArbitro = new JLabel(" ");
 
     /** Controles que so tem efeito com o arbitro local no comando. */
@@ -186,7 +185,6 @@ public final class DialogoConfiguracao extends JDialog {
         JPanel p = secao("Jogo e defesa (vale na hora)");
         p.add(linha("atacamos para", ladoDeAtaque));
         p.add(linha("goleiro", goleiro));
-        p.add(linha("folga da area", margem));
 
         soComArbitroLocal.add(ladoDeAtaque);
         soComArbitroLocal.add(goleiro);
@@ -194,8 +192,8 @@ public final class DialogoConfiguracao extends JDialog {
         avisoDoArbitro.setFont(avisoDoArbitro.getFont().deriveFont(10f));
         avisoDoArbitro.setAlignmentX(Component.LEFT_ALIGNMENT);
         p.add(avisoDoArbitro);
-        p.add(dica("A folga e somada a area que a visao informou, em mm. So o goleiro "
-                + "entra no retangulo; para os outros o comando de entrada e cortado."));
+        p.add(dica("So o goleiro entra na zona vermelha do campo; para os outros o "
+                + "comando de entrada e cortado. O tamanho dela fica na aba Ajustes."));
         return p;
     }
 
@@ -386,12 +384,6 @@ public final class DialogoConfiguracao extends JDialog {
             cliente.getArbitroLocal().setGoleiro(cliente.getEquipe(), (Integer) goleiro.getValue());
             cliente.reemitirArbitro();
         });
-
-        margem.addChangeListener(e -> {
-            if (sincronizando) return;
-            cliente.setMargemDaArea((Integer) margem.getValue());
-            campo.repaint();
-        });
     }
 
     /** Alinha os controles com o estado real, sem que espelhar vire comando. */
@@ -407,7 +399,6 @@ public final class DialogoConfiguracao extends JDialog {
 
             int declarado = cliente.estadoDeJogo().goleiro();
             if (declarado >= 0 && declarado <= 15) goleiro.setValue(declarado);
-            margem.setValue((int) Math.round(cliente.getMargemDaArea()));
 
             boolean local = cliente.getArbitro().isModoLocal();
             for (JComponent c : soComArbitroLocal) c.setEnabled(local);

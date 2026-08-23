@@ -43,15 +43,24 @@ public final class Paleta {
     public static final Color CORPO   = new Color(38, 38, 42);
 
     /**
-     * Area de defesa como zona proibida: so o goleiro entra.
+     * Zona proibida: robo de linha nao entra. Vermelho, que e o que se le como
+     * "nao passe daqui" sem legenda nenhuma.
      *
-     * <p>Laranja tracejado, e nao branco: as linhas brancas do campo sao o que a
-     * visao mediu, e este retangulo e uma decisao nossa -- a area oficial mais uma
-     * folga de seguranca que escolhemos. Desenhar os dois com o mesmo traco faria
-     * parecer que a folga tambem esta pintada no chao.
+     * <p>Tracejado, e nao continuo: as linhas brancas do campo sao o que a visao
+     * mediu, e este retangulo e decisao nossa. Desenhar os dois com o mesmo traco
+     * faria a folga parecer pintada no chao.
      */
-    public static final Color AREA_PROIBIDA       = new Color(255, 180, 70, 150);
-    public static final Color AREA_PROIBIDA_FRACA = new Color(255, 180, 70, 26);
+    public static final Color ZONA_PROIBIDA       = new Color(235, 70, 70, 190);
+    public static final Color ZONA_PROIBIDA_FRACA = new Color(235, 70, 70, 24);
+
+    /**
+     * Zona do goleiro, dentro da proibida: onde ELE pode ficar.
+     *
+     * <p>Verde do sensor, porque as duas dizem a mesma coisa por caminhos
+     * diferentes -- "aqui pode". Um segundo vermelho faria duas proibicoes onde
+     * ha uma proibicao e uma permissao.
+     */
+    public static final Color ZONA_DO_GOLEIRO = new Color(120, 255, 120, 130);
 
     /** Verde do sensor de bola: o mesmo tom que o simulador usa para posse. */
     public static final Color SENSOR      = new Color(120, 255, 120);

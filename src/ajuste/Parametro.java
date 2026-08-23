@@ -146,8 +146,27 @@ public enum Parametro {
     /** Tempo limite de uma jogada, em segundos do relogio da VISAO. */
     TEMPO_LIMITE_DA_PLAY(120, "s"),
 
-    /** Folga somada a area de defesa para formar a zona so do goleiro, em mm. */
+    /**
+     * Folga somada a area da visao para formar a zona proibida, em mm.
+     *
+     * <p>So vale quando {@link #ZONA_PROFUNDIDADE} e {@link #ZONA_LARGURA} estao
+     * em zero, que e o padrao. Meio raio de robo: a regra mede pelo ponto do robo
+     * que entra, entao encostar a casca na linha ja e falta.
+     */
     MARGEM_DA_AREA(45, "mm"),
+
+    /**
+     * Quanto a zona proibida avanca da linha de fundo para o meio, em mm.
+     *
+     * <p>Zero quer dizer "usar a area que a VISAO informou, mais
+     * {@link #MARGEM_DA_AREA}" -- e o padrao, e e o que mantem a zona certa em
+     * Divisao A. Um numero aqui manda nela, e ai e responsabilidade de quem
+     * digitou conferir a divisao.
+     */
+    ZONA_PROFUNDIDADE(0, "mm, 0 = da visao"),
+
+    /** Extensao total da zona proibida no eixo Y. Ver {@link #ZONA_PROFUNDIDADE}. */
+    ZONA_LARGURA(0, "mm, 0 = da visao"),
 
     // -------------------------------------------------------------- percepcao
 

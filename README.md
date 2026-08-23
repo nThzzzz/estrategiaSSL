@@ -344,8 +344,8 @@ ajustar com método.
 Agora estão todos em `ajuste.Parametro`, e há três formas de mexer, da mais rápida para a mais
 duradoura:
 
-* **A aba *Ajustes*** da Configuração avançada. Vale no tique seguinte, sem recompilar e sem
-  reiniciar. Cada linha mostra o valor de fábrica ao lado — depois de meia hora mexendo, ninguém
+* **A aba *Ajustes*** da Configuração avançada, que é onde os valores se mexem — o código guarda
+  só o padrão de fábrica. Vale no tique seguinte, sem recompilar e sem reiniciar. Cada linha mostra o valor de fábrica ao lado — depois de meia hora mexendo, ninguém
   lembra de onde partiu, e sem essa referência "restaurar" vira a única saída em vez de um passo
   atrás.
 * **`ajustes.json`**, carregado do diretório atual na abertura, ou por `--ajustes <arquivo>`. É o
@@ -409,11 +409,21 @@ Entrar na própria área de defesa sendo robô de linha é pênalti, e é a regr
 por descuido. Por isso ela mora no mesmo lugar que os limites do árbitro — o `Executor`, no fim
 do tique — e não em cada play.
 
-O retângulo é a área que a **visão informou** (`penalty_area_depth`/`width`) mais uma **folga de
-segurança** ajustável, que é a única parte local: com folga zero ele é exatamente o que as linhas
-desenham no chão, que é o limite que a regra usa. O padrão é 45 mm, meio raio de robô — a regra
-mede pelo ponto do robô que entra, então encostar a casca na linha já é falta. A folga cresce os
-quatro lados, e por vir de cima da geometria da rede continua certa em Divisão A.
+São **duas zonas**, e elas dizem coisas opostas:
+
+* A **zona proibida**, em vermelho tracejado: robô de linha não entra. Ela vai da frente da área
+  até a **parede**, e não até a linha de fundo — o corredor atrás do gol não tem jogada nenhuma,
+  e um robô que entra lá errou o caminho e volta atravessando a área.
+* A **zona do goleiro**, em verde por dentro dela: onde ele pode ficar. É a área de defesa mais
+  **um raio de robô**, e essa sobra é o que faz diferença — com a zona colada na linha, o goleiro
+  não consegue ficar *em cima* dela, que é justamente onde um goleiro fica. Com um raio de folga
+  ele encosta a casca na linha por fora e continua valendo.
+
+A zona proibida sai da área que a **visão informou** (`penalty_area_depth`/`width`) mais uma
+**folga de segurança**, e por vir da geometria da rede continua certa em Divisão A. O padrão da
+folga é 45 mm, meio raio de robô. Quem quiser mandar na medida direto tem `ZONA_PROFUNDIDADE` e
+`ZONA_LARGURA` na aba *Ajustes*: em zero — o padrão — a conta volta a ser da visão; com um número,
+ele manda, e aí é responsabilidade de quem digitou conferir a divisão.
 
 Quem pode entrar é o **goleiro declarado**, e só ele. O número vem do `Referee.TeamInfo`, do
 Game Controller ou do árbitro de teste — é declaração de equipe, não escolha da estratégia.
@@ -427,12 +437,15 @@ não corta nada; chegando perto, freia na taxa certa; já dentro, sobra só a co
 Só a componente **normal** é tocada; a tangencial passa inteira. Uma defesa que trava ao encostar
 na área é pior que uma que a contorna.
 
-O retângulo é desenhado no campo em laranja tracejado, e não em branco: as linhas brancas são o
-que a visão mediu, e este retângulo é decisão nossa. A conta do desenho e a do corte saem da
-mesma `Geometria.areaDefesa` — ver na tela uma borda diferente da que está sendo obedecida seria
-pior que não ver borda nenhuma. Aparece só do **nosso** lado: a área deles também é proibida pela
-regra, mas a estratégia ainda não a trata, e desenhar uma restrição que não está em vigor
-prometeria o que o código não cumpre.
+As duas são tracejadas, e não contínuas: as linhas brancas são o que a visão mediu, e estes
+retângulos são decisão nossa — desenhá-los com o mesmo traço faria a folga parecer pintada no
+chão. Vermelho para a proibição e verde para a permissão, o mesmo verde do sensor de bola: duas
+proibições onde há uma proibição e uma permissão seria pior que legenda nenhuma.
+
+A conta do desenho e a do corte saem da mesma `Geometria.zonaProibida` — ver na tela uma borda
+diferente da que está sendo obedecida seria pior que não ver borda nenhuma. Aparecem só do
+**nosso** lado: a área deles também é proibida pela regra, mas a estratégia ainda não a trata, e
+desenhar uma restrição que não está em vigor prometeria o que o código não cumpre.
 
 ### Os limites do árbitro ficam fora das plays
 

@@ -73,10 +73,15 @@ public final class Campo extends JPanel {
      */
     private static final double VEL_MINIMA_FANTASMA = 150;
 
-    /** Traco do retangulo de seguranca: 120 mm de risco, 90 de vao. */
-    private static final BasicStroke TRACO_DA_AREA = new BasicStroke(
-            18f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10f,
+    /** Traco da zona proibida: 120 mm de risco, 90 de vao. */
+    private static final BasicStroke TRACO_DA_ZONA = new BasicStroke(
+            22f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10f,
             new float[]{120f, 90f}, 0f);
+
+    /** Traco da zona do goleiro, mais fino: ela e permissao, nao proibicao. */
+    private static final BasicStroke TRACO_DO_GOLEIRO = new BasicStroke(
+            12f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10f,
+            new float[]{60f, 60f}, 0f);
 
     private final Supplier<Quadro> fonte;
 
@@ -339,16 +344,30 @@ public final class Campo extends JPanel {
      */
     private void desenharAreaProibida(Graphics2D g, Geometria geo) {
         if (!mostrarAreaProibida || fonteDeJogo == null || margemDaArea == null) return;
+        int lado = fonteDeJogo.get().nossoLado();
 
-        Caixa area = geo.areaDefesa(fonteDeJogo.get().nossoLado(), margemDaArea.getAsDouble());
-        Rectangle2D.Double r = new Rectangle2D.Double(
-                area.xMin(), area.yMin(), area.extensaoX(), area.extensaoY());
+        // Vermelha: robo de linha nao entra. Vai ate a parede, porque o corredor
+        // atras do gol nao tem jogada nenhuma e um robo que entra la errou o
+        // caminho -- e volta atravessando a area.
+        Caixa proibida = geo.zonaProibida(lado, margemDaArea.getAsDouble(),
+                Parametro.ZONA_PROFUNDIDADE.valor(), Parametro.ZONA_LARGURA.valor());
+        g.setColor(Paleta.ZONA_PROIBIDA_FRACA);
+        g.fill(retangulo(proibida));
+        g.setColor(Paleta.ZONA_PROIBIDA);
+        g.setStroke(TRACO_DA_ZONA);
+        g.draw(retangulo(proibida));
 
-        g.setColor(Paleta.AREA_PROIBIDA_FRACA);
-        g.fill(r);
-        g.setColor(Paleta.AREA_PROIBIDA);
-        g.setStroke(TRACO_DA_AREA);
-        g.draw(r);
+        // Verde, por dentro: onde o goleiro PODE ficar. Ela passa um pouco da
+        // borda da area, e e essa sobra que deixa ele ficar em cima da linha em
+        // vez de so atras dela.
+        Caixa goleiro = geo.zonaDoGoleiro(lado, Robo.RAIO);
+        g.setColor(Paleta.ZONA_DO_GOLEIRO);
+        g.setStroke(TRACO_DO_GOLEIRO);
+        g.draw(retangulo(goleiro));
+    }
+
+    private static Rectangle2D.Double retangulo(Caixa c) {
+        return new Rectangle2D.Double(c.xMin(), c.yMin(), c.extensaoX(), c.extensaoY());
     }
 
     /**

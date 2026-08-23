@@ -88,6 +88,50 @@ public record Geometria(
     /** A area de defesa como as linhas a desenham, sem folga nenhuma. */
     public Caixa areaDefesa(int sinal) { return areaDefesa(sinal, 0); }
 
+    /**
+     * A zona onde robo de linha nao entra, do nosso lado.
+     *
+     * <p>Vai da linha lateral da area ate a PAREDE, e nao ate a linha de fundo.
+     * O espaco atras do gol e um corredor de 300 mm por onde nao ha jogada
+     * nenhuma, e um robo que entra la so pode ter errado o caminho -- deixa-lo
+     * fora da zona convidava a exatamente isso, com a agravante de ele voltar
+     * atravessando a area.
+     *
+     * <p>{@code profundidade} e {@code largura} sao a medida da zona em mm;
+     * qualquer um dos dois em zero ou negativo quer dizer "usar a area que a
+     * VISAO informou, mais a margem". E o padrao, e e o que mantem a zona certa
+     * em Divisao A -- numero chumbado aqui viraria zona errada la.
+     *
+     * @param sinal        -1 ou +1, o lado que defendemos
+     * @param margem       folga sobre a area da visao, usada so no modo automatico
+     * @param profundidade quanto a zona avanca da linha de fundo para o meio, ou 0
+     * @param largura      extensao total da zona no eixo Y, ou 0
+     */
+    public Caixa zonaProibida(int sinal, double margem, double profundidade, double largura) {
+        double meiaLargura = largura > 0
+                ? largura / 2.0
+                : areaDefesaLargura / 2.0 + margem;
+        double avanco = profundidade > 0
+                ? profundidade
+                : areaDefesaProfundidade + margem;
+
+        double parede = sinal * limiteParedeX();
+        double frente = sinal * (meioComprimento() - avanco);
+        return Caixa.de(parede, -meiaLargura, frente, meiaLargura);
+    }
+
+    /**
+     * Onde o goleiro pode ficar: a area de defesa crescida de um raio de robo.
+     *
+     * <p>Um raio, e nao zero, porque a regra mede pelo ponto do robo que entra:
+     * com a zona colada na linha, o goleiro nao consegue ficar EM CIMA dela, que
+     * e justamente onde um goleiro fica. Com um raio de folga ele encosta a casca
+     * na linha por fora e continua valendo.
+     */
+    public Caixa zonaDoGoleiro(int sinal, double raioDoRobo) {
+        return areaDefesa(sinal, raioDoRobo);
+    }
+
     /** Nome curto da divisao, deduzido do comprimento -- so para exibir. */
     public String divisao() {
         if (comprimento >= 11000) return "Divisao A";
