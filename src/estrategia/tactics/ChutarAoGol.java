@@ -36,6 +36,20 @@ public final class ChutarAoGol extends Tactic {
      */
     public static final double POSSE_MINIMA = 0.15; // s
 
+    /**
+     * Acima desta velocidade a bola nao e nossa, em mm/s.
+     *
+     * <p>Bola que a gente conduz anda junto com o robo, devagar. Bola a 6 m/s
+     * passando pela boca acabou de ser chutada -- inclusive por nos mesmos.
+     *
+     * <p>Sem esta condicao acontece um chute duplo: o chute sai, a play se
+     * conclui, o coach reinicia a mesma play no quadro seguinte, e o dribbler
+     * reengata na bola ANTES de ela escapar da boca. Ela e segurada de volta e
+     * chutada outra vez, 0,18 s depois da primeira. Nao da para ver isso sem log,
+     * porque na tela parece um chute so.
+     */
+    public static final double VEL_MAX_CONTROLE = 1500; // mm/s
+
     private final OlharPara olhar = new OlharPara();
     private final Chutar chutar = new Chutar();
 
@@ -64,9 +78,11 @@ public final class ChutarAoGol extends Tactic {
     @Override
     protected void vRun() {
         olhar.vSetAlvo(ambiente.golDeles());
-        jogador.vDribbler(true);
 
-        if (!jogador.bComABola()) dPosseDesde = Double.NaN;
+        boolean controlavel = ambiente.bola().rapidez() < VEL_MAX_CONTROLE;
+        jogador.vDribbler(controlavel);
+
+        if (!jogador.bComABola() || !controlavel) dPosseDesde = Double.NaN;
         else if (Double.isNaN(dPosseDesde)) dPosseDesde = ambiente.tempo();
 
         boolean mirado = Math.abs(olhar.dErro()) <= TOLERANCIA_DE_MIRA;

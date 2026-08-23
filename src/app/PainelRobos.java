@@ -42,16 +42,32 @@ import java.util.function.BiConsumer;
  * oclusao -- e recriar componentes Swing sessenta vezes por segundo custaria
  * mais do que redesenhar tudo, alem de perder foco e selecao no meio.
  *
- * <p>Dos tres numeros de cada cartao, so a ORIENTACAO vem da rede. Velocidade e
- * bola no sensor sao inferencias, e por isso aparecem marcadas com o sinal "~"
- * quando a trilha e recente demais para o filtro ter convergido: mostrar um
- * numero derivado com a mesma autoridade de um medido e o comeco de toda sessao
- * de depuracao perdida.
+ * <p>Dos numeros de cada cartao, so a ORIENTACAO vem da rede. Velocidade e bola
+ * no sensor sao inferencias.
+ *
+ * <p>Com a estrategia ligada, cada cartao ganha embaixo a cadeia que o robo esta
+ * executando: papel, tatica e skill, em VERDE quando existem e VERMELHO quando
+ * faltam. E aqui, e nao na janela de log, porque a pergunta e "o que este robo
+ * esta fazendo agora" -- pergunta que se faz olhando o robo, junto da velocidade
+ * e do sensor dele. O log responde outra coisa, "o que aconteceu", e essa rola
+ * para fora da tela por natureza.
  */
 public final class PainelRobos extends JPanel {
 
     private static final int LARGURA = 268;
-    private static final int ALTURA_LINHA = 52;
+
+    /** Altura do cartao sem a cadeia de execucao. */
+    private static final int ALTURA_SIMPLES = 52;
+
+    /**
+     * Altura com papel, tatica e skill embaixo.
+     *
+     * <p>O cartao cresce so quando a estrategia esta ligada. Com ela desligada
+     * essas tres linhas diriam "sem papel" seis vezes, ocupando metade do painel
+     * para nao informar nada.
+     */
+    private static final int ALTURA_COM_CADEIA = 100;
+
     private static final int ALTURA_TITULO = 30;
 
     private final Cliente cliente;
@@ -64,6 +80,10 @@ public final class PainelRobos extends JPanel {
     private int idSelecionado = -1;
 
     private record Faixa(int y, int altura, Cor cor, int id) {}
+
+    private int alturaDoCartao() {
+        return cliente.isEstrategiaLigada() ? ALTURA_COM_CADEIA : ALTURA_SIMPLES;
+    }
 
     public PainelRobos(Cliente cliente, BiConsumer<Cor, Integer> aoSelecionar) {
         this.cliente = cliente;
@@ -109,7 +129,10 @@ public final class PainelRobos extends JPanel {
             g2.drawString(q.robos().isEmpty()
                     ? "nenhum robo na visao"
                     : "nenhum robo nosso na visao", 16, y + 6);
+            y += 24;
         }
+
+        y = secaoDeJogadas(g2, y);
 
         setPreferredSize(new Dimension(LARGURA, Math.max(y + 10, 100)));
         g2.dispose();
@@ -131,23 +154,84 @@ public final class PainelRobos extends JPanel {
         g.drawString(contagem, LARGURA - 14 - fm.stringWidth(contagem), y + 20);
 
         y += ALTURA_TITULO;
+        int altura = alturaDoCartao();
         for (EstadoRobo r : robos) {
-            desenharCartao(g, r, y);
-            faixas.add(new Faixa(y, ALTURA_LINHA, r.cor(), r.id()));
-            y += ALTURA_LINHA;
+            desenharCartao(g, r, y, altura);
+            faixas.add(new Faixa(y, altura, r.cor(), r.id()));
+            y += altura;
         }
         return y + 8;
     }
 
-    private void desenharCartao(Graphics2D g, EstadoRobo r, int y) {
+    /**
+     * O repertorio de jogadas, embaixo dos robos.
+     *
+     * <p>Fica aqui e nao no log porque e estado, e nao acontecimento: a nota de
+     * cada jogada e a que esta rodando sao coisas que se consulta olhando, nao
+     * rolando um historico.
+     *
+     * <p>Jogada indisponivel aparece apagada em vez de sumir. Some da lista ela
+     * responderia a pergunta errada -- o que se quer saber e por que o coach
+     * escolheu aquela, e para isso e preciso ver as que ele NAO podia escolher.
+     */
+    private int secaoDeJogadas(Graphics2D g, int y) {
+        var jogadas = cliente.getExecutor().diario().jogadas();
+
+        g.setColor(Paleta.BORDA);
+        g.setStroke(new BasicStroke(1f));
+        g.draw(new Line2D.Double(10, y + 4, LARGURA - 10, y + 4));
+
+        g.setColor(Paleta.TEXTO);
+        g.setFont(new Font("SansSerif", Font.BOLD, 12));
+        g.drawString("Jogadas", 16, y + 24);
+
+        if (jogadas.isEmpty()) {
+            g.setColor(Paleta.APAGADO);
+            g.setFont(new Font("SansSerif", Font.PLAIN, 11));
+            g.drawString(cliente.isEstrategiaLigada()
+                    ? "nenhuma no repertorio" : "estrategia desligada", 16, y + 44);
+            return y + 56;
+        }
+
+        int linha = y + 32;
+        for (var j : jogadas) {
+            if (j.atual()) {
+                g.setColor(new Color(60, 100, 70));
+                g.fill(new RoundRectangle2D.Double(10, linha, LARGURA - 20, 22, 6, 6));
+            }
+
+            Color cor = j.atual() ? Paleta.OK : j.disponivel() ? Paleta.TEXTO : Paleta.APAGADO;
+            g.setColor(cor);
+            g.setFont(new Font("SansSerif", j.atual() ? Font.BOLD : Font.PLAIN, 11));
+            FontMetrics fm = g.getFontMetrics();
+
+            String nome = j.nome();
+            while (nome.length() > 1 && fm.stringWidth(nome) > LARGURA - 110) {
+                nome = nome.substring(0, nome.length() - 1);
+            }
+            g.drawString(nome, 18, linha + 15);
+
+            // Sem pre-condicao a nota nao entra em sorteio nenhum, entao dizer
+            // isso vale mais do que repetir o numero.
+            String direita = j.disponivel() ? String.format("%.2f", j.nota()) : "fora";
+            g.setFont(new Font("Monospaced", j.atual() ? Font.BOLD : Font.PLAIN, 11));
+            FontMetrics fmd = g.getFontMetrics();
+            g.drawString(direita, LARGURA - 18 - fmd.stringWidth(direita), linha + 15);
+
+            linha += 24;
+        }
+        return linha + 8;
+    }
+
+    private void desenharCartao(Graphics2D g, EstadoRobo r, int y, int altura) {
         boolean selecionado = r.cor() == corSelecionada && r.id() == idSelecionado;
 
         g.setColor(selecionado ? new Color(52, 52, 60) : Paleta.PAINEL_ALT);
-        g.fill(new RoundRectangle2D.Double(8, y + 2, LARGURA - 16, ALTURA_LINHA - 6, 8, 8));
+        g.fill(new RoundRectangle2D.Double(8, y + 2, LARGURA - 16, altura - 6, 8, 8));
         if (selecionado) {
             g.setColor(Color.WHITE);
             g.setStroke(new BasicStroke(1.5f));
-            g.draw(new RoundRectangle2D.Double(8, y + 2, LARGURA - 16, ALTURA_LINHA - 6, 8, 8));
+            g.draw(new RoundRectangle2D.Double(8, y + 2, LARGURA - 16, altura - 6, 8, 8));
         }
 
         // Distintivo com o numero, na cor da equipe: e como o robo aparece no campo.
@@ -186,6 +270,55 @@ public final class PainelRobos extends JPanel {
             g.setFont(new Font("SansSerif", Font.PLAIN, 10));
             g.drawString(String.format("sem visao ha %.1fs", r.idade()), 56, y + 50);
         }
+
+        if (altura > ALTURA_SIMPLES) desenharCadeia(g, r, y);
+    }
+
+    /**
+     * Papel, tatica e skill que este robo esta executando.
+     *
+     * <p>Verde e o que existe, vermelho e o que falta. Uma tatica CONCLUIDA fica
+     * verde com o sufixo "fim": concluir e ter dado certo, mirar e chegar
+     * terminam, e pintar isso de vermelho diria que algo falhou quando deu certo.
+     * Vermelho fica para robo sem papel, papel sem tatica, tatica sem skill --
+     * que sao as tres formas de um robo estar parado sem ninguem perceber.
+     */
+    private void desenharCadeia(Graphics2D g, EstadoRobo r, int y) {
+        var situacao = cliente.getExecutor().diario().situacao(r.id());
+        boolean nosso = r.cor() == cliente.getEquipe();
+
+        g.setColor(Paleta.BORDA);
+        g.setStroke(new BasicStroke(1f));
+        g.draw(new java.awt.geom.Line2D.Double(18, y + 56, LARGURA - 18, y + 56));
+
+        if (!nosso || situacao == null) {
+            g.setColor(Paleta.APAGADO);
+            g.setFont(new Font("SansSerif", Font.PLAIN, 10));
+            g.drawString(nosso ? "fora da estrategia" : "adversario", 18, y + 72);
+            return;
+        }
+
+        linhaDaCadeia(g, "role", situacao.role(), situacao.temRole(), y + 70);
+        linhaDaCadeia(g, "tactic", situacao.tactic()
+                + (situacao.taticaConcluida() ? "  fim" : ""), situacao.temTactic(), y + 83);
+        linhaDaCadeia(g, "skill", situacao.skill()
+                + (situacao.skillConcluida() ? "  fim" : ""), situacao.temSkill(), y + 96);
+    }
+
+    private void linhaDaCadeia(Graphics2D g, String rotulo, String valor,
+                               boolean presente, int y) {
+        g.setFont(new Font("SansSerif", Font.PLAIN, 10));
+        g.setColor(Paleta.APAGADO);
+        g.drawString(rotulo, 18, y);
+
+        g.setFont(new Font("SansSerif", Font.BOLD, 11));
+        g.setColor(presente ? Paleta.OK : Paleta.ERRO);
+        FontMetrics fm = g.getFontMetrics();
+        String curto = valor;
+        while (curto.length() > 1 && fm.stringWidth(curto) > LARGURA - 90) {
+            curto = curto.substring(0, curto.length() - 1);
+        }
+        g.drawString(curto, 62, y);
     }
 
     /** Seta apontando para onde o robo olha, no referencial da tela (y invertido). */

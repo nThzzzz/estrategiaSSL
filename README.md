@@ -269,19 +269,25 @@ dribbler são cortados. Isso é aplicado no `Executor`, no fim do tique, depois 
 opinado. Poderia ficar em cada play, e é assim que se costuma errar: basta uma esquecer de
 checar `HALT` para o time andar com o jogo parado, e o custo disso é falta.
 
-### Janela de log
+### O que está acontecendo, e o que aconteceu
 
-O botão *Ver log...* abre uma janela com duas metades. Em cima, uma linha por robô com o papel,
-a tática e a skill que ele está executando, mais o que está saindo no comando. Embaixo, o que
-foi acontecendo, com o carimbo do relógio da visão.
+São duas perguntas diferentes, e ficam em lugares diferentes.
 
-**Verde é o que existe, vermelho é o que falta.** Uma tática concluída aparece em verde com o
-sufixo "fim", porque concluir é ter dado certo: mirar e chegar terminam. Vermelho fica para robô
-sem papel, papel sem tática, tática sem skill — e para a coluna do comando, onde vermelho quer
-dizer que nada está saindo para aquele robô.
+**O que está acontecendo agora** fica no painel da direita, embaixo de cada robô: o papel, a
+tática e a skill que ele está executando, em verde quando existem e vermelho quando faltam. É a
+pergunta que se faz olhando um robô, junto da velocidade e do sensor dele. Uma tática concluída
+aparece em verde com o sufixo "fim", porque concluir é ter dado certo — mirar e chegar
+terminam. Vermelho fica para robô sem papel, papel sem tática, tática sem skill, que são as três
+formas de um robô estar parado sem ninguém perceber.
 
-Essa última coluna responde a pergunta que se faz de verdade olhando um robô parado. A cadeia
-inteira pode estar montada e mesmo assim não sair nada, e sem ela isso é invisível.
+Abaixo dos robôs vem o **repertório de jogadas**, cada uma com a nota, e a que está rodando em
+destaque. Jogada sem pré-condição continua na lista, apagada, em vez de sumir: quem olha quer
+entender por que o coach escolheu aquela, e para isso precisa ver as que ele não podia escolher.
+
+**O que aconteceu** fica na janela do botão *Ver log...*, em texto corrido como sairia no
+terminal, com o carimbo do relógio da visão. Play que entra, papel que muda de robô, tática que
+troca, bola que entra no sensor, chute que sai. Misturar as duas coisas na mesma tela faria o
+estado rolar para fora junto com o histórico.
 
 O `Diario` **observa** em vez de ser chamado: olha a árvore do coach a cada tique e anota o que
 mudou. O contrário, com cada skill chamando um logger, obrigaria a passar o diário por todas as

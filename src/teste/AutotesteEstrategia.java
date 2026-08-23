@@ -77,6 +77,7 @@ public final class AutotesteEstrategia {
         diarioNaoRepeteLinhaIgual();
         diarioAnotaChuteEPosse();
         diarioAnotaChuteCortadoPeloArbitro();
+        diarioListaORepertorioComNotas();
 
         // --- coerencia das taticas ---
         conducaoParaDentroDaZonaDeChute();
@@ -488,6 +489,40 @@ public final class AutotesteEstrategia {
                 .map(Diario.Linha::texto).toList());
         verdadeiro("diario: anota o chute cortado pelo arbitro",
                 tudo.contains("chute cortado por STOP"));
+    }
+
+    /**
+     * O painel da direita mostra o repertorio com nota, disponibilidade e qual
+     * esta rodando. Jogada sem pre-condicao continua na lista, apagada: sumir
+     * responderia a pergunta errada, porque quem olha quer entender POR QUE o
+     * coach escolheu aquela.
+     */
+    private static void diarioListaORepertorioComNotas() {
+        PlayContada rodando = new PlayContada(
+                new RoleContada(new TacticContada(new SkillContada())));
+        rodando.dScore = 7;
+
+        PlayContada vetada = new PlayContada(
+                new RoleContada(new TacticContada(new SkillContada())));
+        vetada.iID2 = 99;
+        vetada.dScore = 3;
+        vetada.bPodeComecar = false;
+
+        CoachAutomatico coach = new CoachAutomatico(rodando, vetada);
+        Executor exec = new Executor(coach);
+        exec.vTick(ambiente(0.0, Command.FORCE_START, 2));
+
+        List<Diario.Jogada> lista = exec.diario().jogadas();
+        verdadeiro("diario: o repertorio inteiro aparece", lista.size() == 2);
+
+        Diario.Jogada boa = lista.stream().filter(j -> j.id() == 1).findFirst().orElse(null);
+        verdadeiro("diario: a que roda vem marcada como atual e disponivel",
+                boa != null && boa.atual() && boa.disponivel());
+        aproximado("diario: com a nota dela", boa == null ? -1 : boa.nota(), 7, 1e-9);
+
+        Diario.Jogada fora = lista.stream().filter(j -> j.id() == 99).findFirst().orElse(null);
+        verdadeiro("diario: a sem pre-condicao continua listada, fora do sorteio",
+                fora != null && !fora.disponivel() && !fora.atual());
     }
 
     /** Ambiente com o nosso robo 0 segurando (ou nao) a bola. */

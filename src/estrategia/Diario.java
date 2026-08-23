@@ -69,8 +69,17 @@ public final class Diario {
         public boolean executando() { return temRole && temTactic && temSkill && comandado; }
     }
 
+    /**
+     * Uma jogada do repertorio, como o coach a ve neste instante.
+     *
+     * @param disponivel as pre-condicoes valem agora, entao ela pode ser sorteada
+     * @param atual      e a que esta rodando
+     */
+    public record Jogada(int id, String nome, double nota, boolean disponivel, boolean atual) {}
+
     private final Deque<Linha> linhas = new ArrayDeque<>();
     private final Map<Integer, Situacao> situacoes = new LinkedHashMap<>();
+    private final List<Jogada> jogadas = new ArrayList<>();
 
     // Ultimo estado visto, para saber o que mudou.
     private String ultimaPlay = "";
@@ -80,9 +89,16 @@ public final class Diario {
     public List<Linha> linhas()        { return List.copyOf(linhas); }
     public List<Situacao> situacoes()  { return List.copyOf(situacoes.values()); }
 
+    /** A situacao de um robo, ou {@code null} se ele nao esta sendo acompanhado. */
+    public Situacao situacao(int id)   { return situacoes.get(id); }
+
+    /** O repertorio de jogadas com a nota de cada uma. */
+    public List<Jogada> jogadas()      { return List.copyOf(jogadas); }
+
     public void vLimpar() {
         linhas.clear();
         situacoes.clear();
+        jogadas.clear();
         ultimoDeRobo.clear();
         ultimaPosse.clear();
         ultimaPlay = "";
@@ -103,6 +119,16 @@ public final class Diario {
             Nivel n = play == null ? Nivel.ALERTA : Nivel.INFO;
             vAnotar(tempo, n, "play: " + agoraPlay);
             ultimaPlay = agoraPlay;
+        }
+
+        // O repertorio, com a nota de cada jogada. Perguntar as pre-condicoes aqui
+        // e nao na hora de pintar mantem a interface sem efeito colateral sobre a
+        // estrategia: quem desenha so le o que ja foi apurado no tique.
+        jogadas.clear();
+        List<Play> disponiveis = coach.playsDisponiveis();
+        for (Play p : coach.plays()) {
+            jogadas.add(new Jogada(p.id(), p.strName(), p.dGetScore(),
+                    disponiveis.contains(p), p == play));
         }
 
         situacoes.clear();
