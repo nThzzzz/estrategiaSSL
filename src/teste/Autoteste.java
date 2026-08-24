@@ -43,6 +43,7 @@ import proto.vision.MessagesRobocupSslDetection.SSL_DetectionFrame;
 import proto.vision.MessagesRobocupSslDetection.SSL_DetectionRobot;
 import proto.vision.MessagesRobocupSslGeometry.SSL_GeometryFieldSize;
 import rede.ConfigRede;
+import rede.ReceptorDeVisao;
 import app.componentes.Campo;
 
 import java.awt.event.MouseEvent;
@@ -127,6 +128,7 @@ public final class Autoteste {
         visaoViraQuadro();
         geometriaVemDaRede();
         comandoSaiEmMetrosPorSegundo();
+        quadroRepetidoContaUmaVez();
         arquiteturaRespeitaODeclarado();
         ladoNaoInverteSemODeclarado();
         padroesDeLadoNaoSeContradizem();
@@ -216,6 +218,59 @@ public final class Autoteste {
                 maisX.xMin() > menosX.xMax());
     }
 
+
+    /**
+     * O mesmo quadro chegando duas vezes conta uma so.
+     *
+     * <p>Vale desde que a visao pode chegar por mais de um caminho: o simulador
+     * publica em multicast e pode publicar TAMBEM em unicast ou broadcast, para
+     * atravessar uma rede que nao repassa multicast. Quem estiver nos dois
+     * caminhos recebe cada quadro duas vezes, e a taxa em Hz -- que e o numero
+     * que se olha para saber se esta funcionando -- apareceria dobrada.
+     *
+     * <p>A chave inclui a CAMERA: numa partida de verdade sao varias, cada uma
+     * numerando os proprios quadros, e deduplicar so por {@code frame_number}
+     * jogaria fora quadro legitimo.
+     */
+    private static void quadroRepetidoContaUmaVez() throws Exception {
+        final int porta = 12106;
+        ConfigRede c = ConfigRede.padrao().comPortaVisao(porta);
+
+        try (ReceptorDeVisao rec = new ReceptorDeVisao(c, new Rastreador());
+             DatagramSocket tx = new DatagramSocket()) {
+
+            byte[] a = quadroDeVisao(7, 0);
+            byte[] b = quadroDeVisao(8, 0);
+            byte[] outraCamera = quadroDeVisao(7, 1);   // mesmo numero, camera 1
+
+            InetAddress destino = InetAddress.getByName("127.0.0.1");
+            for (byte[] p : new byte[][] {a, a, b, outraCamera}) {
+                tx.send(new DatagramPacket(p, p.length, destino, porta));
+                Thread.sleep(40);
+            }
+            Thread.sleep(200);
+
+            // Os quatro pacotes CHEGARAM ao socket -- o descarte e da
+            // deduplicacao, e nao da rede. Sem esta verificacao, um pacote
+            // perdido no caminho daria o mesmo resultado da outra e o teste
+            // passaria dizendo o que nao aconteceu.
+            verdadeiro("visao: os quatro pacotes chegaram ao socket",
+                    rec.getPacotesRecebidos() == 4);
+            verdadeiro("visao: e exatamente um -- o repetido -- foi descartado",
+                    rec.getDuplicadosDescartados() == 1);
+        }
+    }
+
+    /** Um {@code SSL_WrapperPacket} minimo, so com o que a deduplicacao le. */
+    private static byte[] quadroDeVisao(int frame, int camera) {
+        return proto.vision.MessagesRobocupSslWrapper.SSL_WrapperPacket.newBuilder()
+                .setDetection(SSL_DetectionFrame.newBuilder()
+                        .setFrameNumber(frame)
+                        .setCameraId(camera)
+                        .setTCapture(frame * 0.016)
+                        .setTSent(frame * 0.016))
+                .build().toByteArray();
+    }
 
     // -------------------------------------------------------- arquitetura
 

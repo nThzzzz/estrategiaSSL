@@ -38,6 +38,24 @@ public final class ReceptorDeVisao implements AutoCloseable {
 
     private final AtomicReference<Quadro> ultimo = new AtomicReference<>(Quadro.vazio());
     private volatile long pacotesRecebidos;
+    private volatile long duplicadosDescartados;
+
+    /**
+     * Ultimo {@code frame_number} visto de cada camera.
+     *
+     * <p>Existe porque a mesma visao pode chegar por mais de um caminho: o
+     * simulador publica em multicast e pode publicar TAMBEM em unicast ou
+     * broadcast para atravessar uma rede que nao repassa multicast. Quem estiver
+     * nos dois caminhos receberia cada quadro duas vezes -- e a taxa em Hz, que e
+     * o numero que se olha para saber se esta funcionando, apareceria dobrada.
+     *
+     * <p>A chave inclui a CAMERA porque numa partida de verdade sao varias, cada
+     * uma numerando os proprios quadros: deduplicar so por {@code frame_number}
+     * jogaria fora quadro legitimo de outra camera.
+     *
+     * <p>So a thread de escuta toca aqui.
+     */
+    private final java.util.Map<Integer, Integer> ultimoFramePorCamera = new java.util.HashMap<>();
     private volatile long pacotesGeometria;
     private volatile long ultimoPacoteNano;
     private volatile double taxaHz;
@@ -68,6 +86,15 @@ public final class ReceptorDeVisao implements AutoCloseable {
 
     public Quadro ultimoQuadro()     { return ultimo.get(); }
     public long getPacotesRecebidos() { return pacotesRecebidos; }
+
+    /**
+     * Quadros jogados fora por ja terem chegado.
+     *
+     * <p>Diferente de zero nao e erro: quer dizer que a visao esta chegando por
+     * mais de um caminho ao mesmo tempo -- tipicamente multicast e unicast
+     * juntos. Vale saber, porque e desperdicio de rede que da para desligar.
+     */
+    public long getDuplicadosDescartados() { return duplicadosDescartados; }
     public long getPacotesGeometria() { return pacotesGeometria; }
 
     /** Segundos desde o ultimo pacote, ou infinito se nunca chegou nenhum. */
@@ -115,7 +142,13 @@ public final class ReceptorDeVisao implements AutoCloseable {
                     pacotesGeometria++;
                 }
                 if (w.hasDetection()) {
-                    ultimo.set(rastreador.incorporar(w.getDetection()));
+                    var d = w.getDetection();
+                    Integer visto = ultimoFramePorCamera.put(d.getCameraId(), d.getFrameNumber());
+                    if (visto != null && visto == d.getFrameNumber()) {
+                        duplicadosDescartados++;
+                        continue;   // o mesmo quadro por outro caminho
+                    }
+                    ultimo.set(rastreador.incorporar(d));
                     contarNaJanela(ultimoPacoteNano);
                 }
             } catch (IOException e) {
