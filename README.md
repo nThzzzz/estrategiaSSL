@@ -2,8 +2,12 @@
 
 Software de time da **Small Size League** (RoboCup), escrito em Java (Swing/Graphics2D).
 Escuta a visão pelo protocolo oficial da liga, reconstrói o que a câmera não manda e mostra
-numa janela. É o outro lado da conversa do [simuladorSSL](../simuladorSSL): lá é a fonte da
+numa janela. É o outro lado da conversa do [simuladorSSL](https://github.com/nThzzzz/simuladorSSL): lá é a fonte da
 visão, aqui é quem consome e quem comanda os robôs.
+
+> **Primeira vez aqui? Leia o [GUIA.md](GUIA.md).** Ele ensina a subir os dois programas, ler a
+> janela e escrever a primeira jogada, com imagens. Este README é o outro documento: explica
+> **por que** cada decisão de projeto é o que é, e é o que se lê antes de *mudar* alguma coisa.
 
 ## Como rodar
 
