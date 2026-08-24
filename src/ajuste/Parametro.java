@@ -189,7 +189,22 @@ public enum Parametro {
     TOLERANCIA_DO_SENSOR(15, "mm"),
 
     /** Quanto tempo uma trilha sobrevive sem ser vista, em s. */
-    ESQUECIMENTO_DA_TRILHA(1.5, "s");
+    ESQUECIMENTO_DA_TRILHA(1.5, "s"),
+
+    /**
+     * Taxa de redesenho da janela, em Hz. Zero segue o monitor.
+     *
+     * <p>Era 60 chumbado, e num monitor de 144 ou 165 Hz isso aparecia: a bola
+     * atravessava o campo aos saltos com a maquina folgada, porque quem segurava
+     * era a tela. Zero -- o padrao -- pergunta ao monitor.
+     *
+     * <p>Nao mexe na estrategia. O {@code vDecidir} sai cedo quando o frame nao
+     * mudou, entao o time pensa na taxa da VISAO e desenhar mais vezes nao o
+     * deixa nem mais rapido nem mais burro. Existe como ajuste porque 165 Hz
+     * gasta CPU, e num notebook na bateria isso pesa mais do que a suavidade
+     * ganha.
+     */
+    TAXA_DA_TELA(0, "Hz, 0 = do monitor");
 
     private final double padrao;
     private final String unidade;

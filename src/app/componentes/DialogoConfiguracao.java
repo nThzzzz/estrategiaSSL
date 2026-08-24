@@ -199,6 +199,71 @@ public final class DialogoConfiguracao extends JDialog {
         return p;
     }
 
+    /**
+     * Os IPs desta maquina, para ligar as duas pontas quando o simulador esta em
+     * outro computador.
+     *
+     * <p>Existe porque faltava justamente isto para fechar o ciclo: entre duas
+     * maquinas -- uma no cabo e outra no Wi-Fi -- a ponte do roteador
+     * frequentemente nao repassa multicast, e o conserto e o simulador mandar
+     * TAMBEM por unicast. So que para isso alguem precisa digitar o IP DESTA
+     * maquina la, e ate aqui nao havia onde ler esse numero sem sair do programa.
+     *
+     * <p>Nao e escolha nem ajuste: e informacao. Por isso fica em cinza, junto
+     * dos campos, e nao vira mais um controle para configurar errado.
+     */
+    private static JComponent meusEnderecos() {
+        java.util.List<String> ips = new java.util.ArrayList<>();
+        try {
+            for (java.net.NetworkInterface ni
+                    : java.util.Collections.list(java.net.NetworkInterface.getNetworkInterfaces())) {
+                if (!ni.isUp() || ni.isLoopback() || !ni.supportsMulticast()) continue;
+                for (java.net.InterfaceAddress a : ni.getInterfaceAddresses()) {
+                    String ip = a.getAddress().getHostAddress();
+                    if (!ip.contains(":")) ips.add(ip + "  (" + ni.getName() + ")");
+                }
+            }
+        } catch (Exception ignorado) {
+            // Sem lista, o rotulo abaixo ja diz que nao deu.
+        }
+
+        JPanel caixa = new JPanel();
+        caixa.setLayout(new BoxLayout(caixa, BoxLayout.Y_AXIS));
+        caixa.setBackground(Paleta.PAINEL);
+        caixa.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JLabel titulo = new JLabel(ips.isEmpty()
+                ? "nao consegui ler os IPs desta maquina"
+                : "Os IPs desta maquina:");
+        titulo.setForeground(Paleta.APAGADO);
+        titulo.setFont(titulo.getFont().deriveFont(11f));
+        titulo.setAlignmentX(Component.LEFT_ALIGNMENT);
+        caixa.add(titulo);
+
+        for (String ip : ips) {
+            JLabel l = new JLabel("   " + ip);
+            l.setForeground(Paleta.TEXTO);
+            l.setFont(l.getFont().deriveFont(11f));
+            l.setAlignmentX(Component.LEFT_ALIGNMENT);
+            caixa.add(l);
+        }
+
+        JLabel dica = new JLabel("<html><body style='width:380px'>"
+                + "Com o simulador em outra maquina e a visao nao chegando, o multicast "
+                + "provavelmente nao atravessa a rede -- e o que costuma acontecer com uma "
+                + "ponta no cabo e outra no Wi-Fi. No simulador, em Rede &rarr; Configurar, "
+                + "ponha um destes IPs em <i>Tambem enviar para</i>. E lembre de apontar "
+                + "<i>Host do simulador</i>, aqui em cima, para o IP dele."
+                + "</body></html>");
+        dica.setForeground(Paleta.APAGADO);
+        dica.setFont(dica.getFont().deriveFont(10f));
+        dica.setAlignmentX(Component.LEFT_ALIGNMENT);
+        caixa.add(Box.createVerticalStrut(4));
+        caixa.add(dica);
+        caixa.setMaximumSize(new Dimension(Integer.MAX_VALUE, caixa.getPreferredSize().height));
+        return caixa;
+    }
+
     private JComponent rede() {
         JPanel p = secao("Portas e enderecos");
 
@@ -215,6 +280,9 @@ public final class DialogoConfiguracao extends JDialog {
         campos.setMaximumSize(new Dimension(Integer.MAX_VALUE,
                 campos.getPreferredSize().height));
         p.add(campos);
+
+        p.add(Box.createVerticalStrut(10));
+        p.add(meusEnderecos());
 
         mensagemDaRede.setFont(mensagemDaRede.getFont().deriveFont(10f));
         mensagemDaRede.setAlignmentX(Component.LEFT_ALIGNMENT);

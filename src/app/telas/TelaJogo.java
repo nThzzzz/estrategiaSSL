@@ -1,5 +1,6 @@
 package app.telas;
 
+import ajuste.Parametro;
 import app.Cliente;
 import app.componentes.BarraSuperior;
 import app.componentes.PainelRede;
@@ -10,6 +11,7 @@ import model.Cor;
 import mundo.EstadoRobo;
 import app.componentes.Campo;
 import view.Paleta;
+import view.TaxaDeTela;
 
 import javax.swing.JComponent;
 import javax.swing.JFrame;
@@ -56,7 +58,14 @@ import java.awt.event.MouseWheelEvent;
  */
 public final class TelaJogo {
 
-    private static final int HZ_TELA = 60;
+    /**
+     * De quanto em quanto tempo se reconfere a taxa do monitor, em ms.
+     *
+     * <p>Existe porque a janela pode ser arrastada de um monitor de 165 Hz para
+     * um de 60, e um valor lido so na abertura ficaria errado a partir dali.
+     * Dois segundos e barato e imperceptivel.
+     */
+    private static final int MS_ENTRE_CONFERIDAS = 2000;
 
     private final Cliente cliente;
     private final Campo campo;
@@ -192,10 +201,21 @@ public final class TelaJogo {
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
 
-        new Timer(1000 / HZ_TELA, e -> {
+        Timer relogio = new Timer(TaxaDeTela.intervalo(
+                TaxaDeTela.escolhida((int) Parametro.TAXA_DA_TELA.valor(), frame)), e -> {
             cliente.vDecidir();
             frame.repaint();
             painelRede.atualizarEstado();
+        });
+        relogio.start();
+
+        // A taxa pode mudar embaixo de nos: o ajuste e trocavel com a janela
+        // aberta, e arrastar a janela para outro monitor muda o que o sistema
+        // informa.
+        new Timer(MS_ENTRE_CONFERIDAS, e -> {
+            int ms = TaxaDeTela.intervalo(
+                    TaxaDeTela.escolhida((int) Parametro.TAXA_DA_TELA.valor(), frame));
+            if (ms != relogio.getDelay()) relogio.setDelay(ms);
         }).start();
 
         return frame;

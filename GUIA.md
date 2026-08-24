@@ -275,7 +275,12 @@ Tudo é trocável com a janela aberta, em **Configuracao avancada…**:
 | **Equipe** | de que cor jogamos, nomes, para que lado atacamos, quem é o goleiro |
 | **Rede** | grupos multicast, portas, host do simulador |
 | **Exibicao** | o que o campo desenha |
-| **Ajustes** | as tolerâncias e tetos, sem recompilar |
+| **Ajustes** | as tolerâncias e tetos, sem recompilar — inclusive `TAXA_DA_TELA` |
+
+`TAXA_DA_TELA` em zero — o padrão — pergunta ao monitor e usa a taxa dele: num monitor de 144 ou
+165 Hz a janela deixa de ficar presa em 60. **Não muda a estratégia**: o `vDecidir` só age quando
+chega quadro novo da visão, então desenhar mais vezes não deixa o time nem mais rápido nem mais
+burro. Existe como ajuste porque 165 Hz gasta CPU, e num notebook na bateria isso pesa.
 
 Os ajustes também podem vir de um `ajustes.json` na pasta de execução, carregado sozinho. A
 carga **nunca é silenciosa**: o que mudou em relação ao padrão é impresso no terminal, porque um
@@ -295,20 +300,38 @@ valor diferente de fábrica sem nada dizendo vira caça ao fantasma.
 
 ### "nada recebido ainda", com o simulador rodando
 
-**O simulador está sem rede?** Se você o subiu com `--sem-rede`, ele não publica nada de
-propósito. Suba sem a flag.
+**Os dois na mesma máquina?** Confira se o simulador não subiu com `--sem-rede` — assim ele não
+publica nada, de propósito. No macOS, a primeira execução costuma pedir permissão de rede; se
+foi negada, o multicast não sai.
 
-**Firewall.** No macOS, a primeira execução costuma abrir um pedido de permissão de rede. Se
-foi negado, o multicast não sai.
+**Em máquinas diferentes?** É o caso que mais dá trabalho, e tem receita.
 
-**Máquinas diferentes?** Multicast precisa passar pelo roteador, e boa parte das redes de
-faculdade e de Wi-Fi público bloqueia. Rodando os dois na mesma máquina isso não aparece.
+O protocolo da liga é multicast, e multicast **frequentemente não atravessa** de uma máquina
+para outra: a ponte do roteador entre Wi-Fi e cabo muitas vezes não repassa, e rede de faculdade
+costuma bloquear por política. Não adianta insistir — a saída é mandar a visão **também por
+unicast**, que sai como qualquer pacote UDP comum.
 
-> O ingresso no grupo multicast é tentado em **todas** as interfaces que suportam multicast, e
-> não só na padrão. Numa máquina com Wi-Fi, Ethernet e as interfaces virtuais que Docker e VPN
-> criam, a rota padrão quase nunca é a que recebe o tráfego — entrar só nela é o motivo clássico
-> de "o simulador publica e o cliente não recebe nada". Se isso ainda acontecer aqui, é bug,
-> não configuração.
+1. Aqui, em **Configuracao avancada → Rede**, leia o bloco *"Os IPs desta máquina"*. Anote o IP
+   (algo como `192.168.15.8`).
+2. No computador do simulador, em **Rede → Configurar…**, ponha esse IP no campo
+   **Tambem enviar para**. Clique em *Aplicar*.
+3. Ainda aqui, ponha o IP **do computador do simulador** em **Host do simulador** — senão a
+   visão chega mas os comandos vão para `127.0.0.1` e os robôs não andam.
+
+Isso não desliga o multicast: ele continua saindo, e quem estiver na mesma máquina continua
+recebendo normalmente. O unicast é uma cópia a mais.
+
+> Do lado de cá nada precisa mudar: o socket que escuta o grupo recebe unicast na mesma porta do
+> mesmo jeito. Isso é verificado por teste, com sockets de verdade e sem ninguém entrar no grupo.
+
+**Ainda nada?** No simulador, o campo **Interface de saída** deixa escolher por onde o multicast
+sai. Vale tentar quando a máquina tem VPN, Docker ou VirtualBox: elas criam interfaces que
+aceitam multicast e não levam a lugar nenhum, e o sistema às vezes escolhe justamente uma delas.
+Prefira a que mostra um IP ao lado do nome.
+
+> Deste lado, o ingresso no grupo é tentado em **todas** as interfaces que suportam multicast, e
+> não só na padrão — esse pedaço já era tratado aqui. O que ficou para trás foi o lado que
+> **envia**, e é o que a *Interface de saída* conserta.
 
 ### Chega visão, mas os robôs não andam
 

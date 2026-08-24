@@ -147,6 +147,21 @@ As duas entradas vêm de programas diferentes, a visão da `ssl-vision` (ou do s
 lugar dela) e o árbitro do `ssl-game-controller`. Nada obriga os dois a estarem no ar juntos, e
 a janela continua útil com só um deles.
 
+### Quando o simulador está em outra máquina
+
+Multicast frequentemente **não atravessa** de uma máquina para outra: a ponte do roteador entre
+Wi-Fi e cabo muitas vezes não repassa, e rede de faculdade costuma bloquear por política. Por
+isso o simulador pode mandar a visão **também por unicast**, e aqui não foi preciso mudar nada
+para receber — um socket preso à porta do grupo recebe unicast nela do mesmo jeito, o que é
+verificado por teste com sockets de verdade e sem ninguém entrar no grupo.
+
+O que falta para fechar o ciclo é saber **qual IP digitar lá**, e isso a aba *Rede* agora
+mostra: os IPs desta máquina, com o nome da interface ao lado. É informação, não ajuste — por
+isso fica em cinza junto dos campos, e não vira mais um controle para configurar errado.
+
+E o caminho de volta é independente: `Host do simulador` precisa apontar para o IP dele, senão a
+visão chega e os comandos continuam indo para `127.0.0.1`.
+
 O ingresso no grupo multicast é tentado em **todas** as interfaces que suportam multicast, e
 não só na padrão. Numa máquina com Wi-Fi, Ethernet e as interfaces virtuais que Docker e VPN
 criam, a rota padrão quase nunca é a que recebe o tráfego. Entrar só nela é o motivo clássico
