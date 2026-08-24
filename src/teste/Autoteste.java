@@ -129,6 +129,7 @@ public final class Autoteste {
         comandoSaiEmMetrosPorSegundo();
         arquiteturaRespeitaODeclarado();
         ladoNaoInverteSemODeclarado();
+        padroesDeLadoNaoSeContradizem();
         zonaProibidaSegueONossoLado();
         zoomAncoraNoCursor();
         zoomNoBatenteNaoDesliza();
@@ -141,6 +142,30 @@ public final class Autoteste {
     // ------------------------------------------------------------------ Kalman
 
     /** Alvo em velocidade constante: o filtro tem de achar a velocidade certa. */
+
+    /**
+     * Os dois padroes de lado tem de concordar entre si.
+     *
+     * <p>Nao concordavam: {@link EstadoDeJogo#SEM_ARBITRO} assumia {@code false}
+     * e o {@link ArbitroLocal} nascia com {@code true}. Antes de tocar em qualquer
+     * botao a zona proibida era desenhada em -x; no primeiro comando do painel ela
+     * pulava para +x. E como e preciso mandar um START para a jogada rodar, o
+     * salto acontecia exatamente ao rodar a jogada -- a nossa area ficava
+     * desguarnecida e o corte passava a valer contra a area do adversario.
+     *
+     * <p>{@code -x} para o azul nao e escolha arbitraria: no simulador o eixo
+     * {@code +x} aponta para o gol AMARELO.
+     */
+    private static void padroesDeLadoNaoSeContradizem() {
+        Arbitro a = new Arbitro();
+        a.setModoLocal(true);
+        a.doPainel(new ArbitroLocal().comando(Command.NORMAL_START));
+
+        verdadeiro("arbitro: o padrao do painel de teste concorda com o SEM_ARBITRO",
+                a.estado(Cor.AZUL).nossoLado() == EstadoDeJogo.SEM_ARBITRO.nossoLado());
+        verdadeiro("arbitro: e o azul defende -x, oposto ao gol amarelo em +x",
+                a.estado(Cor.AZUL).nossoLado() == -1);
+    }
 
     /**
      * O lado nao pode inverter quando o pacote omite quem esta no lado positivo.

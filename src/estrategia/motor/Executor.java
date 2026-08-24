@@ -5,6 +5,7 @@ import estrategia.Ambiente;
 import estrategia.Jogador;
 import estrategia.esqueleto.Coach;
 import core.Caixa;
+import ajuste.Parametro;
 import core.Vec2;
 import jogo.EstadoDeJogo;
 import model.Comando;
@@ -132,9 +133,16 @@ public final class Executor {
      * <p>A caixa e dilatada pelo raio do robo porque a regra mede pelo ponto do
      * robo que entra, e nao pelo centro dele.
      *
-     * <p>Com o robo JA dentro -- empurrado por outro, ou porque o goleiro mudou --
-     * a distancia e zero e sobra so a componente de saida: ele nao consegue
-     * afundar mais, e sai pela face mais proxima.
+     * <p>Com o robo JA dentro -- empurrado por outro, ou porque o goleiro mudou
+     * no meio da partida -- nao basta impedir de afundar: ele tem de SAIR. Antes
+     * este metodo so REMOVIA a componente de entrada, e com a play mandando zero
+     * nao havia o que remover: o robo ficava parado dentro da area, em falta, ate
+     * alguem mandar ele andar.
+     *
+     * <p>A velocidade de saida cresce com a profundidade, {@code v = sqrt(2*a*d)},
+     * o mesmo perfil da aproximacao. Na linha ela vale zero, e e isso que evita o
+     * degrau: um robo que freia ate encostar nao leva empurrao, aproxima de novo e
+     * oscila. Um teto impede que um encostao o atire meio campo afora.
      *
      * <p>So a componente normal e tocada. A tangencial passa inteira, entao o robo
      * continua deslizando ao longo da borda em vez de travar: uma defesa que para
@@ -153,14 +161,34 @@ public final class Executor {
                 : posicao.menos(proibida.pontoMaisProximo(posicao)).normalizado();
         if (normal.norma() < 1e-9) return c;
 
-        double distancia = dentro ? 0 : proibida.distancia(posicao);
-        double tetoDeEntrada = Math.sqrt(2 * Robo.ACEL_MAX * distancia);
-
         Vec2 global = new Vec2(c.velTangencial(), c.velNormal()).paraGlobal(r.theta());
-        double entrada = -global.escalar(normal); // positivo quando vai para dentro
-        if (entrada <= tetoDeEntrada) return c;
+        Vec2 corrigida;
 
-        Vec2 corrigida = global.mais(normal.escala(entrada - tetoDeEntrada));
+        if (dentro) {
+            // Ja dentro: nao basta impedir de afundar, tem de SAIR. Antes daqui o
+            // limitador so removia a componente de entrada, e com a play mandando
+            // zero nao havia o que remover -- o robo ficava parado dentro da area,
+            // em falta, ate alguem mandar ele andar.
+            // A velocidade de saida cresce com a PROFUNDIDADE, pelo mesmo perfil de
+            // frenagem da aproximacao: v = sqrt(2*a*d). Na linha ela e zero, e por
+            // isso nao ha degrau -- um robo que freia ate encostar nao leva
+            // empurrao, aproxima de novo e oscila. Teto para um encostao nao
+            // atirar o robo meio campo afora.
+            double profundidade = proibida.profundidade(posicao);
+            double minima = Math.min(Math.sqrt(2 * Robo.ACEL_MAX * profundidade),
+                                     Parametro.VEL_DE_SAIDA_DA_AREA.valor());
+            double saida = global.escalar(normal); // positivo quando ja vai para fora
+            corrigida = saida >= minima ? global : global.mais(normal.escala(minima - saida));
+        } else {
+            // Fora: limita a velocidade de APROXIMACAO ao maior valor que ainda
+            // deixa parar antes da linha. De longe nao corta nada; chegando perto,
+            // freia na taxa certa; e encostar na borda continua permitido.
+            double tetoDeEntrada = Math.sqrt(2 * Robo.ACEL_MAX * proibida.distancia(posicao));
+            double entrada = -global.escalar(normal); // positivo quando vai para dentro
+            if (entrada <= tetoDeEntrada) return c;
+            corrigida = global.mais(normal.escala(entrada - tetoDeEntrada));
+        }
+
         Vec2 local = corrigida.paraLocal(r.theta());
         return new Comando(local.x(), local.y(), c.velAngular(),
                 c.velChute(), c.anguloChute(), c.dribbler());

@@ -517,7 +517,16 @@ Game Controller ou do árbitro de teste — é declaração de equipe, não esco
 percorreria 1,5 m depois do comando ir a zero, e entraria na área assim mesmo. O que se limita é
 a velocidade de **aproximação**, ao maior valor que ainda deixa parar antes da linha —
 `v = √(2·a·d)`, o mesmo perfil de frenagem que `SkillAndarPara` usa para chegar num ponto. De longe
-não corta nada; chegando perto, freia na taxa certa; já dentro, sobra só a componente de saída.
+não corta nada e, chegando perto, freia na taxa certa — o robô encosta na borda, não para metros
+antes dela.
+
+**Já dentro, ele sai sozinho.** Impedir de afundar não bastava: com a play mandando zero não
+havia o que remover, e o robô ficava parado dentro da área, em falta, até alguém mandar ele
+andar. Isso acontece de verdade — empurrão de adversário, ou o goleiro declarado mudar no meio
+da partida e o antigo virar robô de linha já lá dentro. A saída é pela **face mais próxima**, e a
+velocidade dela cresce com a profundidade pelo mesmo `v = √(2·a·d)`: na linha vale zero, e é isso
+que evita o degrau que faria um robô encostado levar empurrão, aproximar de novo e oscilar.
+`VEL_DE_SAIDA_DA_AREA` põe um teto, para um encostão não atirar o robô meio campo afora.
 
 Só a componente **normal** é tocada; a tangencial passa inteira. Uma defesa que trava ao encostar
 na área é pior que uma que a contorna.
@@ -545,6 +554,14 @@ errada com o mesmo ar de certeza.
 O `Arbitro` guarda agora o último valor que alguém **declarou**, fora do retrato cru: um pacote
 omisso não apaga o que já se sabia. Guardar o valor do *azul*, e não o nosso lado, mantém a
 tradução na leitura — trocar a nossa cor com a janela aberta continua valendo na hora.
+
+E os dois padrões precisam **concordar entre si**. Não concordavam: `SEM_ARBITRO` assumia
+`false` e o `ArbitroLocal` nascia com `true`. Antes de tocar em qualquer botão a zona era
+desenhada em `-x`; no primeiro comando do painel de teste ela pulava para `+x` — e como é preciso
+mandar um `START` para a jogada rodar, o salto acontecia exatamente ao rodar a jogada. `false` é
+o valor certo, e não só por ser o que o `SEM_ARBITRO` já dizia: no simulador o eixo `+x` aponta
+para o gol **amarelo**, então o azul defende `-x`. Padrão que contradiz a geometria do campo é
+armadilha.
 
 Enquanto ninguém declarou, o lado em uso é um chute, e o painel do árbitro diz isso em amarelo
 em vez de mostrar a contagem de pacotes. Vale a regra do projeto: o que está na tela ou veio da

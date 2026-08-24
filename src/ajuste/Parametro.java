@@ -156,6 +156,21 @@ public enum Parametro {
     MARGEM_DA_AREA(45, "mm"),
 
     /**
+     * Com que velocidade um robo de linha sai da area, em mm/s.
+     *
+     * <p>Existe porque o limitador so sabia REMOVER a componente de entrada: com
+     * a play mandando zero nao havia o que remover, e o robo ficava parado dentro
+     * da area cometendo falta ate alguem mandar ele andar. Acontece de verdade --
+     * empurrao de adversario, ou o goleiro declarado mudar no meio da partida e o
+     * antigo virar robo de linha ja dentro.
+     *
+     * <p>Moderada de proposito. Sair e obrigatorio, mas sair a toda faz o robo
+     * atravessar meio campo por causa de um encostao, e atrapalhar mais do que a
+     * falta que evitou. Passar do limite para fora nao custa nada: fora e legal.
+     */
+    VEL_DE_SAIDA_DA_AREA(800, "mm/s"),
+
+    /**
      * Quanto a zona proibida avanca da linha de fundo para o meio, em mm.
      *
      * <p>Zero quer dizer "usar a area que a VISAO informou, mais

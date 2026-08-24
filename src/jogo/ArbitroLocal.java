@@ -18,7 +18,21 @@ public final class ArbitroLocal {
 
     private int contador;
     private int golsAzul, golsAmarelo;
-    private boolean azulNoLadoPositivo = true;
+    /**
+     * De que lado joga o azul, quando ninguem declarou.
+     *
+     * <p>Era {@code true}, e isso contradizia o {@link EstadoDeJogo#SEM_ARBITRO},
+     * que assume {@code false}. Antes de tocar em qualquer botao a zona proibida
+     * era desenhada em -x; no primeiro comando do painel de teste ela pulava para
+     * +x, e como e preciso mandar um START para a jogada rodar, o salto acontecia
+     * exatamente quando se rodava a jogada. A nossa area ficava desguarnecida e o
+     * {@code Executor} passava a cortar contra a area do adversario.
+     *
+     * <p>{@code false} e o valor certo, e nao so por ser o que o SEM_ARBITRO ja
+     * dizia: no simulador o eixo {@code +x} aponta para o gol AMARELO, entao o
+     * azul defende -x. Padrao que contradiz a geometria do campo e armadilha.
+     */
+    private boolean azulNoLadoPositivo = false;
     private String nomeAzul = "Azul";
     private String nomeAmarelo = "Amarelo";
     private int goleiroAzul = 0, goleiroAmarelo = 0;

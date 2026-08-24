@@ -70,6 +70,9 @@ public final class AutotesteEstrategia {
         perderPapelEssencialAbortaAPlay();
         arbitroPodaOComando();
         areaDeDefesaSoAceitaOGoleiro();
+        areaProibidaAcompanhaOLadoDeclarado();
+        roboDentroSaiSozinhoMesmoSemComando();
+        freiaAteALinhaENaoAntes();
         areaDeDefesaFreiaEmVezDeCortarSeco();
         roboDentroDaAreaSoPodeSair();
         deslizarPelaBordaDaAreaNaoECortado();
@@ -320,6 +323,79 @@ public final class AutotesteEstrategia {
                 halt.get(0).equals(Comando.PARADO));
     }
 
+    /**
+     * A zona proibida acompanha o LADO DECLARADO, e nao um lado fixo.
+     *
+     * <p>E o caso que teria pego o bug de verdade: com dois padroes de lado se
+     * contradizendo, a zona pulava de metade ao rodar a jogada e o corte passava
+     * a valer contra a area do ADVERSARIO -- a nossa ficava aberta, e robo de
+     * linha entrava com o comando intacto. Os outros casos de area rodavam todos
+     * em +x e nao viam nada.
+     *
+     * <p>Aqui a mesma manobra e feita nas duas metades: em cada uma, entrar na
+     * NOSSA area e cortado e entrar na DELES passa inteiro.
+     */
+    private static void areaProibidaAcompanhaOLadoDeclarado() {
+        for (boolean positivo : new boolean[] {true, false}) {
+            int lado = positivo ? 1 : -1;
+            String nome = positivo ? "+x" : "-x";
+
+            // Indo para a NOSSA area, a 3 m da linha de fundo do nosso lado.
+            Comando nossa = umRoboAndando(new Vec2(lado * 3000, 0),
+                    lado * Robo.VEL_MAX, 0, 5, positivo).get(0);
+            verdadeiro("area: defendendo " + nome + ", entrar na nossa area e cortado",
+                    Math.abs(nossa.velTangencial()) < Robo.VEL_MAX - 1);
+
+            // A mesma manobra na area DELES: nao ha o que cortar.
+            Comando deles = umRoboAndando(new Vec2(-lado * 3000, 0),
+                    -lado * Robo.VEL_MAX, 0, 5, positivo).get(0);
+            aproximado("area: defendendo " + nome + ", a area deles nao restringe",
+                    Math.abs(deles.velTangencial()), Robo.VEL_MAX, 1e-6);
+        }
+    }
+
+    /**
+     * Dentro da area e sem a play pedir nada, o robo tem de SAIR sozinho.
+     *
+     * <p>Antes ele nao saia: o limitador so REMOVIA a componente de entrada, e
+     * com a play mandando zero nao havia o que remover -- o robo ficava parado
+     * dentro da area, cometendo falta, ate alguem mandar ele andar. E o caso
+     * acontece de verdade: empurrao de adversario, ou o goleiro declarado mudar
+     * no meio da partida e o antigo virar robo de linha ja dentro.
+     */
+    private static void roboDentroSaiSozinhoMesmoSemComando() {
+        Vec2 dentro = new Vec2(4000, 0);   // area de 3500 a 4500, defendendo +x
+
+        Comando c = umRoboAndando(dentro, 0, 0, 5).get(0);
+        verdadeiro("area: parado dentro dela, o robo recebe comando de sair",
+                new Vec2(c.velTangencial(), c.velNormal()).norma() > 1);
+
+        // A saida mais curta a partir de x=4000 e para -x (a boca da area).
+        Vec2 global = new Vec2(c.velTangencial(), c.velNormal()).paraGlobal(0);
+        verdadeiro("area: e sai pela face mais proxima, nao para o fundo do gol",
+                global.x() < 0);
+    }
+
+    /**
+     * O corte freia ate a linha, e nao para longe dela.
+     *
+     * <p>"Nao entrar" nao pode virar "parar a metros de distancia": o robo tem de
+     * poder encostar na borda. A 100 mm da linha ainda ha velocidade permitida,
+     * e ela so chega a zero na linha.
+     */
+    private static void freiaAteALinhaENaoAntes() {
+        double borda = Geometria.DIVISAO_B.areaDefesa(1, Parametro.MARGEM_DA_AREA.valor()).xMin()
+                - Robo.RAIO;
+
+        Comando perto = umRoboAndando(new Vec2(borda - 100, 0), Robo.VEL_MAX, 0, 5).get(0);
+        verdadeiro("area: a 100 mm da linha ainda pode andar para ela",
+                perto.velTangencial() > 1);
+
+        Comando naLinha = umRoboAndando(new Vec2(borda, 0), Robo.VEL_MAX, 0, 5).get(0);
+        aproximado("area: e na linha a entrada e exatamente zero",
+                naLinha.velTangencial(), 0, 1e-6);
+    }
+
     // ------------------------------------------------------------ area de defesa
 
     /**
@@ -361,13 +437,20 @@ public final class AutotesteEstrategia {
                 c.velTangencial(), esperado, 1);
     }
 
-    /** Empurrado para dentro, ou goleiro que deixou de ser: so resta sair. */
+    /**
+     * Empurrado para dentro, ou goleiro que deixou de ser: so resta sair.
+     *
+     * <p>Antes o limitador so ZERAVA a entrada, e este caso conferia isso. Nao
+     * bastava: com a play pedindo para afundar, o robo ficava parado dentro da
+     * area em vez de sair dela. Hoje a componente de entrada nao so e removida
+     * como e substituida por uma de SAIDA.
+     */
     private static void roboDentroDaAreaSoPodeSair() {
         Vec2 dentro = new Vec2(4000, 0); // area vai de 3500 a 4500
 
         Comando entrando = umRoboIndoParaAArea(dentro, 5).get(0);
-        aproximado("area: dentro dela, a componente de entrada zera",
-                entrando.velTangencial(), 0, 1e-6);
+        verdadeiro("area: dentro dela, pedir para afundar vira comando de sair",
+                entrando.velTangencial() < -1);
 
         Comando saindo = umRoboAndando(dentro, -Robo.VEL_MAX, 0, 5).get(0);
         aproximado("area: mas a de saida passa inteira",
@@ -450,6 +533,11 @@ public final class AutotesteEstrategia {
 
     private static Map<Integer, Comando> umRoboAndando(Vec2 posicao, double vx, double vy,
                                                        int goleiro) {
+        return umRoboAndando(posicao, vx, vy, goleiro, true);
+    }
+
+    private static Map<Integer, Comando> umRoboAndando(Vec2 posicao, double vx, double vy,
+                                                       int goleiro, boolean defendemosPositivo) {
         SkillQueAnda skill = new SkillQueAnda(vx, vy);
         PlayContada play = new PlayContada(new RoleContada(new TacticContada(skill)));
         CoachManual coach = new CoachManual(play);
@@ -457,7 +545,7 @@ public final class AutotesteEstrategia {
         coach.bSetPlay(play.id());
 
         EstadoRobo r = new EstadoRobo(0, Cor.AZUL, posicao, 0, Vec2.ZERO, 0, false, 0, 5);
-        return exec.vTick(montar(0.0, Command.FORCE_START, List.of(r), goleiro));
+        return exec.vTick(montar(0.0, Command.FORCE_START, List.of(r), goleiro, defendemosPositivo));
     }
 
     // ------------------------------------------------ categorias de papel
@@ -901,19 +989,29 @@ public final class AutotesteEstrategia {
     }
 
     /**
-     * Ambiente com o goleiro declarado.
+     * Ambiente com o goleiro declarado, defendendo +x.
      *
-     * <p>Jogamos de azul e o azul fica no lado positivo, entao defendemos +x: a
-     * nossa area vai de 3500 a 4500 em x.
+     * <p>O lado e DECLARADO aqui, e nao herdado do padrao de fabrica do
+     * {@link ArbitroLocal}: herdar acoplava estes casos a um valor que existe
+     * para outra coisa, e trocar aquele padrao -- coisa que precisou ser feita --
+     * quebrava meia duzia de testes que nem falam de lado.
+     *
+     * <p>Com o azul em +x, a nossa area vai de 3500 a 4500 em x.
      */
     private static Ambiente montar(double tempo, Command comando, List<EstadoRobo> robos,
                                    int goleiro) {
+        return montar(tempo, comando, robos, goleiro, true);
+    }
+
+    private static Ambiente montar(double tempo, Command comando, List<EstadoRobo> robos,
+                                   int goleiro, boolean defendemosPositivo) {
         Quadro q = new Quadro(0, tempo, System.nanoTime(), Geometria.DIVISAO_B,
                 new EstadoBola(Vec2.ZERO, 21.5, Vec2.ZERO, 0, 5), robos);
 
         Arbitro a = new Arbitro();
         a.setModoLocal(true);
         ArbitroLocal gc = new ArbitroLocal();
+        gc.setAzulNoLadoPositivo(defendemosPositivo);
         gc.setGoleiro(Cor.AZUL, goleiro);
         a.doPainel(gc.comando(comando));
         return new Ambiente(q, a.estado(Cor.AZUL), Cor.AZUL);

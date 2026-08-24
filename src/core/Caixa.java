@@ -31,6 +31,19 @@ public record Caixa(double xMin, double yMin, double xMax, double yMax) {
         return p.x() >= xMin && p.x() <= xMax && p.y() >= yMin && p.y() <= yMax;
     }
 
+    /**
+     * Quanto {@code p} esta DENTRO, medido ate a face mais proxima; 0 se fora.
+     *
+     * <p>Complemento de {@link #distancia}, que mede de fora e devolve 0 dentro.
+     * Juntas, as duas dao uma medida continua atravessando a borda -- que e o que
+     * permite um limitador nao dar solavanco exatamente na linha.
+     */
+    public double profundidade(Vec2 p) {
+        if (!contem(p)) return 0;
+        return Math.min(Math.min(p.x() - xMin, xMax - p.x()),
+                        Math.min(p.y() - yMin, yMax - p.y()));
+    }
+
     /** Ponto da caixa mais proximo de {@code p}; o proprio {@code p} se ele esta dentro. */
     public Vec2 pontoMaisProximo(Vec2 p) {
         return new Vec2(Math.min(Math.max(p.x(), xMin), xMax),
