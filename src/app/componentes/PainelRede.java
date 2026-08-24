@@ -79,7 +79,15 @@ public final class PainelRede extends PainelRolavel {
      * entrando e saindo do BoxLayout, TUDO abaixo saltava -- incluindo o painel do
      * arbitro inteiro -- justamente quando se esta olhando para a tela.
      */
-    private static final int ALTURA_DO_BOTAO = 78;
+    /**
+     * O bloco do aviso: uma linha de texto mais um botao de uma linha.
+     *
+     * <p>Era 78 px, com o aviso em duas linhas e o botao em duas. Reservar isso
+     * o tempo todo era metade do motivo de a coluna nao caber na tela -- e uma
+     * coluna que precisa rolar para mostrar o painel do arbitro e pior que um
+     * aviso apertado.
+     */
+    private static final int ALTURA_DO_BOTAO = 46;
 
     private final JLabel estadoEstrategia = rotulo("desligada", Paleta.APAGADO);
     private final JCheckBox caixaEstrategia = new JCheckBox("comandar os robos");
@@ -116,8 +124,8 @@ public final class PainelRede extends PainelRolavel {
         add(alturaFixa(envio, 1));
 
         apontarComandos.setAlignmentX(Component.LEFT_ALIGNMENT);
-        apontarComandos.setMaximumSize(new Dimension(Integer.MAX_VALUE, ALTURA_DO_BOTAO));
-        apontarComandos.setPreferredSize(new Dimension(LARGURA, ALTURA_DO_BOTAO));
+        apontarComandos.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
+        apontarComandos.setPreferredSize(new Dimension(LARGURA, 26));
         apontarComandos.setVisible(false);
         apontarComandos.addActionListener(e -> {
             String ip = cliente.origemDaVisaoDiferente();
@@ -139,23 +147,22 @@ public final class PainelRede extends PainelRolavel {
         espacoDoBotao.add(apontarComandos);
         add(alturaFixaPx(espacoDoBotao, ALTURA_DO_BOTAO));
 
-        add(Box.createVerticalStrut(18));
+        add(Box.createVerticalStrut(10));
         add(titulo("Arbitro"));
         add(painelArbitro);
 
-        add(Box.createVerticalStrut(18));
+        add(Box.createVerticalStrut(10));
         add(titulo("Estrategia"));
         add(caixaEstrategia);
         add(alturaFixa(estadoEstrategia, 2));
-        add(Box.createVerticalStrut(8));
+        add(Box.createVerticalStrut(6));
         add(botao("Ver log...", aoAbrirLog));
 
-        add(Box.createVerticalStrut(18));
+        add(Box.createVerticalStrut(10));
         add(botao("Configuracao avancada...",
                 () -> DialogoConfiguracao.abrir(campo, cliente, campo)));
 
         add(Box.createVerticalGlue());
-        add(rodape());
 
         atualizarEstado(); // sem isso os rotulos ficam em "--" ate o primeiro tique
     }
@@ -239,32 +246,36 @@ public final class PainelRede extends PainelRolavel {
         aviso.setVisible(outraOrigem != null);
         apontarComandos.setVisible(outraOrigem != null);
         if (outraOrigem != null) {
-            aviso.setText("<html>a visao vem de " + outraOrigem
-                    + ",<br>e os comandos nao vao para la</html>");
+            aviso.setText("nao vao para onde a visao vem");
             // Duas linhas: a coluna e estreita e a fonte monoespacada, e numa
             // linha so o IP -- que e a informacao -- era o pedaco cortado.
-            apontarComandos.setText("<html><center>Mandar comandos<br>para "
-                    + outraOrigem + "</center></html>");
+            apontarComandos.setText("Usar " + outraOrigem);
         }
 
         if (caixaEstrategia.isSelected() != cliente.isEstrategiaLigada()) {
             caixaEstrategia.setSelected(cliente.isEstrategiaLigada());
         }
 
-        // Sem arbitro nenhum -- nem Game Controller no ar, nem o de bancada -- o
-        // estado e HALT e nada sai, entao marcar a caixa nao faz efeito nenhum.
-        // Deixa-la clicavel ali era so confusao: a pessoa marca, nada acontece, e
-        // nao ha nada na tela ligando uma coisa a outra.
+        // A caixa so vale quando ha quem autorize o movimento: ou a fonte esta em
+        // LOCAL, e ai quem manda e voce, ou o Game Controller esta de fato
+        // entregando. Com a fonte em Game Controller e nenhum GC no ar -- o
+        // arranjo de bancada -- marcar nao fazia efeito nenhum, e nao havia nada
+        // na tela ligando uma coisa a outra.
         //
-        // COM o Game Controller conectado ela continua liberada mesmo em HALT: na
-        // partida se liga a estrategia antes do START, e bloquear aqui deixaria o
-        // time parado no momento em que ele tem de sair.
-        boolean semArbitro = cliente.estadoDeJogo().semArbitro();
-        caixaEstrategia.setEnabled(!semArbitro);
+        // Em LOCAL ela libera na hora, sem esperar o primeiro comando: quem
+        // escolheu o arbitro de bancada esta no controle, e nada se move ate ele
+        // apertar START de qualquer jeito.
+        //
+        // Com o GC entregando ela tambem fica liberada, inclusive em HALT. Aqui
+        // nao da para ser mais restritivo: na partida se liga a estrategia ANTES
+        // do START, e bloquear deixaria o time parado no instante de sair.
+        boolean local = cliente.getArbitro().isModoLocal();
+        boolean podeAutorizar = local || cliente.recebendoArbitro();
+        caixaEstrategia.setEnabled(podeAutorizar);
 
-        if (semArbitro) {
+        if (!podeAutorizar) {
             estadoEstrategia.setForeground(Paleta.ALERTA);
-            estadoEstrategia.setText("<html>sem arbitro: tudo em HALT,<br>nenhum comando sai</html>");
+            estadoEstrategia.setText("<html>sem arbitro: ponha a fonte<br>em local, ou ligue o GC</html>");
         } else if (!cliente.isEstrategiaLigada()) {
             estadoEstrategia.setForeground(Paleta.APAGADO);
             estadoEstrategia.setText("desligada");
@@ -295,9 +306,18 @@ public final class PainelRede extends PainelRolavel {
         return b;
     }
 
-    private static JComponent rodape() {
-        return new Dicas("Com a estrategia desligada nenhum comando sai, e os robos ficam "
-                + "parados, como no grSim.\n\nscroll aplica zoom, arraste para mover o campo");
+    /**
+     * As dicas de gesto viraram tooltip do campo.
+     *
+     * <p>Elas custavam quase 90 px permanentes no pe da coluna para dizer uma
+     * coisa que se le UMA vez e nunca mais -- e eram parte do motivo de a coluna
+     * precisar de rolagem. No tooltip ficam onde o gesto acontece, e para quem
+     * nunca leu continuam a um segundo de distancia.
+     */
+    public static String dicasDeGesto() {
+        return "<html>scroll aplica zoom, ancorado no cursor"
+                + "<br>arraste para mover o campo"
+                + "<br>clique num robo para seleciona-lo</html>";
     }
 
     /**

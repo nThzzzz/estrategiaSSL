@@ -75,6 +75,11 @@ public final class TelaJogo {
     private TelaJogo(Cliente cliente) {
         this.cliente = cliente;
         this.campo = new Campo(cliente::quadro);
+        // As dicas de gesto viviam no pe da coluna da esquerda, custando quase
+        // 90 px permanentes para dizer o que se le uma vez -- e eram parte do
+        // motivo de a coluna precisar de rolagem. Aqui ficam onde o gesto
+        // acontece.
+        this.campo.setToolTipText(PainelRede.dicasDeGesto());
         // Qual metade defendemos vem do arbitro e a folga e escolha nossa: nenhum
         // dos dois esta no quadro da visao, e sem eles o campo nao sabe onde fica
         // a area proibida.
