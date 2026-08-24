@@ -43,8 +43,23 @@ public final class Jogador {
 
     // ------------------------------------------------------ escrita por tique
 
-    /** Chamado pelo executor no inicio do tique. */
-    void vAtualizar(EstadoRobo novo) {
+    /**
+     * Chamado pelo {@link estrategia.motor.Executor Executor} no inicio do tique.
+     *
+     * <p>Era package-private, e ai o compilador garantia que so codigo de dentro
+     * de {@code estrategia} escrevia o estado de um robo -- nenhuma play
+     * conseguia forjar onde o robo esta. Ao tirar o motor daqui para desfazer o
+     * ciclo {@code estrategia <-> esqueleto}, a garantia caiu: Java nao estende
+     * acesso de pacote a subpacote, e as duas coisas nao cabem juntas -- ou o
+     * motor mora junto do estado que ele muta, ou a protecao deixa de ser do
+     * compilador.
+     *
+     * <p>Quem escreve play, role, tactic ou skill NAO chama isto. O estado vem
+     * do {@link Ambiente} e do proprio {@code Jogador}; forjar um estado aqui
+     * faria a estrategia decidir sobre um mundo que a visao nunca viu, e o bug
+     * apareceria como "o robo ignora a bola" tres camadas adiante.
+     */
+    public void vAtualizar(EstadoRobo novo) {
         this.estado = novo;
         this.comando = Comando.PARADO;
     }

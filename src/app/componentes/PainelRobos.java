@@ -1,4 +1,6 @@
-package app;
+package app.componentes;
+
+import app.Cliente;
 
 import core.Vec2;
 import model.Cor;

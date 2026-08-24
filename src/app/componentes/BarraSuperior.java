@@ -1,4 +1,6 @@
-package app;
+package app.componentes;
+
+import app.Cliente;
 
 import jogo.Acao;
 import jogo.EstadoDeJogo;

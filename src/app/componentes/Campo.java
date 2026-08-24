@@ -1,4 +1,7 @@
-package view;
+package app.componentes;
+
+import view.Estilo;
+import view.Paleta;
 
 import core.Geo;
 import ajuste.Parametro;

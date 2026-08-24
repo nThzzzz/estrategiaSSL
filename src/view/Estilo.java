@@ -1,5 +1,6 @@
 package view;
 
+
 import com.formdev.flatlaf.FlatDarkLaf;
 import com.formdev.flatlaf.fonts.jetbrains_mono.FlatJetBrainsMonoFont;
 

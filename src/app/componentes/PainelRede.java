@@ -1,6 +1,7 @@
-package app;
+package app.componentes;
 
-import view.Campo;
+import app.Cliente;
+
 import view.Paleta;
 
 import javax.swing.BorderFactory;
@@ -50,7 +51,14 @@ public final class PainelRede extends PainelRolavel {
     private final JLabel estadoEstrategia = rotulo("desligada", Paleta.APAGADO);
     private final JCheckBox caixaEstrategia = new JCheckBox("comandar os robos");
 
-    public PainelRede(Cliente cliente, Campo campo) {
+    /**
+     * @param aoAbrirLog o que fazer quando pedirem o log. Vem de fora de
+     *        proposito: o componente sabe que ALGUEM pediu, e nao qual tela
+     *        atende. Chamar {@code TelaLog.abrir} daqui punha componentes/
+     *        dependendo de telas/, e telas/ ja depende de componentes/ -- as
+     *        duas juntas fechavam um ciclo.
+     */
+    public PainelRede(Cliente cliente, Campo campo, Runnable aoAbrirLog) {
         this.cliente = cliente;
         this.campo = campo;
         this.painelArbitro = new PainelArbitro(cliente);
@@ -83,7 +91,7 @@ public final class PainelRede extends PainelRolavel {
         add(caixaEstrategia);
         add(estadoEstrategia);
         add(Box.createVerticalStrut(8));
-        add(botao("Ver log...", () -> JanelaLog.abrir(campo, cliente)));
+        add(botao("Ver log...", aoAbrirLog));
 
         add(Box.createVerticalStrut(18));
         add(botao("Configuracao avancada...",

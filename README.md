@@ -57,43 +57,79 @@ como tal.
 
 ## Arquitetura
 
-Dependências em uma direção, sem ciclos, como no simulador:
+Cada pacote **declara** sua zona e de quem depende, no próprio `package-info.java`:
 
-```
-core       →  (nada)              Vec2, Angulo, Caixa, Geo
-ajuste     →  (nada)              Parametro, Json
-model      →  core, proto         Geometria, Cor, Robo, Comando
-mundo      →  core, model         Quadro, EstadoRobo, EstadoBola
-jogo       →  core, model, proto  Arbitro, EstadoDeJogo, Acao, ArbitroLocal
-percepcao  →  + proto             Rastreador, Trilha, FiltroKalman1D, SensorDeBola, Ajuste
-estrategia →  mundo, jogo, model  Ambiente, Jogador, Executor, Diario
-  ids      →  os números estáveis       Jogada, Papel, Tatica, Habilidade
-  esqueleto→  o que se estende          Coach, Play, Role, Tactic, Skill
-  skills   →  as micro habilidades      SkillAndarPara, SkillOlharPara, SkillChutar
-  tactics  →  conjuntos de skills       TacticBuscarBola, TacticConduzirAoGol, ...
-  roles    →  papéis de um robô         RoleAtacante, RoleGoleiro
-  plays    →  jogadas do time           PlayTesteAtacante
-  coaches  →  quem escolhe a play       CoachBancada
-rede       →  + percepcao, jogo   ConfigRede, ReceptorDeVisao, ReceptorDeArbitro, EmissorDeComandos
-view       →  core, model, mundo  Campo, Paleta
-app        →  tudo                Cliente, Janela, BarraSuperior, PainelRede, PainelRobos
+```java
+/** <p>Zona: ESTAVEL. Depende de: core, model, proto. */
+package jogo;
 ```
 
-Note que `estrategia` não depende de `rede` nem de `view`. Quem decide o que os robôs
-fazem só conhece `Ambiente` e `Jogador`, e é isso que permite rodar mil partidas de treino
-sem abrir janela nem tocar em socket.
+Isso não é enfeite. O `teste.Autoteste` lê essas linhas e o código, e falha quando os dois
+divergem — antes a arquitetura vivia só nesta seção, e prosa não segura nada: o grafo real
+tinha **dois ciclos** que ninguém via e o `view` dependia de três pacotes que a prosa não
+citava.
 
-As implementações levam o **tipo no nome**: `SkillAndarPara`, `TacticBuscarBola`,
-`RoleAtacante`, `PlayTesteAtacante`, `CoachBancada`. É verboso de propósito — numa lista de
-arquivos ou numa pilha de exceção, `AndarPara` sozinho não diz se é a skill que move o robô ou a
-tática que a usa, e as duas existem. O prefixo responde antes de abrir o arquivo.
+### As duas zonas
 
-Dentro de `estrategia` as pastas separam **coisas de naturezas diferentes**, que antes moravam
-juntas: `ids` são só números estáveis e não dependem de nada; `esqueleto` são as cinco classes
-abstratas que se estende para escrever uma jogada; as cinco pastas seguintes são as
-implementações concretas; e na raiz ficam o vocabulário que todas as camadas leem (`Ambiente`,
-`Jogador`) e o que roda tudo (`Executor`, `Diario`). Achar onde uma classe mora deixou de
-depender de lembrar o nome dela.
+|  | zona | o que é |
+|---|---|---|
+| **ESTAVEL** | `core` `ajuste` `model` `mundo` `jogo` `percepcao` `rede` `view` | infraestrutura pronta. Você quase não abre. Quando algo quebra aqui, quase nunca foi você |
+| **TRABALHO** | `estrategia` `estrategia.motor` `app` `app.telas` `app.componentes` | onde se mexe |
+| **EXTENSAO** | `estrategia.esqueleto` `.ids` `.skills` `.tactics` `.roles` `.plays` `.coaches` | TRABALHO **e** feito para ser estendido: é aqui que se escreve código novo |
+
+A regra que mais importa: **ESTAVEL não pode depender de TRABALHO nem de EXTENSAO**. É o que
+garante que escrever uma play nunca obrigue a mexer na rede, e o que permite rodar mil partidas
+de treino sem abrir janela nem tocar em socket.
+
+### O grafo
+
+```
+core       →  (nada)                     Vec2, Angulo, Caixa, Geo
+ajuste     →  (nada)                     Parametro, Json
+view       →  (nada)                     Paleta, Estilo
+model      →  core, proto                Geometria, Cor, Robo, Comando
+mundo      →  core, model                Quadro, EstadoRobo, EstadoBola
+jogo       →  core, model, proto         Arbitro, EstadoDeJogo, Acao, ArbitroLocal
+percepcao  →  + ajuste, mundo            Rastreador, Trilha, FiltroKalman1D, SensorDeBola
+rede       →  + jogo, percepcao          ConfigRede, Receptor*, EmissorDeComandos
+estrategia →  ajuste, core, jogo,        Ambiente, Jogador          <- só o vocabulário
+              model, mundo
+  ids      →  (nada)                     Jogada, Papel, Tatica, Habilidade
+  esqueleto→  estrategia, ids, ajuste    Coach, Play, Role, Tactic, Skill
+  skills   →  esqueleto, core, model     SkillAndarPara, SkillOlharPara, SkillChutar
+  tactics  →  + skills, ids              TacticBuscarBola, TacticConduzirAoGol, ...
+  roles    →  + tactics                  RoleAtacante, RoleGoleiro
+  plays    →  + roles                    PlayTesteAtacante
+  coaches  →  + plays                    CoachBancada
+  motor    →  estrategia, esqueleto      Executor, Diario           <- quem roda
+app        →  estrategia.*, rede,        Cliente                    <- orquestrador
+              percepcao, jogo, ...
+  componentes → app, view, ...           Campo, Painel*, Dialogo*, BarraSuperior
+  telas    →  + componentes              TelaJogo, TelaLog
+```
+
+### Por que `motor` saiu da raiz de `estrategia`
+
+A raiz guardava duas naturezas: o **vocabulário** (`Ambiente`, `Jogador`), que o `esqueleto`
+importa, e **quem roda** (`Executor`, `Diario`), que importa `Coach` e `Play` do `esqueleto`.
+As duas juntas fechavam `estrategia → esqueleto → estrategia`. Separando, a raiz fica só com o
+vocabulário e o grafo vira um DAG de verdade.
+
+Isso teve um custo, e vale saber qual: `Jogador.vAtualizar` era package-private, e ali o
+compilador garantia que nenhuma play conseguia forjar onde um robô está. Java não estende acesso
+de pacote a subpacote, então ou o motor mora junto do estado que ele muta — e o ciclo volta — ou
+a garantia deixa de ser do compilador. Ela virou Javadoc.
+
+### Telas e componentes
+
+`telas/` são janelas inteiras que montam um layout; `componentes/` são os pedaços que elas
+montam. A dependência é **numa direção só**: quando um componente precisa abrir uma tela, ele
+recebe um `Runnable` de fora e não decide qual — `PainelRede` chamava `TelaLog.abrir` direto, e
+isso fechava um segundo ciclo `telas ↔ componentes`.
+
+Os nomes seguem a mesma regra das skills e táticas: o tipo vai no nome. `PainelRede`,
+`DialogoConfiguracao`, `BarraSuperior` — numa pilha de exceção dá para saber que a segunda é uma
+janela modal e a primeira não, o que um prefixo `Componente*` uniforme apagaria.
 
 Duas entradas e uma saída:
 

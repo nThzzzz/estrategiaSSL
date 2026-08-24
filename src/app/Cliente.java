@@ -2,7 +2,7 @@ package app;
 
 import ajuste.Parametro;
 import estrategia.Ambiente;
-import estrategia.Executor;
+import estrategia.motor.Executor;
 import estrategia.coaches.CoachBancada;
 import jogo.Arbitro;
 import jogo.ArbitroLocal;

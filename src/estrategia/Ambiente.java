@@ -1,5 +1,6 @@
 package estrategia;
 
+
 import model.Robo;
 import ajuste.Parametro;
 import core.Caixa;
@@ -79,7 +80,7 @@ public record Ambiente(Quadro quadro, EstadoDeJogo jogo, Cor nossaCor, double ma
      * O retangulo da nossa area de defesa, ja com a folga de seguranca.
      *
      * <p>E zona proibida para todo robo nosso que nao seja o goleiro -- a regra
-     * da SSL e essa, e quem a aplica e o {@link Executor}, no fim do tique, pelo
+     * da SSL e essa, e quem a aplica e o {@link estrategia.motor.Executor Executor}, no fim do tique, pelo
      * mesmo motivo que os limites do arbitro moram la: basta uma play esquecer
      * para o time cometer falta.
      */

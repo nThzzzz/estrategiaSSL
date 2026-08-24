@@ -1,6 +1,8 @@
-package app;
+package app.telas;
 
-import estrategia.Diario;
+import app.Cliente;
+
+import estrategia.motor.Diario;
 import view.Estilo;
 import view.Paleta;
 
@@ -32,13 +34,13 @@ import java.util.List;
  * <p>Janela separada e nao modal: da para ler o log e ver o campo ao mesmo tempo,
  * que e justamente o uso.
  */
-public final class JanelaLog extends JFrame {
+public final class TelaLog extends JFrame {
 
-    private static JanelaLog aberta;
+    private static TelaLog aberta;
 
     private final Cliente cliente;
 
-    private JanelaLog(Cliente _cliente) {
+    private TelaLog(Cliente _cliente) {
         super("Log da estrategia");
         this.cliente = _cliente;
 
@@ -65,7 +67,7 @@ public final class JanelaLog extends JFrame {
             aberta.toFront();
             return;
         }
-        aberta = new JanelaLog(cliente);
+        aberta = new TelaLog(cliente);
         aberta.setLocationRelativeTo(SwingUtilities.getWindowAncestor(origem));
         aberta.setVisible(true);
     }

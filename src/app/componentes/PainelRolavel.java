@@ -1,4 +1,4 @@
-package app;
+package app.componentes;
 
 import javax.swing.JPanel;
 import javax.swing.Scrollable;

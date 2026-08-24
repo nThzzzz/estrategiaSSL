@@ -1,9 +1,14 @@
-package app;
+package app.telas;
+
+import app.Cliente;
+import app.componentes.BarraSuperior;
+import app.componentes.PainelRede;
+import app.componentes.PainelRobos;
 
 import core.Vec2;
 import model.Cor;
 import mundo.EstadoRobo;
-import view.Campo;
+import app.componentes.Campo;
 import view.Paleta;
 
 import javax.swing.JComponent;
@@ -49,7 +54,7 @@ import java.awt.event.MouseWheelEvent;
  * A estrategia fica assim atrelada a VISAO e nao a tela: reduzir o FPS da janela
  * nao pode deixar o time mais burro.
  */
-public final class Janela {
+public final class TelaJogo {
 
     private static final int HZ_TELA = 60;
 
@@ -58,7 +63,7 @@ public final class Janela {
     private final PainelRobos painelRobos;
     private final PainelRede painelRede;
 
-    private Janela(Cliente cliente) {
+    private TelaJogo(Cliente cliente) {
         this.cliente = cliente;
         this.campo = new Campo(cliente::quadro);
         // Qual metade defendemos vem do arbitro e a folga e escolha nossa: nenhum
@@ -67,11 +72,11 @@ public final class Janela {
         this.campo.setContextoDeDefesa(cliente::estadoDeJogo, cliente::getMargemDaArea);
         this.campo.setNossaCor(cliente::getEquipe);
         this.painelRobos = new PainelRobos(cliente, this::selecionar);
-        this.painelRede = new PainelRede(cliente, campo);
+        this.painelRede = new PainelRede(cliente, campo, () -> TelaLog.abrir(campo, cliente));
     }
 
     public static JFrame abrir(String titulo, Cliente cliente) {
-        return new Janela(cliente).montar(titulo);
+        return new TelaJogo(cliente).montar(titulo);
     }
 
     /**
@@ -82,7 +87,7 @@ public final class Janela {
      * conferencia, sem depender de alguem olhando a tela.
      */
     public static JComponent conteudo(Cliente cliente) {
-        return new Janela(cliente).montarConteudo();
+        return new TelaJogo(cliente).montarConteudo();
     }
 
     private JComponent montarConteudo() {

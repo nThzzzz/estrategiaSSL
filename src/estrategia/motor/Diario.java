@@ -1,5 +1,6 @@
-package estrategia;
+package estrategia.motor;
 
+import estrategia.Jogador;
 import estrategia.esqueleto.Coach;
 import estrategia.esqueleto.Play;
 import estrategia.esqueleto.Role;

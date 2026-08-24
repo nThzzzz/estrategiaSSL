@@ -1,9 +1,10 @@
-package app;
+package app.componentes;
+
+import app.Cliente;
 
 import ajuste.Parametro;
 import model.Cor;
 import rede.ConfigRede;
-import view.Campo;
 import view.Estilo;
 import view.Paleta;
 

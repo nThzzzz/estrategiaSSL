@@ -1,6 +1,6 @@
 import ajuste.Parametro;
 import app.Cliente;
-import app.Janela;
+import app.telas.TelaJogo;
 import model.Cor;
 import rede.ConfigRede;
 import view.Estilo;
@@ -62,7 +62,7 @@ public final class Main {
 
         SwingUtilities.invokeLater(() -> {
             Estilo.instalar();
-            Janela.abrir("Estrategia SSL", cliente);
+            TelaJogo.abrir("Estrategia SSL", cliente);
         });
     }
 

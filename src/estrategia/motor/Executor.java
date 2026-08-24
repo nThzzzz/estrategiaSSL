@@ -1,5 +1,8 @@
-package estrategia;
+package estrategia.motor;
 
+
+import estrategia.Ambiente;
+import estrategia.Jogador;
 import estrategia.esqueleto.Coach;
 import core.Caixa;
 import core.Vec2;
