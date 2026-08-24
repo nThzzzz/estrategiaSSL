@@ -147,6 +147,27 @@ public final class Cliente implements AutoCloseable {
     public long pacotesRecebidos()  { return receptor == null ? 0 : receptor.getPacotesRecebidos(); }
     public long pacotesGeometria()  { return receptor == null ? 0 : receptor.getPacotesGeometria(); }
     public long pacotesEnviados()   { return emissor == null ? 0 : emissor.getPacotesEnviados(); }
+
+    /**
+     * Avisa quando a visao vem de uma maquina e os comandos vao para outra.
+     *
+     * <p>E o engano que mais custa tempo ao ligar duas maquinas: a visao comeca a
+     * chegar, a tela enche de robo, tudo parece certo -- e os comandos continuam
+     * indo para 127.0.0.1, onde nao ha simulador nenhum. Os dois caminhos sao
+     * independentes, e acertar um nao acerta o outro.
+     *
+     * @return o IP de onde a visao vem, quando ele NAO bate com o destino dos
+     *         comandos; {@code null} quando esta tudo coerente
+     */
+    public String origemDaVisaoDiferente() {
+        var r = receptor;
+        if (r == null) return null;
+        var origem = r.getOrigem();
+        if (origem == null || origem.isLoopbackAddress()) return null;
+        return origem.getHostAddress().equals(config.hostComandos())
+                ? null
+                : origem.getHostAddress();
+    }
     public double taxaHz()          { return receptor == null ? 0 : receptor.taxaHz(); }
     public long pacotesArbitro()    { return arbitro.getPacotesRecebidos(); }
     public boolean recebendoArbitro() { return arbitro.silencio() < 5.0; }

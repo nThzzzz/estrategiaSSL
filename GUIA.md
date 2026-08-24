@@ -335,6 +335,30 @@ Prefira a que mostra um IP ao lado do nome.
 
 ### Chega visão, mas os robôs não andam
 
+> **Os dois caminhos são independentes.** A visão vai do simulador para cá; os comandos vão daqui
+> para o simulador. Acertar um **não** acerta o outro, e é o engano que mais custa tempo ao ligar
+> duas máquinas: a tela enche de robô, tudo parece certo, e os comandos continuam indo para
+> `127.0.0.1`, onde não há simulador nenhum.
+>
+> Quando isso acontece, o painel avisa em amarelo: *"a visão vem de 192.168.x — os comandos vão
+> para outro lugar"*. Ponha esse IP em **Host do simulador**.
+
+Se o aviso **não** aparece e mesmo assim nada anda, compare dois números:
+
+| onde | o que olhar |
+|---|---|
+| aqui, painel Rede | `comandos … N pacotes` — quantos **saíram** |
+| no simulador, painel Rede | `N comandos - N de robo` — quantos **chegaram** |
+
+- **Sai 0**: o problema é daqui. Veja a lista abaixo.
+- **Sai N, chega 0**: os pacotes estão se perdendo na rede. No Windows é quase sempre o
+  firewall: ele libera **saída** e bloqueia **entrada** por padrão, e é exatamente por isso que a
+  visão funciona (o PC envia) e os comandos não (o PC precisa receber). Procure em *Firewall do
+  Windows → Permitir um aplicativo* por `java` ou `OpenJDK Platform binary`, e libere em redes
+  privadas.
+- **Sai N, chega N**: chegou. O problema é outro — siga para os itens abaixo.
+
+
 1. **A caixa "comandar os robos" está marcada?** Desligada, nenhum comando sai.
 2. **O árbitro está em `HALT`?** Em HALT nada se move, por regra. Sem Game Controller no ar, use
    os botões do painel da esquerda para simular um `START`.

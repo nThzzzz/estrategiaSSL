@@ -135,8 +135,16 @@ public final class PainelRede extends PainelRolavel {
                     : String.format("parado ha %.0f s", cliente.silencio()));
         }
 
-        envio.setText(cliente.destinoDeComandos() + "  ·  "
-                + cliente.pacotesEnviados() + " pacotes");
+        // Os dois caminhos sao independentes, e acertar a visao nao acerta os
+        // comandos: e o engano que mais custa tempo ao ligar duas maquinas.
+        String outraOrigem = cliente.origemDaVisaoDiferente();
+        envio.setForeground(outraOrigem == null ? Paleta.APAGADO : Paleta.ALERTA);
+        envio.setText(outraOrigem == null
+                ? cliente.destinoDeComandos() + "  ·  " + cliente.pacotesEnviados() + " pacotes"
+                : "<html>" + cliente.destinoDeComandos() + "  ·  "
+                        + cliente.pacotesEnviados() + " pacotes<br>"
+                        + "a visao vem de " + outraOrigem + " -- os comandos vao para outro lugar"
+                        + "</html>");
 
         if (caixaEstrategia.isSelected() != cliente.isEstrategiaLigada()) {
             caixaEstrategia.setSelected(cliente.isEstrategiaLigada());

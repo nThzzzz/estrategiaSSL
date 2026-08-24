@@ -41,6 +41,16 @@ public final class ReceptorDeVisao implements AutoCloseable {
     private volatile long duplicadosDescartados;
 
     /**
+     * IP de onde o ultimo pacote de visao veio.
+     *
+     * <p>Guardado porque ele responde sozinho uma pergunta que so se resolvia por
+     * tentativa: para onde mandar os comandos. Se a visao vem de outra maquina e
+     * os comandos estao indo para 127.0.0.1, isso e quase certamente engano -- e
+     * da para dizer isso na tela em vez de deixar a pessoa descobrindo.
+     */
+    private volatile java.net.InetAddress origem;
+
+    /**
      * Ultimo {@code frame_number} visto de cada camera.
      *
      * <p>Existe porque a mesma visao pode chegar por mais de um caminho: o
@@ -95,6 +105,9 @@ public final class ReceptorDeVisao implements AutoCloseable {
      * juntos. Vale saber, porque e desperdicio de rede que da para desligar.
      */
     public long getDuplicadosDescartados() { return duplicadosDescartados; }
+
+    /** De onde a visao esta vindo, ou {@code null} se nada chegou ainda. */
+    public java.net.InetAddress getOrigem() { return origem; }
     public long getPacotesGeometria() { return pacotesGeometria; }
 
     /** Segundos desde o ultimo pacote, ou infinito se nunca chegou nenhum. */
@@ -131,6 +144,7 @@ public final class ReceptorDeVisao implements AutoCloseable {
                 SSL_WrapperPacket w = SSL_WrapperPacket.parseFrom(
                         Arrays.copyOf(p.getData(), p.getLength()));
                 pacotesRecebidos++;
+                origem = p.getAddress();
                 ultimoPacoteNano = System.nanoTime();
 
                 // Geometria e deteccao vem em pacotes separados e em ritmos
