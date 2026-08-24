@@ -146,6 +146,8 @@ public final class Cliente implements AutoCloseable {
     public double silencio()        { return receptor == null ? Double.POSITIVE_INFINITY : receptor.silencio(); }
     public long pacotesRecebidos()  { return receptor == null ? 0 : receptor.getPacotesRecebidos(); }
     public long pacotesGeometria()  { return receptor == null ? 0 : receptor.getPacotesGeometria(); }
+    public long quadrosPerdidos()   { return receptor == null ? 0 : receptor.getQuadrosPerdidos(); }
+    public long duplicadosDaVisao() { return receptor == null ? 0 : receptor.getDuplicadosDescartados(); }
     public long pacotesEnviados()   { return emissor == null ? 0 : emissor.getPacotesEnviados(); }
 
     /**

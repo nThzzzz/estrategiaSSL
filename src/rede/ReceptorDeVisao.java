@@ -51,6 +51,17 @@ public final class ReceptorDeVisao implements AutoCloseable {
     private volatile java.net.InetAddress origem;
 
     /**
+     * Quadros que a visao numerou e nunca chegaram.
+     *
+     * <p>"Parece que esta perdendo pacote" e uma impressao dificil de confirmar
+     * no olho, porque movimento truncado tambem vem de tela lenta, de rede
+     * congestionada e de simulador engasgado -- tres consertos diferentes. O
+     * {@code frame_number} responde sem ambiguidade: se pulou de 100 para 103,
+     * dois se perderam NO CAMINHO, e o problema esta na rede e nao na tela.
+     */
+    private volatile long quadrosPerdidos;
+
+    /**
      * Ultimo {@code frame_number} visto de cada camera.
      *
      * <p>Existe porque a mesma visao pode chegar por mais de um caminho: o
@@ -105,6 +116,14 @@ public final class ReceptorDeVisao implements AutoCloseable {
      * juntos. Vale saber, porque e desperdicio de rede que da para desligar.
      */
     public long getDuplicadosDescartados() { return duplicadosDescartados; }
+
+    /**
+     * Quantos quadros a visao numerou e nunca chegaram.
+     *
+     * <p>Zero com movimento truncado quer dizer que a rede esta entregando tudo e
+     * o engasgo esta em outro lugar -- tela, ou o proprio simulador.
+     */
+    public long getQuadrosPerdidos() { return quadrosPerdidos; }
 
     /** De onde a visao esta vindo, ou {@code null} se nada chegou ainda. */
     public java.net.InetAddress getOrigem() { return origem; }
@@ -161,6 +180,13 @@ public final class ReceptorDeVisao implements AutoCloseable {
                     if (visto != null && visto == d.getFrameNumber()) {
                         duplicadosDescartados++;
                         continue;   // o mesmo quadro por outro caminho
+                    }
+                    // Buraco na numeracao = pacote que nao chegou. So conta salto
+                    // para a FRENTE e pequeno: reinicio do simulador manda o
+                    // numero de volta a zero, e isso nao e perda.
+                    if (visto != null) {
+                        long salto = (long) d.getFrameNumber() - visto;
+                        if (salto > 1 && salto < 1000) quadrosPerdidos += salto - 1;
                     }
                     ultimo.set(rastreador.incorporar(d));
                     contarNaJanela(ultimoPacoteNano);

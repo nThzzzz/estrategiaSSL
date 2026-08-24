@@ -127,7 +127,13 @@ public final class PainelRede extends PainelRolavel {
         } else if (cliente.recebendo()) {
             taxa.setForeground(Paleta.OK);
             taxa.setText(String.format("%.0f Hz  ·  %d pacotes",
-                    cliente.taxaHz(), cliente.pacotesRecebidos()));
+                    cliente.taxaHz(), cliente.pacotesRecebidos())
+                    // So aparecem quando existem: numero que fica sempre em zero
+                    // vira decoracao e para de ser lido.
+                    + (cliente.quadrosPerdidos() > 0
+                            ? "  ·  " + cliente.quadrosPerdidos() + " perdidos" : "")
+                    + (cliente.duplicadosDaVisao() > 0
+                            ? "  ·  " + cliente.duplicadosDaVisao() + " repetidos" : ""));
         } else {
             taxa.setForeground(Paleta.ALERTA);
             taxa.setText(cliente.pacotesRecebidos() == 0

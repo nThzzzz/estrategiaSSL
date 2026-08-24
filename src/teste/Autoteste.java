@@ -129,6 +129,7 @@ public final class Autoteste {
         geometriaVemDaRede();
         comandoSaiEmMetrosPorSegundo();
         quadroRepetidoContaUmaVez();
+        perdaDeQuadroEContadaEReinicioNao();
         arquiteturaRespeitaODeclarado();
         ladoNaoInverteSemODeclarado();
         padroesDeLadoNaoSeContradizem();
@@ -258,6 +259,41 @@ public final class Autoteste {
                     rec.getPacotesRecebidos() == 4);
             verdadeiro("visao: e exatamente um -- o repetido -- foi descartado",
                     rec.getDuplicadosDescartados() == 1);
+        }
+    }
+
+    /**
+     * Buraco na numeracao vira contagem de perda; reinicio nao.
+     *
+     * <p>"Parece que esta perdendo pacote" e impressao dificil de confirmar no
+     * olho: movimento truncado tambem vem de tela lenta e de simulador engasgado,
+     * e sao tres consertos diferentes. O {@code frame_number} responde sem
+     * ambiguidade.
+     *
+     * <p>O reinicio do simulador manda o numero de volta a zero, e contar isso
+     * como perda daria um numero gigante justo quando nada de errado aconteceu --
+     * pior que nao contar nada, porque manda procurar defeito onde nao ha.
+     */
+    private static void perdaDeQuadroEContadaEReinicioNao() throws Exception {
+        final int porta = 12206;
+        ConfigRede c = ConfigRede.padrao().comPortaVisao(porta);
+
+        try (ReceptorDeVisao rec = new ReceptorDeVisao(c, new Rastreador());
+             DatagramSocket tx = new DatagramSocket()) {
+
+            InetAddress destino = InetAddress.getByName("127.0.0.1");
+            // 10, 11 seguidos; salta para 15 (perde 12, 13, 14); depois reinicia em 0.
+            for (int frame : new int[] {10, 11, 15, 0}) {
+                byte[] p = quadroDeVisao(frame, 0);
+                tx.send(new DatagramPacket(p, p.length, destino, porta));
+                Thread.sleep(40);
+            }
+            Thread.sleep(200);
+
+            verdadeiro("visao: o salto de 11 para 15 conta 3 quadros perdidos",
+                    rec.getQuadrosPerdidos() == 3);
+            verdadeiro("visao: e o reinicio da numeracao nao conta como perda",
+                    rec.getPacotesRecebidos() == 4);
         }
     }
 
