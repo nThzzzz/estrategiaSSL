@@ -132,6 +132,11 @@ nosso, com a velocidade que o Kalman estimou e o estado do sensor de bola.
 Marque **comandar os robos** no painel da esquerda. Enquanto isso está desligado nenhum comando
 sai, que é o padrão seguro.
 
+A caixa fica **cinza enquanto não há árbitro nenhum** — nem Game Controller no ar, nem o de
+bancada. Nesse estado tudo está em `HALT` por regra e marcar não faria efeito; o painel diz isso
+em vez de deixar você clicando à toa. Com o Game Controller conectado ela continua liberada
+mesmo durante o `HALT`, porque numa partida se liga a estratégia **antes** do `START`.
+
 Não vai acontecer muita coisa ainda: o que existe hoje é o esqueleto e algumas jogadas de teste.
 Fazer os robôs jogarem é justamente o que você vai escrever.
 

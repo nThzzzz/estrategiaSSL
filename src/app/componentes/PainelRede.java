@@ -250,7 +250,22 @@ public final class PainelRede extends PainelRolavel {
         if (caixaEstrategia.isSelected() != cliente.isEstrategiaLigada()) {
             caixaEstrategia.setSelected(cliente.isEstrategiaLigada());
         }
-        if (!cliente.isEstrategiaLigada()) {
+
+        // Sem arbitro nenhum -- nem Game Controller no ar, nem o de bancada -- o
+        // estado e HALT e nada sai, entao marcar a caixa nao faz efeito nenhum.
+        // Deixa-la clicavel ali era so confusao: a pessoa marca, nada acontece, e
+        // nao ha nada na tela ligando uma coisa a outra.
+        //
+        // COM o Game Controller conectado ela continua liberada mesmo em HALT: na
+        // partida se liga a estrategia antes do START, e bloquear aqui deixaria o
+        // time parado no momento em que ele tem de sair.
+        boolean semArbitro = cliente.estadoDeJogo().semArbitro();
+        caixaEstrategia.setEnabled(!semArbitro);
+
+        if (semArbitro) {
+            estadoEstrategia.setForeground(Paleta.ALERTA);
+            estadoEstrategia.setText("<html>sem arbitro: tudo em HALT,<br>nenhum comando sai</html>");
+        } else if (!cliente.isEstrategiaLigada()) {
             estadoEstrategia.setForeground(Paleta.APAGADO);
             estadoEstrategia.setText("desligada");
         } else {
