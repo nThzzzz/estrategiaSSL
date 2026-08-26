@@ -552,9 +552,20 @@ chão. Vermelho para a proibição e verde para a permissão, o mesmo verde do s
 proibições onde há uma proibição e uma permissão seria pior que legenda nenhuma.
 
 A conta do desenho e a do corte saem da mesma `Geometria.zonaProibida`, porque ver na tela uma
-borda diferente da que está sendo obedecida seria pior que não ver borda nenhuma. Aparecem só do
-**nosso** lado: a área deles também é proibida pela regra, mas a estratégia ainda não a trata, e
-desenhar uma restrição que não está em vigor prometeria o que o código não cumpre.
+borda diferente da que está sendo obedecida seria pior que não ver borda nenhuma.
+
+### A área deles também é proibida, por outra regra
+
+Entrar na área do adversário é **falta de ataque**, e ali a exceção do goleiro não vale: na
+nossa área o goleiro declarado entra, e é para isso que ele existe; na deles não entra ninguém,
+goleiro inclusive, que não tem nada que fazer lá.
+
+Por muito tempo isso ficou de fora, e o desenho dizia a verdade sobre essa falta: só a nossa
+zona aparecia, porque desenhar uma restrição que o código não cumpre promete o que não se
+entrega. Agora o `Executor` corta nas duas, e as duas aparecem.
+
+Do lado deles vai **só o retângulo vermelho**. A zona verde diz "aqui o goleiro pode", e lá ele
+não pode — desenhá-la seria dizer o contrário da regra que acabou de entrar em vigor.
 
 ### O lado nunca se deduz de um campo ausente
 

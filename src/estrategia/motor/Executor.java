@@ -66,6 +66,10 @@ public final class Executor {
         Map<Integer, Comando> saida = new LinkedHashMap<>();
         for (Jogador j : disponiveis) {
             Comando podado = cAplicarLimites(j.comando(), _ambiente.jogo());
+
+            // A area DELES nao tem excecao: entrar nela e falta de ataque, e nem
+            // o nosso goleiro pode. Na nossa, o goleiro declarado entra.
+            podado = cManterForaDaArea(podado, j.estado(), _ambiente.areaProibidaDeles());
             if (!_ambiente.podeEntrarNaArea(j.id())) {
                 podado = cManterForaDaArea(podado, j.estado(), _ambiente.nossaAreaProibida());
             }

@@ -90,6 +90,22 @@ public record Ambiente(Quadro quadro, EstadoDeJogo jogo, Cor nossaCor, double ma
     }
 
     /**
+     * A area de defesa DELES, ja com a folga de seguranca.
+     *
+     * <p>Tambem e proibida, e por uma regra diferente da nossa: entrar na area do
+     * adversario e falta de ataque, e ali a excecao do goleiro NAO vale -- nem o
+     * nosso goleiro pode. Na nossa, o goleiro declarado entra; na deles, ninguem.
+     *
+     * <p>Mesma forma da nossa, espelhada. Vai ate a parede pelo mesmo motivo: o
+     * corredor atras do gol nao tem jogada nenhuma, e um robo que entra la so
+     * pode voltar atravessando a area.
+     */
+    public Caixa areaProibidaDeles() {
+        return geometria().zonaProibida(-jogo.nossoLado(), margemDaArea,
+                Parametro.ZONA_PROFUNDIDADE.valor(), Parametro.ZONA_LARGURA.valor());
+    }
+
+    /**
      * Onde o goleiro pode ficar: a area de defesa mais um raio de robo.
      *
      * <p>Maior que a zona proibida de proposito, e e essa diferenca que faz um

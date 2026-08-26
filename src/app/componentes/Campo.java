@@ -421,9 +421,14 @@ public final class Campo extends JPanel {
      * uma borda diferente da que esta sendo obedecida seria pior que nao ver
      * borda nenhuma.
      *
-     * <p>Aparece so do NOSSO lado. A area deles tambem e proibida pela regra, mas
-     * a estrategia ainda nao a trata, e desenhar uma restricao que nao esta em
-     * vigor prometeria o que o codigo nao cumpre.
+     * <p>Aparecem as DUAS, porque as duas estao em vigor. Antes so a nossa era
+     * desenhada, e com razao: a estrategia ainda nao tratava a deles, e desenhar
+     * restricao que o codigo nao cumpre promete o que nao se entrega. Agora o
+     * {@link estrategia.motor.Executor Executor} corta nas duas.
+     *
+     * <p>Do lado deles vai so o retangulo vermelho. A zona verde diz "aqui o
+     * GOLEIRO pode", e la ele nao pode -- desenha-la seria dizer o contrario da
+     * regra que acabou de entrar em vigor.
      */
     private void desenharAreaProibida(Graphics2D g, Geometria geo) {
         if (!mostrarAreaProibida || fonteDeJogo == null || margemDaArea == null) return;
@@ -447,6 +452,15 @@ public final class Campo extends JPanel {
         g.setColor(Paleta.ZONA_DO_GOLEIRO);
         g.setStroke(TRACO_DO_GOLEIRO);
         g.draw(retangulo(goleiro));
+
+        // A area deles: mesma proibicao, sem zona de goleiro.
+        Caixa proibidaDeles = geo.zonaProibida(-lado, margemDaArea.getAsDouble(),
+                Parametro.ZONA_PROFUNDIDADE.valor(), Parametro.ZONA_LARGURA.valor());
+        g.setColor(Paleta.ZONA_PROIBIDA_FRACA);
+        g.fill(retangulo(proibidaDeles));
+        g.setColor(Paleta.ZONA_PROIBIDA);
+        g.setStroke(TRACO_DA_ZONA);
+        g.draw(retangulo(proibidaDeles));
     }
 
     /**

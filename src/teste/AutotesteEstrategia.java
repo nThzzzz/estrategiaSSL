@@ -71,6 +71,7 @@ public final class AutotesteEstrategia {
         arbitroPodaOComando();
         areaDeDefesaSoAceitaOGoleiro();
         areaProibidaAcompanhaOLadoDeclarado();
+        areaDelesNaoAbreExcecaoParaOGoleiro();
         roboDentroSaiSozinhoMesmoSemComando();
         freiaAteALinhaENaoAntes();
         areaDeDefesaFreiaEmVezDeCortarSeco();
@@ -346,12 +347,32 @@ public final class AutotesteEstrategia {
             verdadeiro("area: defendendo " + nome + ", entrar na nossa area e cortado",
                     Math.abs(nossa.velTangencial()) < Robo.VEL_MAX - 1);
 
-            // A mesma manobra na area DELES: nao ha o que cortar.
+            // A mesma manobra na area DELES tambem e cortada: entrar nela e
+            // falta de ataque. Era o buraco que o README registrava.
             Comando deles = umRoboAndando(new Vec2(-lado * 3000, 0),
                     -lado * Robo.VEL_MAX, 0, 5, positivo).get(0);
-            aproximado("area: defendendo " + nome + ", a area deles nao restringe",
-                    Math.abs(deles.velTangencial()), Robo.VEL_MAX, 1e-6);
+            verdadeiro("area: defendendo " + nome + ", entrar na area DELES tambem e cortado",
+                    Math.abs(deles.velTangencial()) < Robo.VEL_MAX - 1);
         }
+    }
+
+    /**
+     * Na area deles nem o goleiro entra.
+     *
+     * <p>As duas areas sao proibidas por regras DIFERENTES, e a diferenca esta
+     * na excecao: na nossa, o goleiro declarado pode entrar, e e para isso que
+     * ele existe; na deles, entrar e falta de ataque e ninguem pode -- goleiro
+     * inclusive, que nao tem nada que fazer la.
+     */
+    private static void areaDelesNaoAbreExcecaoParaOGoleiro() {
+        // Goleiro 0, defendendo +x: a area DELES fica em -x.
+        Comando naNossa = umRoboAndando(new Vec2(3000, 0), Robo.VEL_MAX, 0, 0).get(0);
+        aproximado("area: na nossa, o goleiro entra sem corte",
+                naNossa.velTangencial(), Robo.VEL_MAX, 1e-6);
+
+        Comando naDeles = umRoboAndando(new Vec2(-3000, 0), -Robo.VEL_MAX, 0, 0).get(0);
+        verdadeiro("area: mas na deles nem o goleiro passa",
+                Math.abs(naDeles.velTangencial()) < Robo.VEL_MAX - 1);
     }
 
     /**
