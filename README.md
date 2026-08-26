@@ -26,7 +26,7 @@ java -cp "out/production/estrategiaSSL:lib/*" teste.AutotesteEstrategia  # ciclo
 ```
 
 As dependências são três, todas versionadas em `lib/` junto com o Java gerado dos `.proto`
-(em `src/proto/`), exatamente como no simulador — um clone limpo compila offline:
+(em `src/proto/`), exatamente como no simulador, então um clone limpo compila offline:
 `protobuf-java`, e o `flatlaf` mais sua fonte JetBrains Mono, que são o que faz a janela ter a
 mesma cara em qualquer sistema (veja [Aparência](#aparência)). As três são jar único, sem
 dependência transitiva.
@@ -69,7 +69,7 @@ package jogo;
 ```
 
 Isso não é enfeite. O `teste.Autoteste` lê essas linhas e o código, e falha quando os dois
-divergem — antes a arquitetura vivia só nesta seção, e prosa não segura nada: o grafo real
+divergem. Antes a arquitetura vivia só nesta seção, e prosa não segura nada: o grafo real
 tinha **dois ciclos** que ninguém via e o `view` dependia de três pacotes que a prosa não
 citava.
 
@@ -121,18 +121,18 @@ vocabulário e o grafo vira um DAG de verdade.
 
 Isso teve um custo, e vale saber qual: `Jogador.vAtualizar` era package-private, e ali o
 compilador garantia que nenhuma play conseguia forjar onde um robô está. Java não estende acesso
-de pacote a subpacote, então ou o motor mora junto do estado que ele muta — e o ciclo volta — ou
+de pacote a subpacote, então ou o motor mora junto do estado que ele muta, e o ciclo volta, ou
 a garantia deixa de ser do compilador. Ela virou Javadoc.
 
 ### Telas e componentes
 
 `telas/` são janelas inteiras que montam um layout; `componentes/` são os pedaços que elas
 montam. A dependência é **numa direção só**: quando um componente precisa abrir uma tela, ele
-recebe um `Runnable` de fora e não decide qual — `PainelRede` chamava `TelaLog.abrir` direto, e
+recebe um `Runnable` de fora e não decide qual. `PainelRede` chamava `TelaLog.abrir` direto, e
 isso fechava um segundo ciclo `telas ↔ componentes`.
 
 Os nomes seguem a mesma regra das skills e táticas: o tipo vai no nome. `PainelRede`,
-`DialogoConfiguracao`, `BarraSuperior` — numa pilha de exceção dá para saber que a segunda é uma
+`DialogoConfiguracao`, `BarraSuperior`. Numa pilha de exceção dá para saber que a segunda é uma
 janela modal e a primeira não, o que um prefixo `Componente*` uniforme apagaria.
 
 Duas entradas e uma saída:
@@ -152,11 +152,11 @@ a janela continua útil com só um deles.
 Multicast frequentemente **não atravessa** de uma máquina para outra: a ponte do roteador entre
 Wi-Fi e cabo muitas vezes não repassa, e rede de faculdade costuma bloquear por política. Por
 isso o simulador pode mandar a visão **também por unicast**, e aqui não foi preciso mudar nada
-para receber — um socket preso à porta do grupo recebe unicast nela do mesmo jeito, o que é
-verificado por teste com sockets de verdade e sem ninguém entrar no grupo.
+para receber, porque um socket preso à porta do grupo recebe unicast nela do mesmo jeito, o que
+é verificado por teste com sockets de verdade e sem ninguém entrar no grupo.
 
 O que falta para fechar o ciclo é saber **qual IP digitar lá**, e isso a aba *Rede* agora
-mostra: os IPs desta máquina, com o nome da interface ao lado. É informação, não ajuste — por
+mostra: os IPs desta máquina, com o nome da interface ao lado. É informação, não ajuste, e por
 isso fica em cinza junto dos campos, e não vira mais um controle para configurar errado.
 
 E o caminho de volta é independente: `Host do simulador` precisa apontar para o IP dele, senão a
@@ -232,8 +232,8 @@ um botão para cada comando. Ele monta uma mensagem `Referee` de verdade e a ent
 caminho de tradução que a rede usa, em vez de injetar o estado já pronto: se um comando estiver
 mapeado errado, erra ali igual erraria em jogo.
 
-Trocar de fonte descarta o que a fonte anterior tinha dito, e isso é o certo — o último comando
-do Game Controller não vale mais depois de passar para o árbitro local. Mas só numa troca de
+Trocar de fonte descarta o que a fonte anterior tinha dito, e isso é o certo, porque o último
+comando do Game Controller não vale mais depois de passar para o árbitro local. Mas só numa troca de
 verdade: reafirmar o modo que já está valendo apagava o comando corrente, e quem reencostava
 nisso era a própria interface, ao alinhar o seletor com o estado real. O painel exibia "nenhum
 comando ainda" logo depois de um STOP que ele mesmo tinha mandado.
@@ -318,12 +318,12 @@ nenhum.
 
 Uma play declara os papéis da jogada **ideal**, e quase nunca há robô para todos: cartão, quebra,
 robô fora do alcance da visão. Sem uma classificação, quem ficasse de fora seria decidido pela
-ordem em que alguém escreveu `bAddRole` — o mesmo que decidir por acaso. Toda Role entra numa de
+ordem em que alguém escreveu `bAddRole`, o mesmo que decidir por acaso. Toda Role entra numa de
 quatro categorias:
 
 | categoria | pode faltar? | exemplo |
 |---|---|---|
-| `MAXIMA` | **não** — sem ele a jogada não existe | goleiro numa defesa, batedor num pênalti |
+| `MAXIMA` | **não**, sem ele a jogada não existe | goleiro numa defesa, batedor num pênalti |
 | `MEDIA` | sim, com perda de qualidade | o corpo da jogada |
 | `BAIXA` | sim | apoio |
 | `OPCIONAL` | sim, sem a jogada sentir | cobertura, apoio distante |
@@ -332,13 +332,13 @@ A categoria responde "este papel pode faltar?". É isso que permite escrever uma
 seis robôs e ela rodar com **cinco**: com um robô a menos, quem fica sem função é o último
 `OPCIONAL`, e não o goleiro.
 
-Dentro da mesma categoria vale a **ordem de declaração**, porque a ordenação é estável — papéis
+Dentro da mesma categoria vale a **ordem de declaração**, porque a ordenação é estável: papéis
 igualmente dispensáveis saem na ordem em que a play os escreveu, que é onde essa decisão fica
 visível para quem lê a jogada.
 
 A prioridade mora na **play**, e não na Role: quem a declara é o `bAddRole(role, prioridade)`.
-O mesmo papel vale coisas diferentes em jogadas diferentes — um marcador é `MAXIMA` numa defesa e
-`OPCIONAL` num ataque com o campo livre. Guardá-la dentro da Role obrigaria a escrever duas
+O mesmo papel vale coisas diferentes em jogadas diferentes, já que um marcador é `MAXIMA` numa
+defesa e `OPCIONAL` num ataque com o campo livre. Guardá-la dentro da Role obrigaria a escrever duas
 classes idênticas só para dizer isso, ou a mexer no papel de uma jogada e quebrar outra sem
 perceber. A Role declara o que faz e o `dCusto()` de cada candidato; o quanto ela importa é
 decisão de quem monta a jogada.
@@ -350,28 +350,28 @@ virar enfeite.
 Três consequências, e as três são o que faz o mecanismo funcionar de verdade:
 
 * **Papel sem robô é situação normal, não erro.** Fica com `player()` nulo, não roda, e **não
-  conta para o fim da play** — exigi-lo faria uma play de seis papéis rodando com cinco robôs
-  ficar pendurada até o tempo limite, que é exatamente o caso que as categorias existem para
-  permitir.
+  conta para o fim da play**, porque exigi-lo faria uma play de seis papéis rodando com cinco
+  robôs ficar pendurada até o tempo limite, que é exatamente o caso que as categorias existem
+  para permitir.
 * **Papel que perde o robô fica explicitamente vazio.** Guardar o robô do quadro anterior faria o
   mesmo robô aparecer em dois papéis ao mesmo tempo, cada um escrevendo um comando por cima do
   outro.
 * **`MAXIMA` é levado a sério nas duas pontas.** Uma play cujos `MAXIMA` não cabem nos robôs
-  disponíveis não entra no sorteio do coach — começar e abortar no primeiro tique gastaria um
-  episódio de aprendizado com um resultado que não diz nada sobre a jogada — e perder um `MAXIMA`
-  no meio da jogada aborta a play, porque continuar seria rodar uma defesa sem goleiro.
+  disponíveis não entra no sorteio do coach, porque começar e abortar no primeiro tique gastaria
+  um episódio de aprendizado com um resultado que não diz nada sobre a jogada. E perder um
+  `MAXIMA` no meio da jogada aborta a play, porque continuar seria rodar uma defesa sem goleiro.
 
 ### Os ids são globais
 
 Cada camada guarda as de baixo num mapa indexado por `int`: a Role tem um mapa de táticas, a
-Tactic um de skills, o Coach um de plays. Esses números eram **locais** — cada arquivo declarava
-o seu `private static final int TATICA_BUSCAR = 1`. Funcionava com um papel só e quebrava do jeito
+Tactic um de skills, o Coach um de plays. Esses números eram **locais**, e cada arquivo
+declarava o seu `private static final int TATICA_BUSCAR = 1`. Funcionava com um papel só e quebrava do jeito
 mais chato assim que aparecia o segundo: o mesmo `TacticBuscarBola` era 1 num papel e 2 em outro, e nada
 impedia dois papéis de discordarem. O número acabava sendo propriedade de **quem registrou**, e
 não da coisa registrada.
 
-Agora há um enum público por família — `Jogada`, `Papel`, `Tatica`, `Habilidade` — e o número é
-propriedade da coisa. `TacticBuscarBola` é `Tatica.BUSCAR_BOLA` em qualquer papel, para sempre, e um
+Agora há um enum público por família, que são `Jogada`, `Papel`, `Tatica` e `Habilidade`, e o
+número é propriedade da coisa. `TacticBuscarBola` é `Tatica.BUSCAR_BOLA` em qualquer papel, para sempre, e um
 papel novo não inventa numeração: escolhe da lista.
 
 ```java
@@ -388,24 +388,24 @@ Uma ressalva sobre `Papel`: `bAddRole` indexa pelo id do papel, então dois pap�
 número na mesma play fariam o segundo ser recusado em silêncio. Uma jogada com **dois zagueiros**
 precisa de duas entradas no enum (`ZAGUEIRO_ESQUERDO`, `ZAGUEIRO_DIREITO`), e não da mesma usada
 duas vezes. Não confunda o id com a `Prioridade`: o id diz *qual* papel é, a prioridade diz o
-quanto ele importa naquela jogada — e é por isso que um mora no enum global e a outra na play.
+quanto ele importa naquela jogada, e é por isso que um mora no enum global e a outra na play.
 
 ### Os números que se ajusta
 
 Tolerâncias, distâncias e tetos de velocidade estavam espalhados como `static final` dentro da
 skill, da tática ou da play que os usava. Cada um no seu lugar parecia arrumado, e escondia dois
-problemas. Ajustar exigia **recompilar** — e numa bancada decidir se a tolerância de chegada deve
-ser 40 ou 25 mm é tentar seis valores em dois minutos, não editar, compilar e reabrir a janela
-seis vezes. E ninguém sabia quantos eram nem onde estavam: o que não dá para listar não dá para
+problemas. Ajustar exigia **recompilar**, e numa bancada decidir se a tolerância de chegada
+deve ser 40 ou 25 mm é tentar seis valores em dois minutos, não editar, compilar e reabrir a
+janela seis vezes. E ninguém sabia quantos eram nem onde estavam: o que não dá para listar não dá para
 ajustar com método.
 
 Agora estão todos em `ajuste.Parametro`, e há três formas de mexer, da mais rápida para a mais
 duradoura:
 
-* **A aba *Ajustes*** da Configuração avançada, que é onde os valores se mexem — o código guarda
-  só o padrão de fábrica. Vale no tique seguinte, sem recompilar e sem reiniciar. Cada linha mostra o valor de fábrica ao lado — depois de meia hora mexendo, ninguém
-  lembra de onde partiu, e sem essa referência "restaurar" vira a única saída em vez de um passo
-  atrás.
+* **A aba *Ajustes*** da Configuração avançada, que é onde os valores se mexem, já que o código
+  guarda só o padrão de fábrica. Vale no tique seguinte, sem recompilar e sem reiniciar. Cada
+  linha mostra o valor de fábrica ao lado, porque depois de meia hora mexendo ninguém lembra de
+  onde partiu, e sem essa referência "restaurar" vira a única saída em vez de um passo atrás.
 * **`ajustes.json`**, carregado do diretório atual na abertura, ou por `--ajustes <arquivo>`. É o
   que faz o ajuste sobreviver ao fechar do programa. `--gerar-ajustes` imprime o modelo com os
   valores atuais.
@@ -413,12 +413,12 @@ duradoura:
 
 O arquivo diz o que **muda**; o que ele não cita fica no padrão. Nome desconhecido é **erro**, e
 não aviso: um parâmetro digitado errado que passa em silêncio faz procurar o problema no
-comportamento do robô, que é o lugar errado. A carga nunca é silenciosa — o programa imprime o
-que mudou, porque um valor diferente do de fábrica sem nada dizendo vira caça ao fantasma.
+comportamento do robô, que é o lugar errado. A carga nunca é silenciosa, porque o programa
+imprime o que mudou, e um valor diferente do de fábrica sem nada dizendo vira caça ao fantasma.
 
 O leitor de JSON é escrito à mão, pelo mesmo motivo que o resto compila offline: nada justifica
-uma segunda dependência para ler dezessete números. Aceita só `{"CHAVE": número}` — sem
-aninhamento, sem texto, sem lista. A única concessão é o comentário `//`, que JSON não tem: este
+uma segunda dependência para ler dezessete números. Aceita só `{"CHAVE": número}`, sem
+aninhamento, sem texto e sem lista. A única concessão é o comentário `//`, que JSON não tem: este
 arquivo é editado por gente, e um número sem a unidade ao lado é como se acaba escrevendo grau
 onde se esperava radiano.
 
@@ -431,14 +431,14 @@ O que **não** entra no enum, e por quê:
 | geometria do campo | vem da rede, e chumbar quebra em Divisão A |
 
 **Ângulo vai em graus**, e é a única unidade que foge do mm/rad/s do resto. Não é
-inconsistência: é a mesma regra que já vale para a rede — a conversão acontece na borda, e um
-arquivo de ajuste é uma borda. Quem digita "2" para tolerância de mira está pensando em dois
+inconsistência: é a mesma regra que já vale para a rede, em que a conversão acontece na borda,
+e um arquivo de ajuste é uma borda. Quem digita "2" para tolerância de mira está pensando em dois
 graus, e `0.03490658503988659` num campo de texto não é um número que alguém revise.
 
 ### Geometria: reta, segmento e semirreta não são a mesma pergunta
 
-`core.Geo` responde as perguntas que envolvem **dois** objetos — onde duas retas se cruzam, se um
-segmento passa por dentro de um círculo. Ficam fora de `Vec2` de propósito: `Vec2` é um valor, e
+`core.Geo` responde as perguntas que envolvem **dois** objetos, como onde duas retas se cruzam
+ou se um segmento passa por dentro de um círculo. Ficam fora de `Vec2` de propósito: `Vec2` é um valor, e
 enfiar isso nele faria o tipo mais usado do programa crescer sem parar.
 
 A distinção que mais causa erro silencioso está no nome de cada função:
@@ -449,8 +449,8 @@ A distinção que mais causa erro silencioso está no nome de cada função:
 | **semirreta** | só à frente da origem | trajetória: a bola vai **para lá**, não para trás |
 | **segmento** | só dentro do trecho | um lugar onde dá para estar: a linha do gol, entre os postes |
 
-Perguntar "onde essas duas **retas** se cruzam" sempre devolve um ponto — inclusive quando a bola
-está se afastando ou passa longe do poste. Um goleiro que acredite nessa resposta corre para fora
+Perguntar "onde essas duas **retas** se cruzam" sempre devolve um ponto, inclusive quando a
+bola está se afastando ou passa longe do poste. Um goleiro que acredite nessa resposta corre para fora
 do gol. Por isso `getVec2MiraNoNossoGol()` é **semirreta contra segmento**: só existe resposta
 quando a bola realmente vem, e quando ela entra entre os postes.
 
@@ -471,8 +471,8 @@ robô ao da bola: a linha não precisa passar pelo centro do adversário para o 
 As duas aparecem no campo, e podem ser desligadas em *Exibição*:
 
 * **Linha de mira**, vermelha e contínua, da bola até onde ela cruza a linha do nosso gol. Some
-  sozinha quando a bola muda de rumo. Contínua porque é o que está acontecendo agora — as zonas,
-  que são regra, vão tracejadas.
+  sozinha quando a bola muda de rumo. Contínua porque é o que está acontecendo agora, já que as
+  zonas, que são regra, vão tracejadas.
 * **Linha de chute**, tracejada, de quem está com a bola até o gol que ele ataca: **verde** quando
   ninguém corta, **laranja** quando alguém corta. É a mesma conta que uma play usaria para decidir
   chutar, e vê-la na tela é o que permite discordar dela olhando.
@@ -506,39 +506,39 @@ quica e muda de dono, e prever isso direito é um problema por si.
 ### A área de defesa é do goleiro, e só dele
 
 Entrar na própria área de defesa sendo robô de linha é pênalti, e é a regra que mais custa caro
-por descuido. Por isso ela mora no mesmo lugar que os limites do árbitro — o `Executor`, no fim
-do tique — e não em cada play.
+por descuido. Por isso ela mora no mesmo lugar que os limites do árbitro, o `Executor`, no fim
+do tique, e não em cada play.
 
 São **duas zonas**, e elas dizem coisas opostas:
 
 * A **zona proibida**, em vermelho tracejado: robô de linha não entra. Ela vai da frente da área
-  até a **parede**, e não até a linha de fundo — o corredor atrás do gol não tem jogada nenhuma,
-  e um robô que entra lá errou o caminho e volta atravessando a área.
+  até a **parede**, e não até a linha de fundo, porque o corredor atrás do gol não tem jogada
+  nenhuma, e um robô que entra lá errou o caminho e volta atravessando a área.
 * A **zona do goleiro**, em verde por dentro dela: onde ele pode ficar. É a área de defesa mais
-  **um raio de robô**, e essa sobra é o que faz diferença — com a zona colada na linha, o goleiro
+  **um raio de robô**, e essa sobra é o que faz diferença: com a zona colada na linha, o goleiro
   não consegue ficar *em cima* dela, que é justamente onde um goleiro fica. Com um raio de folga
   ele encosta a casca na linha por fora e continua valendo.
 
 A zona proibida sai da área que a **visão informou** (`penalty_area_depth`/`width`) mais uma
 **folga de segurança**, e por vir da geometria da rede continua certa em Divisão A. O padrão da
 folga é 45 mm, meio raio de robô. Quem quiser mandar na medida direto tem `ZONA_PROFUNDIDADE` e
-`ZONA_LARGURA` na aba *Ajustes*: em zero — o padrão — a conta volta a ser da visão; com um número,
-ele manda, e aí é responsabilidade de quem digitou conferir a divisão.
+`ZONA_LARGURA` na aba *Ajustes*: em zero, que é o padrão, a conta volta a ser da visão; com um
+número, ele manda, e aí é responsabilidade de quem digitou conferir a divisão.
 
 Quem pode entrar é o **goleiro declarado**, e só ele. O número vem do `Referee.TeamInfo`, do
-Game Controller ou do árbitro de teste — é declaração de equipe, não escolha da estratégia.
+Game Controller ou do árbitro de teste, e é declaração de equipe, não escolha da estratégia.
 
 **Cortar seco o comando não bastaria.** O robô desacelera a `ACEL_MAX`, então a 3 m/s ele ainda
 percorreria 1,5 m depois do comando ir a zero, e entraria na área assim mesmo. O que se limita é
-a velocidade de **aproximação**, ao maior valor que ainda deixa parar antes da linha —
+a velocidade de **aproximação**, ao maior valor que ainda deixa parar antes da linha, por
 `v = √(2·a·d)`, o mesmo perfil de frenagem que `SkillAndarPara` usa para chegar num ponto. De longe
-não corta nada e, chegando perto, freia na taxa certa — o robô encosta na borda, não para metros
+não corta nada e, chegando perto, freia na taxa certa: o robô encosta na borda, não para metros
 antes dela.
 
 **Já dentro, ele sai sozinho.** Impedir de afundar não bastava: com a play mandando zero não
 havia o que remover, e o robô ficava parado dentro da área, em falta, até alguém mandar ele
-andar. Isso acontece de verdade — empurrão de adversário, ou o goleiro declarado mudar no meio
-da partida e o antigo virar robô de linha já lá dentro. A saída é pela **face mais próxima**, e a
+andar. Isso acontece de verdade, seja por empurrão de adversário, seja pelo goleiro declarado
+mudar no meio da partida e o antigo virar robô de linha já lá dentro. A saída é pela **face mais próxima**, e a
 velocidade dela cresce com a profundidade pelo mesmo `v = √(2·a·d)`: na linha vale zero, e é isso
 que evita o degrau que faria um robô encostado levar empurrão, aproximar de novo e oscilar.
 `VEL_DE_SAIDA_DA_AREA` põe um teto, para um encostão não atirar o robô meio campo afora.
@@ -547,33 +547,33 @@ Só a componente **normal** é tocada; a tangencial passa inteira. Uma defesa qu
 na área é pior que uma que a contorna.
 
 As duas são tracejadas, e não contínuas: as linhas brancas são o que a visão mediu, e estes
-retângulos são decisão nossa — desenhá-los com o mesmo traço faria a folga parecer pintada no
+retângulos são decisão nossa, e desenhá-los com o mesmo traço faria a folga parecer pintada no
 chão. Vermelho para a proibição e verde para a permissão, o mesmo verde do sensor de bola: duas
 proibições onde há uma proibição e uma permissão seria pior que legenda nenhuma.
 
-A conta do desenho e a do corte saem da mesma `Geometria.zonaProibida` — ver na tela uma borda
-diferente da que está sendo obedecida seria pior que não ver borda nenhuma. Aparecem só do
+A conta do desenho e a do corte saem da mesma `Geometria.zonaProibida`, porque ver na tela uma
+borda diferente da que está sendo obedecida seria pior que não ver borda nenhuma. Aparecem só do
 **nosso** lado: a área deles também é proibida pela regra, mas a estratégia ainda não a trata, e
 desenhar uma restrição que não está em vigor prometeria o que o código não cumpre.
 
 ### O lado nunca se deduz de um campo ausente
 
 `blue_team_on_positive_half` é **`optional`** no protocolo, e a leitura era
-`has(...) && get(...)`. Um pacote sem o campo virava "azul no lado negativo" — que não é
-"não sei", é uma afirmação trocada. Com o Game Controller alternando pacotes com e sem ele, o
+`has(...) && get(...)`. Um pacote sem o campo virava "azul no lado negativo", que não é
+"não sei", e sim uma afirmação trocada. Com o Game Controller alternando pacotes com e sem ele, o
 lado invertia, a zona proibida pulava para a outra metade e a **nossa** área ficava
 desguarnecida: robô de linha entrava com o comando intacto, porque a zona que o `Executor`
-recortava era a do adversário. É pênalti, e do pior tipo — a tela desenhava a zona na metade
-errada com o mesmo ar de certeza.
+recortava era a do adversário. É pênalti, e do pior tipo, porque a tela desenhava a zona na
+metade errada com o mesmo ar de certeza.
 
 O `Arbitro` guarda agora o último valor que alguém **declarou**, fora do retrato cru: um pacote
 omisso não apaga o que já se sabia. Guardar o valor do *azul*, e não o nosso lado, mantém a
-tradução na leitura — trocar a nossa cor com a janela aberta continua valendo na hora.
+tradução na leitura, então trocar a nossa cor com a janela aberta continua valendo na hora.
 
 E os dois padrões precisam **concordar entre si**. Não concordavam: `SEM_ARBITRO` assumia
 `false` e o `ArbitroLocal` nascia com `true`. Antes de tocar em qualquer botão a zona era
-desenhada em `-x`; no primeiro comando do painel de teste ela pulava para `+x` — e como é preciso
-mandar um `START` para a jogada rodar, o salto acontecia exatamente ao rodar a jogada. `false` é
+desenhada em `-x`; no primeiro comando do painel de teste ela pulava para `+x`, e como é
+preciso mandar um `START` para a jogada rodar, o salto acontecia exatamente ao rodar a jogada. `false` é
 o valor certo, e não só por ser o que o `SEM_ARBITRO` já dizia: no simulador o eixo `+x` aponta
 para o gol **amarelo**, então o azul defende `-x`. Padrão que contradiz a geometria do campo é
 armadilha.
@@ -581,7 +581,7 @@ armadilha.
 Enquanto ninguém declarou, o lado em uso é um chute, e o painel do árbitro diz isso em amarelo
 em vez de mostrar a contagem de pacotes. Vale a regra do projeto: o que está na tela ou veio da
 rede, ou é inferência, e inferência precisa aparecer como tal. O teste antigo só exercitava o
-árbitro de bancada, que preenche o campo sempre — foi por isso que o buraco sobreviveu.
+árbitro de bancada, que preenche o campo sempre, e foi por isso que o buraco sobreviveu.
 
 ### Os limites do árbitro ficam fora das plays
 
@@ -597,7 +597,7 @@ São duas perguntas diferentes, e ficam em lugares diferentes.
 **O que está acontecendo agora** fica no painel da direita, embaixo de cada robô: o papel, a
 tática e a skill que ele está executando, em verde quando existem e vermelho quando faltam. É a
 pergunta que se faz olhando um robô, junto da velocidade e do sensor dele. Uma tática concluída
-aparece em verde com o sufixo "fim", porque concluir é ter dado certo — mirar e chegar
+aparece em verde com o sufixo "fim", porque concluir é ter dado certo, e mirar e chegar
 terminam. Vermelho fica para robô sem papel, papel sem tática, tática sem skill, que são as três
 formas de um robô estar parado sem ninguém perceber.
 
@@ -613,7 +613,7 @@ estado rolar para fora junto com o histórico.
 O `Diario` **observa** em vez de ser chamado: olha a árvore do coach a cada tique e anota o que
 mudou. O contrário, com cada skill chamando um logger, obrigaria a passar o diário por todas as
 camadas e faria quem escreve uma skill nova ter de lembrar de registrar. Diferença não esquece.
-Em troca, o motivo de uma escolha fica de fora — só o resultado dela entra.
+Em troca, o motivo de uma escolha fica de fora, e só o resultado dela entra.
 
 Ele também anota o que o árbitro **corta**: a play pediu chute, o `Executor` podou por causa do
 `STOP`, e sem essa linha o comando sumiria sem deixar rastro.
@@ -622,7 +622,7 @@ Ele também anota o que o árbitro **corta**: a play pediu chute, o `Executor` p
 
 `PlayTesteAtacante` existe para provar que o encanamento inteiro funciona, do `Coach` até o
 `Comando` no fio: um papel só, sem passe, sem marcação, sem desvio de obstáculo e **sem prever
-a bola** — o atacante vai onde ela está, não onde ela estará. O `RoleAtacante`
+a bola**, já que o atacante vai onde ela está, não onde ela estará. O `RoleAtacante`
 escolhe entre três táticas **pelo estado do mundo**, e não por lembrar em que fase está: sem a
 bola, buscar; com a bola longe do gol, conduzir; com a bola perto, chutar. Uma máquina de
 estados com memória ficaria presa em "conduzindo" no instante em que a bola escapasse, e o robô
@@ -695,11 +695,11 @@ outro é tempo de simulação.
 
 **Esquerda.** A coluna é dividida pelo critério do que se **olha** e do que se **aperta**:
 estado da rede (para onde escutamos, a que taxa, para onde mandamos), estado do árbitro, estado
-da estratégia — e os **comandos de árbitro**, que são os botões que mais se usam numa bancada.
+da estratégia, e os **comandos de árbitro**, que são os botões que mais se usam numa bancada.
 
 Antes era o contrário. Os comandos moravam num diálogo atrás de um botão *Simular...*, a duas
-aberturas de distância de um STOP, enquanto nomes de equipe e caixas de exibição — coisas que se
-mexem uma vez por bancada — ocupavam a maior parte da coluna.
+aberturas de distância de um STOP, enquanto nomes de equipe e caixas de exibição, que são
+coisas que se mexem uma vez por bancada, ocupavam a maior parte da coluna.
 
 Tudo que se **configura** foi para *Configuração avançada...*, em três abas: **Equipe** (cor,
 nomes, lado de ataque, goleiro e a folga da área), **Rede** (as sete portas e endereços) e
@@ -708,7 +708,7 @@ ninguém rola um diálogo de configuração para achar um campo de porta. Tudo c
 a janela aberta, porque numa bancada troca-se de porta o tempo todo.
 
 Dentro da aba **Equipe** há uma divisão que importa: cor e nomes esperam o *Aplicar*, porque
-trocar de cor **reabre os sockets** — a porta de destino dos comandos depende dela. Lado, goleiro
+trocar de cor **reabre os sockets**, já que a porta de destino dos comandos depende dela. Lado, goleiro
 e folga valem no clique, porque não custam nada. Um campo que parece ter sido aplicado e não foi
 é o pior dos dois mundos.
 
@@ -731,8 +731,8 @@ velocidade, área do sensor, anel de incerteza e a previsão do desenho podem se
 *Configuração avançada...*.
 
 Arrastar com o **botão esquerdo** move o campo. Antes só o direito deslocava, e num trackpad de
-MacBook não há botão direito para segurar — clique de dois dedos não se sustenta enquanto um
-terceiro arrasta —, então o campo era, na prática, fixo para quem não usa mouse. O direito
+MacBook não há botão direito para segurar, já que clique de dois dedos não se sustenta enquanto
+um terceiro arrasta, então o campo era, na prática, fixo para quem não usa mouse. O direito
 continua funcionando.
 
 O zoom ancora no **cursor**: o ponto do campo sob o ponteiro fica parado enquanto a escala muda.
@@ -740,16 +740,16 @@ Antes ancorava no centro do painel, e quem olhava um canto via o canto fugir da 
 passo, tendo de arrastar de volta toda vez.
 
 Cada evento de scroll vale no máximo **um entalhe de roda**. O trackpad do mac não manda um
-evento por gesto como uma roda com entalhe: manda uma rajada — medidos 327 eventos em 4 s — em
-que o peso varia de 0,006 a 4,7. Sem teto, aquele 4,7 sozinho mudava a escala em 58% num quadro,
+evento por gesto como uma roda com entalhe: manda uma rajada, com 327 eventos medidos em 4 s,
+em que o peso varia de 0,006 a 4,7. Sem teto, aquele 4,7 sozinho mudava a escala em 58% num quadro,
 no meio de centenas de eventos que não faziam nada visível. Era esse contraste, e não a
 sensibilidade média, que fazia o zoom parecer instável: quase parado e de repente um pulo.
 Cortar em um entalhe limita pela coisa certa e por isso não estraga a roda de mouse, onde o
-valor já é 1 e o corte nunca age. O `teste.Autoteste` prende as três coisas — âncora, batente e
+valor já é 1 e o corte nunca age. O `teste.Autoteste` prende as três coisas: âncora, batente e
 teto do pico.
 
 O gramado é desenhado com as **faixas do corte**, como um campo de futebol de verdade. Não é
-enfeite: esta é uma tela de leitura — é nela que se percebe o filtro mentindo — e um retângulo
+enfeite: esta é uma tela de leitura, é nela que se percebe o filtro mentindo, e um retângulo
 verde uniforme não dá referência nenhuma de posição. Com o corte marcado, um robô que andou meia
 faixa e um que andou três se distinguem de relance, sem ler número.
 
@@ -757,16 +757,16 @@ A largura da faixa é a **profundidade da área de defesa**, e as faixas são co
 cada linha de fundo para dentro. Duas consequências, e as duas são o motivo da escolha: a
 primeira faixa de cada lado coincide exatamente com a área, que é a régua que mais interessa em
 campo; e o desenho fica **espelhado**, igual visto de qualquer um dos dois gols. A faixa do meio
-é o que sobra depois das inteiras — 1000 mm em Divisão B, 1200 em Divisão A — e é simétrica em
-torno da linha central nos dois casos, que é o que sustenta o espelho. A média exata dos dois
+é o que sobra depois das inteiras, com 1000 mm em Divisão B e 1200 em Divisão A, e é simétrica
+em torno da linha central nos dois casos, que é o que sustenta o espelho. A média exata dos dois
 tons é o verde chapado do simulador, então as duas janelas lado a lado continuam lendo como o
 mesmo campo.
 
-As duas colunas têm **largura arrastável**, e o campo absorve a diferença — inclusive
+As duas colunas têm **largura arrastável**, e o campo absorve a diferença, inclusive
 recolhendo uma coluna inteira pelas setinhas do divisor, quando a bancada aperta. Redimensionar
 a janela alarga o campo e não as colunas: são elas que guardam a largura escolhida.
 
-O gol é desenhado como estrutura **aberta** — dois postes e o fundo — e não mais como o bloco
+O gol é desenhado como estrutura **aberta**, com dois postes e o fundo, e não mais como o bloco
 chapado atrás da linha de fundo. O bloco dava a entender que o gol é maciço, e desde que o
 simulador passou a tratar as paredes do gol como física de verdade isso ficou errado de dois
 jeitos: a bola entra e fica lá dentro, e parada dentro do gol ela sumia atrás do bloco.
@@ -802,7 +802,7 @@ do que redesenhar tudo.
 
 ### Aparência
 
-Antes, a janela pedia `UIManager.getSystemLookAndFeelClassName()` — o visual do sistema
+Antes, a janela pedia `UIManager.getSystemLookAndFeelClassName()`, que é o visual do sistema
 operacional. Aqua no macOS, WindowsLookAndFeel no Windows: o botão saía diferente em cada
 máquina porque era exatamente isso que a chamada mandava fazer. E o Aqua **ignora**
 `setBackground` em botão, então o painel escuro da `Paleta` ficava com botão claro do sistema
@@ -810,7 +810,7 @@ no mac e obedecia no Windows. Estilizar componente a componente não resolveria,
 look-and-feel decide sozinho o que respeitar.
 
 Hoje `view.Estilo` instala o [FlatLaf](https://www.formdev.com/flatlaf/), que desenha tudo em
-Java sem delegar nada ao sistema — mesma janela nos três — e alimenta o L&F com as cores da
+Java sem delegar nada ao sistema, com a mesma janela nos três, e alimenta o L&F com as cores da
 `Paleta` que já existiam. O simulador faz o mesmo, com os mesmos valores: as duas janelas ficam
 lado a lado e um cinza diferente em cada uma faria parecer dois programas.
 
@@ -818,12 +818,12 @@ A fonte é um segundo eixo, independente do L&F, e é a parte que passa desperce
 `new Font("SansSerif", ...)` não nomeia uma fonte, é um pedido que o JDK resolve para uma fonte
 **física** diferente em cada sistema. Larguras diferentes movem o texto que `Campo` e
 `BarraSuperior` desenham direto no `Graphics`, e nenhum look-and-feel conserta isso. A
-JetBrains Mono vai embarcada no jar, e todo `new Font` do código virou `Estilo.fonte(...)` —
-um só que sobrasse traria a divergência de volta.
+JetBrains Mono vai embarcada no jar, e todo `new Font` do código virou `Estilo.fonte(...)`,
+porque um só que sobrasse traria a divergência de volta.
 
 Ela é monoespaçada de propósito, num programa que é quase todo número medido: coordenada,
 velocidade e tempo não dançam de largura quando só o algarismo muda. O custo é que coluna
-passou a ser caractere na régua, sem a folga que uma proporcional dava de graça — foi o que
+passou a ser caractere na régua, sem a folga que uma proporcional dava de graça, e foi o que
 alargou o campo de nome do simulador de 9 para 12 colunas, e a coluna de perguntas do diálogo
 de física de 290 para 335 px. Ao mexer em largura fixa perto de texto, meça com
 `getFontMetrics` em vez de estimar no olho.
