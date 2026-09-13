@@ -206,8 +206,8 @@ na hora, sem esperar o próximo pacote, que em `HALT` pode demorar bastante.
 
 | | |
 |---|---|
-| `PARAR` | ninguém se move |
-| `AFASTAR` | 1,5 m/s de teto e 0,5 m de distância da bola |
+| `HALT` | ninguém se move |
+| `STOP` | 1,5 m/s de teto e 0,5 m de distância da bola |
 | `JOGAR` | bola em jogo |
 | `KICKOFF`, `PENALTI`, `FALTA`, `POSICIONAR_BOLA`, `TEMPO` | têm dono: a favor ou contra |
 
